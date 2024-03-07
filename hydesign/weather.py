@@ -292,6 +292,21 @@ def extract_weather_for_HPP(
 
     return weather
 
+def isoprob_transfrom(y_input, y_desired): 
+    """
+    Method to perform a 1D isoprobabilistic trasnformation in order to
+    force the input sample to be have the desired distribution.
+    Correlations are kept in rank-sense.
+    """
+    ecdf_desired = ECDF(y_desired)
+    ecdf_input = ECDF(y_input)
+    ecdf_input_y = ecdf_input(y_input)
+    
+    y = scipy.interpolate.interp1d(
+        ecdf_desired.y, ecdf_desired.x)(ecdf_input_y)
+    
+    return y
+
 def select_years(
     df,
     seed=0,
@@ -356,11 +371,7 @@ def select_years(
 
     df_out = df_inter_sel
     for var in columns:
-        ecdf_orig = ECDF(df_inter[var].values)
-        ecdf_sample = ECDF(df_inter_sel[var].values)
-        ecdf_sample_y = ecdf_sample(df_inter_sel[var].values)
-
-        y = scipy.interpolate.interp1d(ecdf_orig.y, ecdf_orig.x)(ecdf_sample_y)
+        y = isoprob_transfrom(y_input=df_inter_sel[var].values, y_desired=df_inter[var].values)
         df_out[var] = y
 
     return df_out
