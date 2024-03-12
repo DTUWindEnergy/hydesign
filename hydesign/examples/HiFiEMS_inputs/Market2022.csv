@@ -1,4 +1,4 @@
-time,SM_forecast_old,SM_forecast,SM_cleared,BM_Up_cleared,BM_Down_cleared,reg_cleared,reg_forecast_pre,reg_forecast,reg_vol_Up,reg_vol_Down,,,,,,,,,,,,,DA,Measurement,reg_cleared,,,
+time,SM_forecast_old,SM_forecast,SM_cleared,BM_Up_cleared,BM_Down_cleared,reg_cleared,reg_forecast_pre,reg_forecast_DNN,reg_vol_Up,reg_vol_Down,,,,,,,,,,,,,DA,Measurement,reg_cleared,,,
 1/1/2022 0:00,6.09,31.74382973,50.05,50.05,50.05,50.05,78.3707,99.38556671,0,0,,1,,,"The first 15 days reg volumes are nordic reg volumes, the other days are DK1 ",,,,,,,,0.4724,0.3454,50.05,0.127,0,12.7
 1/1/2022 1:00,11.17,29.73042297,41.33,41.33,41.33,41.33,68.6186,72.59272003,0,0,,1,,,,,,,,,,,0.6287,0.5279,41.33,0.1008,0,10.08
 1/1/2022 2:00,19.36,37.09610748,43.22,43.22,43.22,43.22,67.3494,75.5891037,0,0,,1,,,,,,,,,,,0.6296,0.3606,43.22,0.269,0,26.9

@@ -69,7 +69,7 @@ simulation_dict = {
         'HA_solar': "Measurement",
         'FMA_solar': "Measurement",
         'SP': "SM_forecast",  # SM_forecast;SM_cleared
-        'RP': "reg_forecast", #reg_cleared;reg_forecast_pre
+        'RP': "reg_forecast_DNN", #reg_cleared;reg_forecast_pre
         'BP': 1, #1:forecast value 2: perfect value
         
         # Data
