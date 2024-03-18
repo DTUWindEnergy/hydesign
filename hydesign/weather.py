@@ -10,11 +10,17 @@ import pandas as pd
 import xarray as xr
 import yaml
 import scipy
+import importlib
 import openmdao.api as om
 
-from finitediff import get_weights
 from sklearn.neighbors import NearestNeighbors
 from statsmodels.distributions.empirical_distribution import ECDF, monotone_fn_inverter
+
+if not importlib.util.find_spec("finitediff"):
+    from hydesign.utils import get_weights
+else:
+    from finitediff import get_weights
+
 
 
 class ABL(om.ExplicitComponent):
@@ -790,3 +796,5 @@ def project_locations(
     locs_in_domain.loc[:, 'x'] = locs_x
     locs_in_domain.loc[:, 'y'] = locs_y
     return locs_in_domain
+
+

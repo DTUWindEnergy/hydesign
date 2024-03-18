@@ -51,7 +51,6 @@ setup(name='hydesign',
             ],},
       install_requires=[
           'dask',
-          'finitediff',
           'numpy',
           'pandas',
           'scikit-learn',
@@ -76,7 +75,8 @@ setup(name='hydesign',
             'pytest',],
         'optional': [
             'seaborn',
-            'jupyterlab',],
+            'jupyterlab',
+            'finitediff',],
         'docs': [
             'pypandoc',
             'sphinx',
