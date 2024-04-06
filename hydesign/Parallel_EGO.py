@@ -401,9 +401,9 @@ def derive_example_info(kwargs):
             kwargs['altitude'] = ex_site['altitude']
             kwargs['input_ts_fn'] = examples_filepath+ex_site['input_ts_fn']
             kwargs['H2_demand_fn'] = examples_filepath+ex_site['H2_demand_col']
-            kwargs['input_HA_ts_fn'] = examples_filepath+ex_site['input_HA_ts_fn']
-            kwargs['price_up_ts_fn'] = examples_filepath+ex_site['price_up_ts']
-            kwargs['price_dwn_ts_fn'] = examples_filepath+ex_site['price_dwn_ts']
+            kwargs['input_HA_ts_fn'] = examples_filepath+str(ex_site['input_HA_ts_fn'])
+            kwargs['price_up_ts_fn'] = examples_filepath+str(ex_site['price_up_ts'])
+            kwargs['price_dwn_ts_fn'] = examples_filepath+str(ex_site['price_dwn_ts'])
             kwargs['price_col'] = ex_site['price_col']
             if sim_pars_fn == None:
                 kwargs['sim_pars_fn'] = examples_filepath+ex_site['sim_pars_fn']
