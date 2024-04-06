@@ -18,7 +18,7 @@ from hydesign.pv import get_solar_time_series, get_linear_solar_degradation
 # ------------------------------------------------------------------------------------------------
 def run_solar_time_series(tracking):
     
-    examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0)
+    examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0, sep=';')
     name = 'France_good_wind'
     ex_site = examples_sites.loc[examples_sites.name == name]
 

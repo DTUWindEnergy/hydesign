@@ -76,7 +76,7 @@ Hydesign, provides example data from several sites in India and Europe.
 The site coordinates (longitude, latitude, and altitude) are given in `examples_sites.csv`.
 """
 
-examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0)
+examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0, sep=';')
 examples_sites
 
 """##

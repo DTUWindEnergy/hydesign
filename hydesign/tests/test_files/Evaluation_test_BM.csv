@@ -1,0 +1,48 @@
+,Design 1
+longitude,8.594398
+latitude,56.227322
+altitude,85.0
+clearance [m],10.0
+sp [W/m2],350.0
+p_rated [MW],5.0
+Nwt,70.0
+wind_MW_per_km2 [MW/km2],7.0
+solar_MW [MW],0.0
+surface_tilt [deg],25.0
+surface_azimuth [deg],180.0
+DC_AC_ratio,1.0
+b_P [MW],1.0
+b_E_h [h],4.0
+cost_of_battery_P_fluct_in_peak_price_ratio,10.0
+NPV_over_CAPEX,2.530942047790825
+NPV [MEuro],844.7806551333442
+IRR,0.1949401879207635
+Revenues,58.9943446906925
+LCOE [Euro/MWh],59.40788966072858
+CAPEX [MEuro],333.78111358603604
+OPEX [MEuro],5.365102866322426
+Wind CAPEX [MEuro],267.50640180250053
+Wind OPEX [MEuro],5.365102866322426
+PV CAPEX [MEuro],0.0
+PV OPEX [MEuro],0.0
+Batt CAPEX [MEuro],0.2927117835355051
+Batt OPEX [MEuro],0.0
+Shared CAPEX [MEuro],65.982
+Shared OPEX [MEuro],0.0
+penalty lifetime [MEuro],0.0
+AEP [GWh],503.4820198519102
+GUF,0.1915837214048364
+grid [MW],300.0
+wind [MW],350.0
+solar [MW],0.0
+Battery Energy [MWh],4.0
+Battery Power [MW],1.0
+Total curtailment [GWh],6161.82116590664
+Awpp [km2],50.0
+Apvp [km2],0.0
+Plant area [km2],50.0
+Rotor diam [m],134.86710626894708
+Hub height [m],77.43355313447354
+Number of batteries used in lifetime,3.0
+Break-even PPA price [Euro/MWh],50.0
+Capacity factor wind [-],0.2141437762590302

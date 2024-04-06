@@ -168,7 +168,6 @@ class genericWake_surrogate(om.ExplicitComponent):
         self.declare_partials('*', '*', method='fd')
 
     def compute(self, inputs, outputs):#, discrete_inputs, discrete_outputs):
-
         ws = inputs['ws']
         pc = inputs['pc']
         Nwt = inputs['Nwt']

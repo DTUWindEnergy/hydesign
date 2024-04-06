@@ -69,14 +69,52 @@ class finance(om.ExplicitComponent):
                        desc="Electricity price time series",
                        shape=[self.life_h])
         
-        self.add_input('hpp_t_with_deg',
+        self.add_input('hpp_t',
                        desc="HPP power time series",
                        units='MW',
+                       shape=[self.life_h])
+        
+        self.add_input('hpp_up_reg_t',
+                       desc="HPP up regulation power time series",
+                       units='MW',
+                       shape=[self.life_h])
+        
+        self.add_input('hpp_dwn_reg_t',
+                       desc="HPP down regulation power time series",
+                       units='MW',
+                       shape=[self.life_h])
+        
+        self.add_input('price_up_reg_t_ext',
+                       desc="Up regulation price time series",
+                       shape=[self.life_h])
+        
+        self.add_input('price_dwn_reg_t_ext',
+                       desc="Down regulation price time series",
                        shape=[self.life_h])
         
         self.add_input('penalty_t',
                         desc="penalty for not reaching expected energy productin at peak hours",
                         shape=[self.life_h])
+
+        self.add_input('hpp_t_deg',
+                       desc="HPP power time series",
+                       units='MW',
+                       shape=[self.life_h])
+        
+        self.add_input('hpp_up_reg_t_deg',
+                       desc="HPP up regulation power time series",
+                       units='MW',
+                       shape=[self.life_h])
+        
+        self.add_input('hpp_dwn_reg_t_deg',
+                       desc="HPP down regulation power time series",
+                       units='MW',
+                       shape=[self.life_h])
+
+        self.add_input('penalty_t_deg',
+                        desc="penalty for not reaching expected energy productin at peak hours",
+                        shape=[self.life_h])
+        
 
         self.add_input('CAPEX_w',
                        desc="CAPEX wpp")
@@ -113,6 +151,11 @@ class finance(om.ExplicitComponent):
         self.add_output('CAPEX',
                         desc="CAPEX")
         
+        self.add_output('revenues_without_deg',
+                        desc="Revenue without deg")
+        self.add_output('revenues',
+                        desc="Revenue with deg")
+        
         self.add_output('OPEX',
                         desc="OPEX")
         
@@ -130,8 +173,6 @@ class finance(om.ExplicitComponent):
         
         self.add_output('LCOE',
                         desc="LCOE")
-        self.add_output('revenues',
-                        desc="Revenues")
         
         self.add_output('penalty_lifetime',
                         desc="penalty_lifetime")
@@ -168,6 +209,7 @@ class finance(om.ExplicitComponent):
         -------
         CAPEX : Total capital expenditure costs of the HPP
         OPEX : Operational and maintenance costs of the HPP
+        Revenue: Total revenue
         NPV : Net present value
         IRR : Internal rate of return
         NPV_over_CAPEX : NPV over CAPEX
@@ -192,15 +234,23 @@ class finance(om.ExplicitComponent):
         
         df = pd.DataFrame()
         
-        df['hpp_t'] = inputs['hpp_t_with_deg']
-        # df['price_t'] = inputs['price_t_ext']
+        df['hpp_t'] = inputs['hpp_t']
+        df['price_t'] = inputs['price_t_ext']
+        df['hpp_up_reg_t'] = inputs['hpp_up_reg_t']
+        df['hpp_dwn_reg_t'] = inputs['hpp_dwn_reg_t']
+        df['price_up_reg_t'] = inputs['price_up_reg_t_ext']
+        df['price_dwn_reg_t'] = inputs['price_dwn_reg_t_ext']
         df['penalty_t'] = inputs['penalty_t']
-        # df['revenue'] = df['hpp_t'] * df['price_t'] - df['penalty_t']
+        df['hpp_up_reg_t_deg'] = inputs['hpp_up_reg_t_deg']
+        df['hpp_dwn_reg_t_deg'] = inputs['hpp_dwn_reg_t_deg']
+        df['hpp_t_deg'] = inputs['hpp_t_deg']
+        df['penalty_t_deg'] = inputs['penalty_t_deg']
         
         df['i_year'] = np.hstack([np.array([ii]*N_time) for ii in range(life_yr)])[:life_h]
 
         # Compute yearly revenues and cashflow
-        revenues = calculate_revenues(inputs['price_t_ext'], df)
+        revenues_without_deg = calculate_revenues_without_deg(df)
+        revenues = calculate_revenues(df)
         CAPEX = inputs['CAPEX_w'] + inputs['CAPEX_s'] + \
             inputs['CAPEX_b'] + inputs['CAPEX_el']
         OPEX = inputs['OPEX_w'] + inputs['OPEX_s'] + \
@@ -243,9 +293,11 @@ class finance(om.ExplicitComponent):
                 ref_yr_inflation = ref_yr_inflation,
         )
         
+        revenues_without_deg = revenues_without_deg.values.flatten()
         revenues = revenues.values.flatten()
         outputs['CAPEX'] = CAPEX
         outputs['OPEX'] = OPEX
+        outputs['revenues_without_deg'] = revenues_without_deg.mean()
         outputs['revenues'] = revenues.mean()
 
         # We need to add DEVEX
@@ -283,7 +335,7 @@ class finance(om.ExplicitComponent):
         outputs['NPV_over_CAPEX'] = NPV / CAPEX
 
         level_costs = np.sum(OPEX / (1 + hpp_discount_factor)**iy) + CAPEX
-        AEP_per_year = df.groupby('i_year').hpp_t.mean()*365*24
+        AEP_per_year = df.groupby('i_year').hpp_t.mean()*365*24 + df.groupby('i_year').hpp_up_reg_t.mean()*365*24 - df.groupby('i_year').hpp_dwn_reg_t.mean()*365*24
         level_AEP = np.sum(AEP_per_year / (1 + hpp_discount_factor)**iy)
 
         mean_AEP_per_year = np.mean(AEP_per_year)
@@ -394,16 +446,17 @@ def calculate_WACC(
     return WACC_after_tax
 
 
-def calculate_revenues(price_el, df):
-    df['revenue'] = df['hpp_t'] * np.broadcast_to(price_el, df['hpp_t'].shape) - df['penalty_t']
+def calculate_revenues_without_deg(df):
+    df['revenue_without_deg'] = df['hpp_t'] * df['price_t'] + df['hpp_up_reg_t'] * df['price_up_reg_t'] - df['hpp_dwn_reg_t'] * df['price_dwn_reg_t'] - df['penalty_t']
+    return df.groupby('i_year').revenue_without_deg.mean()*365*24
+def calculate_revenues(df):
+    df['revenue'] = df['hpp_t_deg'] * df['price_t'] + df['hpp_up_reg_t_deg'] * df['price_up_reg_t'] - df['hpp_dwn_reg_t_deg'] * df['price_dwn_reg_t'] - df['penalty_t_deg'] - df['penalty_t']
     return df.groupby('i_year').revenue.mean()*365*24
-
-   
 
 def calculate_break_even_PPA_price(df, CAPEX, OPEX, tax_rate, discount_rate,
                                    depreciation_yr, depreciation, DEVEX, inflation_index):
     def fun(price_el):
-        revenues = calculate_revenues(price_el, df)
+        revenues = calculate_revenues(df)
         NPV, _ = calculate_NPV_IRR(
             Net_revenue_t = revenues.values.flatten(),
             investment_cost = CAPEX,

@@ -23,7 +23,7 @@ if __name__ == "__main__":
     
     example = args.example
     
-    examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0)
+    examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0, sep=';')
     if example != None:
         examples_sites = examples_sites.iloc[[int(example)],:]
 

@@ -18,10 +18,10 @@ import xarray as xr
 from hydesign.weather import extract_weather_for_HPP, ABL, select_years
 from hydesign.wind import genericWT_surrogate, genericWake_surrogate, wpp, wpp_with_degradation, get_rotor_area, get_rotor_d
 from hydesign.pv import pvp, pvp_with_degradation
-from hydesign.ems.ems import ems, ems_long_term_operation
+from hydesign.ems.ems_BM import ems, ems_long_term_operation
 from hydesign.battery_degradation import battery_degradation, battery_loss_in_capacity_due_to_temp
 from hydesign.costs import wpp_cost, pvp_cost, battery_cost, shared_cost
-from hydesign.finance.finance import finance
+from hydesign.finance.finance_BM import finance
 from hydesign.look_up_tables import lut_filepath
 
 
@@ -37,10 +37,14 @@ class hpp_model:
         work_dir = './',
         max_num_batteries_allowed = 3,
         factor_battery_cost = 1,
-        ems_type='cplex',
+        ems_type='cplex', # Select the solver for ems: CPLEX or ORtools
         weeks_per_season_per_year = None,
         seed=0, # For selecting random weeks pe season to reduce the computational time
         input_ts_fn = None, # If None then it computes the weather
+        input_HA_ts_fn = None,
+        price_up_ts_fn = None,
+        price_dwn_ts_fn = None, 
+        price_col = None,
         price_fn = None, # If input_ts_fn is given it should include Price column.
         genWT_fn = lut_filepath+'genWT_v3.nc',
         genWake_fn = lut_filepath+'genWake_v3.nc',
@@ -63,7 +67,10 @@ class hpp_model:
         seed: seed number for week selection
         ems_type : Energy management system optimization type: cplex solver or rule based
         inputs_ts_fn : User provided weather timeseries, if not provided, the weather data is calculated using ERA5 datasets
+        inputs_HA_ts_fn : User provided weather timeseries for Hour-ahead
         price_fn : Price timeseries
+        price_up_ts : Up regulation Price timeseries
+        price_dwn_ts : Down regulation Price timeseries
         era5_zarr : Location of wind speed renalysis
         ratio_gwa_era5 : Location of mean wind speed correction factor
         era5_ghi_zarr : Location of GHI renalysis
@@ -110,13 +117,9 @@ class hpp_model:
             
         N_life = sim_pars['N_life']
         life_h = N_life*365*24
-        G_MW = sim_pars['G_MW']
-        battery_depth_of_discharge = sim_pars['battery_depth_of_discharge']
-        battery_charge_efficiency = sim_pars['battery_charge_efficiency']
-        min_LoH = sim_pars['min_LoH']
         #pv_deg_per_year = sim_pars['pv_deg_per_year']
         wpp_efficiency = sim_pars['wpp_efficiency']
-        land_use_per_solar_MW = sim_pars['land_use_per_solar_MW']
+        
         
         if 'wind_deg' in sim_pars:
             wind_deg = sim_pars['wind_deg']
@@ -184,6 +187,26 @@ class hpp_model:
             weather.to_csv(input_ts_fn)
             N_time = len(weather)
 
+        # Weather database for HA
+        if input_HA_ts_fn == None:
+            print('No HA input')
+        else:
+            weather_HA = pd.read_csv(input_HA_ts_fn, index_col=0, parse_dates=True)
+            SO_imbalance = weather_HA['SO_power_imbalance']
+        with xr.open_dataset(genWT_fn) as ds: 
+            # number of points in the power curves
+            N_ws = len(ds.ws.values)
+        
+        # BM prices database
+        if price_up_ts_fn == None:
+            print('No BM prices')
+        else:
+            price_up_reg = pd.read_csv(price_up_ts_fn, index_col=0, parse_dates=True)[price_col]
+        if price_dwn_ts_fn == None:
+            print('No BM price')
+        else:
+            price_dwn_reg = pd.read_csv(price_dwn_ts_fn, index_col=0, parse_dates=True)[price_col]
+
         # Assign PPA to the full input_ts
         if ppa_price is None:
             price = weather['Price']
@@ -246,7 +269,47 @@ class hpp_model:
                 N_ws = N_ws,
                 wpp_efficiency = wpp_efficiency,)
                 )
+        #------------------------------------------------------------------------
+         # New subsystems are added for WPP - HA
+        model.add_subsystem(
+            'abl_HA', 
+            ABL(
+                weather_fn=input_HA_ts_fn, 
+                N_time=N_time),
+            promotes_inputs=['hh']
+            )
+        # A new subsystem added
+        model.add_subsystem(
+            'genericWT_HA', 
+            genericWT_surrogate(
+                genWT_fn=genWT_fn,
+                N_ws = N_ws),
+            promotes_inputs=[
+               'hh',
+               'd',
+               'p_rated',
+            ])
+        # A new subsystem added
+        model.add_subsystem(
+            'genericWake_HA', 
+            genericWake_surrogate(
+                genWake_fn=genWake_fn,
+                N_ws = N_ws),
+            promotes_inputs=[
+                'Nwt',
+                'Awpp',
+                'd',
+                'p_rated',
+                ])
+        model.add_subsystem(
+            'wpp_HA', 
+            wpp(
+                N_time = N_time,
+                N_ws = N_ws,
+                wpp_efficiency = wpp_efficiency,)
+                )
         
+        #-----------------------------------------------------------------------------
         model.add_subsystem(
             'pvp', 
             pvp(
@@ -273,6 +336,9 @@ class hpp_model:
                 ems_type=ems_type),
             promotes_inputs=[
                 'price_t',
+                'price_up_reg_t',
+                'price_dwn_reg_t',
+                'SO_imbalance_t',
                 'b_P',
                 'b_E',
                 'G_MW',
@@ -281,6 +347,10 @@ class hpp_model:
                 'peak_hr_quantile',
                 'cost_of_battery_P_fluct_in_peak_price_ratio',
                 'n_full_power_hours_expected_per_day_at_peak_price',
+                'penalty_BM',
+                'bi_directional_status'],
+            promotes_outputs=[
+                'total_curtailment'
                 ]
             )
         model.add_subsystem(
@@ -337,15 +407,16 @@ class hpp_model:
             promotes_inputs=[
                 'b_P',
                 'b_E',
-                'G_MW',
+                # 'G_MW',
+                'penalty_BM',
                 'battery_depth_of_discharge',
                 'battery_charge_efficiency',
-                'peak_hr_quantile',
-                'n_full_power_hours_expected_per_day_at_peak_price'
+                # 'peak_hr_quantile',
+                # 'n_full_power_hours_expected_per_day_at_peak_price'
                 ],
-            promotes_outputs=[
-                'total_curtailment'
-            ])
+            # promotes_outputs=[
+            #     'total_curtailment']
+            )
         
         model.add_subsystem(
             'wpp_cost',
@@ -427,6 +498,7 @@ class hpp_model:
                               'IRR',
                               'NPV_over_CAPEX',
                               'LCOE',
+                              'revenues_without_deg',
                               'revenues',
                               'mean_AEP',
                               'penalty_lifetime',
@@ -443,9 +515,23 @@ class hpp_model:
         model.connect('genericWT.ws', 'wpp.ws')
         model.connect('genericWake.pcw', 'wpp.pcw')
         model.connect('abl.wst', 'wpp.wst')
-        
         model.connect('wpp.wind_t', 'ems.wind_t')
         model.connect('pvp.solar_t', 'ems.solar_t')
+
+        # New HA connects:
+
+        model.connect('genericWT_HA.ws', 'genericWake_HA.ws')
+        model.connect('genericWT_HA.pc', 'genericWake_HA.pc')
+        model.connect('genericWT_HA.ct', 'genericWake_HA.ct')
+        model.connect('genericWT_HA.ws', 'wpp_HA.ws')
+
+        model.connect('genericWake_HA.pcw', 'wpp_HA.pcw')
+
+        model.connect('abl_HA.wst', 'wpp_HA.wst')
+        
+        model.connect('wpp_HA.wind_t', 'ems.wind_BM_t')
+        # ------------------------------------------------------------------
+
         
         model.connect('ems.b_E_SOC_t', 'battery_degradation.b_E_SOC_t')
         
@@ -453,20 +539,29 @@ class hpp_model:
         model.connect('battery_loss_in_capacity_due_to_temp.SoH_all', 'ems_long_term_operation.SoH')
         
 
-        model.connect('genericWT.ws', 'wpp_with_degradation.ws')
-        model.connect('genericWake.pcw', 'wpp_with_degradation.pcw')
-        model.connect('abl.wst', 'wpp_with_degradation.wst')
+        model.connect('genericWT_HA.ws', 'wpp_with_degradation.ws') # The HA wind power times series is used for degradation model
+        model.connect('genericWake_HA.pcw', 'wpp_with_degradation.pcw')
+        model.connect('abl_HA.wst', 'wpp_with_degradation.wst')
         model.connect('wpp_with_degradation.wind_t_ext_deg', 'ems_long_term_operation.wind_t_ext_deg')
 
         model.connect('ems.solar_t_ext','pvp_with_degradation.solar_t_ext')
-        model.connect('pvp_with_degradation.solar_t_ext_deg', 'ems_long_term_operation.solar_t_ext_deg')
+        # model.connect('pvp_with_degradation.solar_t_ext_deg', 'ems_long_term_operation.solar_t_ext_deg')
         
-        model.connect('ems.wind_t_ext', 'ems_long_term_operation.wind_t_ext')
-        model.connect('ems.solar_t_ext', 'ems_long_term_operation.solar_t_ext')
-        model.connect('ems.price_t_ext', 'ems_long_term_operation.price_t_ext')
-        model.connect('ems.hpp_curt_t', 'ems_long_term_operation.hpp_curt_t')
+        # model.connect('ems.wind_BM_t_ext', 'ems_long_term_operation.wind_t_ext')
+        # model.connect('ems.solar_t_ext', 'ems_long_term_operation.solar_t_ext')
+        # model.connect('ems.price_t_ext', 'ems_long_term_operation.price_t_ext')
+        # model.connect('ems.hpp_curt_t', 'ems_long_term_operation.hpp_curt_t')
+        model.connect('ems.hpp_curt_BM_t', 'ems_long_term_operation.hpp_curt_BM_t')
         model.connect('ems.b_E_SOC_t', 'ems_long_term_operation.b_E_SOC_t')
         model.connect('ems.b_t', 'ems_long_term_operation.b_t')
+        model.connect('ems.b_BM_t', 'ems_long_term_operation.b_BM_t')
+        model.connect('ems.P_hpp_up_t', 'ems_long_term_operation.P_up_reg_t')
+        model.connect('ems.P_hpp_dwn_t', 'ems_long_term_operation.P_dwn_reg_t')
+        model.connect('ems.P_hpp_up_max_t', 'ems_long_term_operation.P_up_max_t')
+        model.connect('ems.P_hpp_dwn_max_t', 'ems_long_term_operation.P_dwn_max_t')
+        model.connect('ems.price_up_reg_t_ext', 'ems_long_term_operation.price_up_reg_t')
+        model.connect('ems.price_dwn_reg_t_ext', 'ems_long_term_operation.price_dwn_reg_t')
+        model.connect('ems.hpp_t', 'ems_long_term_operation.hpp_t')
 
         model.connect('wpp.wind_t', 'wpp_cost.wind_t')
         
@@ -487,8 +582,17 @@ class hpp_model:
         model.connect('shared_cost.OPEX_sh', 'finance.OPEX_el')
 
         model.connect('ems.price_t_ext', 'finance.price_t_ext')
-        model.connect('ems_long_term_operation.hpp_t_with_deg', 'finance.hpp_t_with_deg')
-        model.connect('ems_long_term_operation.penalty_t_with_deg', 'finance.penalty_t')
+        model.connect('ems.price_up_reg_t_ext', 'finance.price_up_reg_t_ext')
+        model.connect('ems.price_dwn_reg_t_ext', 'finance.price_dwn_reg_t_ext')
+        model.connect('ems.P_hpp_up_t', 'finance.hpp_up_reg_t')
+        model.connect('ems.P_hpp_dwn_t', 'finance.hpp_dwn_reg_t')
+        model.connect('ems.hpp_t', 'finance.hpp_t')
+        model.connect('ems.penalty_t', 'finance.penalty_t')
+        model.connect('ems_long_term_operation.P_up_reg_t_with_deg', 'finance.hpp_up_reg_t_deg')
+        model.connect('ems_long_term_operation.P_dwn_reg_t_with_deg', 'finance.hpp_dwn_reg_t_deg')
+        model.connect('ems_long_term_operation.hpp_t_with_deg', 'finance.hpp_t_deg')
+        model.connect('ems_long_term_operation.penalty_t_with_deg', 'finance.penalty_t_deg')
+
         
         prob = om.Problem(
             model,
@@ -499,6 +603,9 @@ class hpp_model:
         
         # Additional parameters
         prob.set_val('price_t', price)
+        prob.set_val('price_up_reg_t', price_up_reg)
+        prob.set_val('price_dwn_reg_t', price_dwn_reg)
+        prob.set_val('SO_imbalance_t', SO_imbalance)
         prob.set_val('G_MW', sim_pars['G_MW'])
         #prob.set_val('pv_deg_per_year', sim_pars['pv_deg_per_year'])
         prob.set_val('battery_depth_of_discharge', sim_pars['battery_depth_of_discharge'])
@@ -512,7 +619,8 @@ class hpp_model:
         prob.set_val('battery_WACC', sim_pars['battery_WACC'])
         prob.set_val('tax_rate', sim_pars['tax_rate'])
         prob.set_val('land_use_per_solar_MW', sim_pars['land_use_per_solar_MW'])
-
+        prob.set_val('bi_directional_status', sim_pars['bi_directional_status'])
+        prob.set_val('penalty_BM', sim_pars['penalty_BM'])
         
 
         self.sim_pars = sim_pars
@@ -525,8 +633,9 @@ class hpp_model:
             'NPV_over_CAPEX',
             'NPV [MEuro]',
             'IRR',
+            # 'revenues_without_deg [MEuro]',
+            'revenues [MEuro]',
             'LCOE [Euro/MWh]',
-            'Revenues [MEuro]',
             'CAPEX [MEuro]',
             'OPEX [MEuro]',
             'Wind CAPEX [MEuro]',
@@ -603,6 +712,7 @@ class hpp_model:
         prob['NPV_over_CAPEX'] : Net present value over the capital expenditures
         prob['NPV'] : Net present value
         prob['IRR'] : Internal rate of return
+        prob['revenues'] : Net revenue of HPP
         prob['LCOE'] : Levelized cost of energy
         prob['CAPEX'] : Total capital expenditure costs of the HPP
         prob['OPEX'] : Operational and maintenance costs of the HPP
@@ -657,8 +767,9 @@ class hpp_model:
             prob['NPV_over_CAPEX'], 
             prob['NPV']/1e6,
             prob['IRR'],
-            prob['LCOE'],
+            # prob['revenues_without_deg']/1e6,
             prob['revenues']/1e6,
+            prob['LCOE'],
             prob['CAPEX']/1e6,
             prob['OPEX']/1e6,
             prob.get_val('finance.CAPEX_w')/1e6,
@@ -722,8 +833,9 @@ class hpp_model:
                                             'NPV_over_CAPEX',
                                             'NPV [MEuro]',
                                             'IRR',
+                                            # 'Revenues_without_deg',
+                                            'Revenues',
                                             'LCOE [Euro/MWh]',
-                                            'Revenues [MEuro]',
                                             'CAPEX [MEuro]',
                                             'OPEX [MEuro]',
                                             'Wind CAPEX [MEuro]',

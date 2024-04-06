@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import time
 #from ems import ems_cplex_parts_constantoutput
 # Evaluation
-examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0)
+examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0, sep=';')
 name = 'France_good_wind'
 ex_site = examples_sites.loc[examples_sites.name == name]
 longitude = ex_site['longitude'].values[0]

@@ -69,6 +69,7 @@ setup(name='hydesign',
           'pyyaml',
           'matplotlib',
           'zarr',
+          'ortools',
           ],
       extras_require={
         'test': [
