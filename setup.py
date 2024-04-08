@@ -48,6 +48,7 @@ setup(name='hydesign',
             'examples/*/*/*.csv',
             'examples/*/*.yml',
             'examples/*.png',
+            'examples/*/*.nc',
             ],},
       install_requires=[
           'dask',
