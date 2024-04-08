@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import numpy as np
+import openmdao.api as om
+
 def get_weights(grid, xtgt, maxorder):
     """
     Populates weights for finite difference formulas for derivatives of various orders.
@@ -53,3 +56,53 @@ def get_weights(grid, xtgt, maxorder):
             c[j, 0] = c4 * c[j, 0] / c3
         c1 = c2
     return c
+
+class hybridization_shifted(om.ExplicitComponent):
+    """The hybridization_shifted model is used to shift the battery activity, in order to make them work starting from the chosen year (delta_life)
+    input: same inputs as the long term
+    output: inputs necessary for the ems_long_term changing the names with shifted
+    - LINES TO BE CHANGED: 418,419,420
+    - use the 'connect' instead of promote because I can change the name
+    - Don't forget to conncet the SOH shifted to the cost model
+    """
+
+    def __init__(
+            self,
+            N_limit,
+            N_life,
+            N_time,
+            life_h,
+
+    ):
+        super().__init__()
+        self.N_limit = N_limit
+        self.N_life = N_life
+        self.life_h = life_h
+        self.N_time = N_time
+
+    def setup(self):
+        self.add_input('delta_life',
+            desc="Years between the starting of operations of the existing plant and the new plant",
+            val=1)
+        self.add_input(
+            'SoH',
+            desc="Battery state of health at discretization levels",
+            shape=[self.life_h])
+
+        # -------------------------------------------------------
+
+        self.add_output(
+            'SoH_shifted',
+            desc="Battery state of health at discretization levels shifted of delta_life",
+            shape=[self.life_h])
+
+    def compute(self, inputs, outputs):
+
+        N_limit = self.N_limit
+        N_life = self.N_life
+        # life_h = self.life_h
+
+        SoH = inputs['SoH']
+        delta_life = int(inputs['delta_life'])
+
+        outputs['SoH_shifted'] = np.concatenate((np.zeros(delta_life * 365 * 24), SoH[0:N_life * 365 * 24], np.zeros((N_limit-delta_life) * 365 * 24)))

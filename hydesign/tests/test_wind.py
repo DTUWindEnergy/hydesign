@@ -13,7 +13,7 @@ import pickle
 from hydesign.examples import examples_filepath
 from hydesign.tests.test_files import tfp
 from hydesign.look_up_tables import lut_filepath
-from hydesign.wind import get_WT_curves, get_wake_affected_pc, get_wind_ts
+from hydesign.wind.wind import get_WT_curves, get_wake_affected_pc, get_wind_ts
 
 # ------------------------------------------------------------------------------------------------
 def run_get_WT_curves():

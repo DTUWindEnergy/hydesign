@@ -11,7 +11,7 @@ import pickle
 
 from hydesign.tests.test_files import tfp
 from hydesign.examples import examples_filepath
-from hydesign.weather import interpolate_WS_loglog
+from hydesign.weather.weather import interpolate_WS_loglog
 
 # ------------------------------------------------------------------------------------------------
 def run_interp_ws():

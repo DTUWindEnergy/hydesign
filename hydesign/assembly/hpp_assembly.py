@@ -15,12 +15,12 @@ import scipy as sp
 from scipy import stats
 import xarray as xr
 
-from hydesign.weather import extract_weather_for_HPP, ABL, select_years
-from hydesign.wind import genericWT_surrogate, genericWake_surrogate, wpp, wpp_with_degradation, get_rotor_area, get_rotor_d
-from hydesign.pv import pvp, pvp_with_degradation
+from hydesign.weather.weather import extract_weather_for_HPP, ABL, select_years
+from hydesign.wind.wind import genericWT_surrogate, genericWake_surrogate, wpp, wpp_with_degradation, get_rotor_area, get_rotor_d
+from hydesign.pv.pv import pvp, pvp_with_degradation
 from hydesign.ems.ems import ems, ems_long_term_operation
 from hydesign.battery_degradation import battery_degradation, battery_loss_in_capacity_due_to_temp
-from hydesign.costs import wpp_cost, pvp_cost, battery_cost, shared_cost
+from hydesign.costs.costs import wpp_cost, pvp_cost, battery_cost, shared_cost
 from hydesign.finance.finance import finance
 from hydesign.look_up_tables import lut_filepath
 

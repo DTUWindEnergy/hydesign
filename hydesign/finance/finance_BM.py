@@ -1,16 +1,9 @@
-import glob
-import os
-import time
-
-# basic libraries
 import numpy as np
-from numpy import newaxis as na
-import numpy_financial as npf
 import pandas as pd
-# import seaborn as sns
 import openmdao.api as om
-import yaml
 import scipy as sp
+
+from hydesign.finance.finance import calculate_WACC, get_inflation_index, calculate_CAPEX_phasing, calculate_NPV_IRR
 
 class finance(om.ExplicitComponent):
     """Hybrid power plant financial model to estimate the overall profitability of the hybrid power plant.
@@ -349,106 +342,14 @@ class finance(om.ExplicitComponent):
         outputs['penalty_lifetime'] = df['penalty_t'].sum()
         outputs['break_even_PPA_price'] = break_even_PPA_price
 
-
 # -----------------------------------------------------------------------
 # Auxiliar functions for financial modelling
 # -----------------------------------------------------------------------
 
-def calculate_NPV_IRR(
-    Net_revenue_t,
-    investment_cost,
-    maintenance_cost_per_year,
-    tax_rate,
-    discount_rate,
-    depreciation_yr,
-    depreciation,
-    development_cost,
-    inflation_index
-):
-    """ A function to estimate the yearly cashflow using the net revenue time series, and the yearly OPEX costs.
-    It then calculates the NPV and IRR using the yearly cashlow, the CAPEX, the WACC after tax, and the tax rate.
-
-    Parameters
-    ----------
-    Net_revenue_t : Net revenue time series
-    investment_cost : Capital costs
-    maintenance_cost_per_year : yearly operation and maintenance costs
-    tax_rate : tax rate
-    discount_rate : Discount rate
-    depreciation_yr : Depreciation curve (x-axis) time in years
-    depreciation : Depreciation curve at the given times 
-    development_cost : DEVEX
-    inflation_index : Yearly Inflation index time-sereis
-
-    Returns
-    -------
-    NPV : Net present value
-    IRR : Internal rate of return
-    """
-
-    yr = np.arange(len(Net_revenue_t)+1) # extra year to start at 0 and end at end of lifetime.
-    depre = np.interp(yr, depreciation_yr, depreciation)
-
-    # EBITDA: earnings before interest and taxes in nominal prices
-    EBITDA = (Net_revenue_t - maintenance_cost_per_year) * inflation_index[1:]
-
-    # EBIT taxable income
-    depreciation_on_each_year = np.diff(investment_cost*depre)
-    EBIT = EBITDA - depreciation_on_each_year
-    
-    # Taxes
-    Taxes = EBIT*tax_rate
-    
-    Net_income = EBITDA - Taxes
-    Cashflow = np.insert(Net_income, 0, -investment_cost-development_cost)
-    NPV = npf.npv(discount_rate, Cashflow)
-    if NPV > 0:
-        IRR = npf.irr(Cashflow)    
-    else:
-        IRR = 0
-    return NPV, IRR
-
-def calculate_WACC(
-    CAPEX_w,
-    CAPEX_s,
-    CAPEX_b,
-    CAPEX_el,
-    wind_WACC,
-    solar_WACC,
-    battery_WACC,
-    ):
-    """ This function returns the weighted average cost of capital after tax, using solar, wind, and battery
-    WACC. First the shared costs WACC is computed by taking the mean of the WACCs across all technologies.
-    Then the WACC after tax is calculated by taking the weighted sum by the corresponding CAPEX.
-
-    Parameters
-    ----------
-    CAPEX_w : CAPEX of the wind power plant
-    CAPEX_s : CAPEX of the solar power plant
-    CAPEX_b : CAPEX of the battery
-    CAPEX_el : CAPEX of the shared electrical costs
-    wind_WACC : After tax WACC for onshore WT
-    solar_WACC : After tax WACC for solar PV
-    battery_WACC : After tax WACC for stationary storge li-ion batteries
-
-    Returns
-    -------
-    WACC_after_tax : WACC after tax
-    """
-
-    # Weighted average cost of capital 
-    WACC_after_tax = \
-        ( CAPEX_w * wind_WACC + \
-          CAPEX_s * solar_WACC + \
-          CAPEX_b * battery_WACC + \
-          CAPEX_el * (wind_WACC + solar_WACC + battery_WACC)/3 ) / \
-        ( CAPEX_w + CAPEX_s + CAPEX_b + CAPEX_el )
-    return WACC_after_tax
-
-
 def calculate_revenues_without_deg(df):
     df['revenue_without_deg'] = df['hpp_t'] * df['price_t'] + df['hpp_up_reg_t'] * df['price_up_reg_t'] - df['hpp_dwn_reg_t'] * df['price_dwn_reg_t'] - df['penalty_t']
     return df.groupby('i_year').revenue_without_deg.mean()*365*24
+
 def calculate_revenues(df):
     df['revenue'] = df['hpp_t_deg'] * df['price_t'] + df['hpp_up_reg_t_deg'] * df['price_up_reg_t'] - df['hpp_dwn_reg_t_deg'] * df['price_dwn_reg_t'] - df['penalty_t_deg'] - df['penalty_t']
     return df.groupby('i_year').revenue.mean()*365*24
@@ -477,58 +378,3 @@ def calculate_break_even_PPA_price(df, CAPEX, OPEX, tax_rate, discount_rate,
     return out.x
 
 
-def calculate_CAPEX_phasing(
-    CAPEX,
-    phasing_yr,
-    phasing_CAPEX,
-    discount_rate,
-    inflation_index,
-    ):
-
-    """ This function calulates the equivalent net present value CAPEX given a early paying "phasing" approach.
-
-    Parameters
-    ----------
-    CAPEX : CAPEX 
-    phasing_yr : Yearly early paying of CAPEX curve. x-axis, time in years. 
-    phasing_CAPEX : Yearly early paying of CAPEX curve. Shares will be normalized to sum the CAPEX. 
-    discount_rate : Discount rate for present value calculation
-    inflation_index : Inflation index time series at the phasing_yr years. Accounts for inflation.
-
-    Returns
-    -------
-    CAPEX_eq : Present value equivalent CAPEX
-    """
-    
-    phasing_CAPEX = inflation_index*CAPEX*phasing_CAPEX/np.sum(phasing_CAPEX)
-    CAPEX_eq = np.sum([phasing_CAPEX[ii]/( 1 + discount_rate)**yr for ii,yr in enumerate(phasing_yr)])
-    
-    return CAPEX_eq
-
-def get_inflation_index(
-    yr,
-    inflation_yr, 
-    inflation,
-    ref_yr_inflation = 0
-):
-    """ This function calulates the inflation index time series.
-
-    Parameters
-    ----------
-    yr : Years for eavaluation of the  inflation index
-    inflation_yr : Yearly inflation curve. x-axis, time in years. To be used in interpolation.
-    inflation : Yearly inflation curve.  To be used in interpolation.
-    ref_yr_inflation : Referenece year, at which the inflation index takes value of 1.
-
-    Returns
-    -------
-    inflation_index : inflation index time series at yr
-    """
-    infl = np.interp(yr, inflation_yr, inflation)
-    
-    
-    ind_ref = np.where(np.array(yr)==ref_yr_inflation)[0]
-    inflation_index = np.cumprod(1+np.array(infl))
-    inflation_index = inflation_index/inflation_index[ind_ref]
-    
-    return inflation_index

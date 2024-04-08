@@ -13,7 +13,7 @@ from pvlib.location import Location
 
 from hydesign.examples import examples_filepath
 from hydesign.tests.test_files import tfp
-from hydesign.pv import get_solar_time_series, get_linear_solar_degradation
+from hydesign.pv.pv import get_solar_time_series, get_linear_solar_degradation
 
 # ------------------------------------------------------------------------------------------------
 def run_solar_time_series(tracking):

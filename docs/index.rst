@@ -42,6 +42,7 @@ Explanations of hydesign's core objects can be found in the following tutorials:
 	notebooks/offshore
 	notebooks/Example_ISO_prob
 	notebooks/HPP_evaluation_BM
+	notebooks/Hybridize
 
     .. toctree::
         :maxdepth: 1

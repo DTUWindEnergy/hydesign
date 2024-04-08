@@ -70,6 +70,7 @@ setup(name='hydesign',
           'matplotlib',
           'zarr',
           'ortools',
+          'NREL-PySAM',
           ],
       extras_require={
         'test': [
