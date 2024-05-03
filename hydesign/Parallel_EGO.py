@@ -33,6 +33,10 @@ from hydesign.examples import examples_filepath
 from sys import version_info
 from openmdao.core.driver import Driver
 
+import smt
+smt_version = smt.__version__.split('.')
+smt_major, smt_minor = smt_version[:2]
+
 def LCB(sm, point):
     """
     Lower confidence bound optimization: minimize by using mu - 3*sigma
@@ -285,7 +289,7 @@ def cast_to_mixint(x,variables):
             x[:,i] = np.round(x[:,i]/res, decimals=0)*res
     return x
 
-def get_mixint_context(variables, seed=None):
+def get_mixint_context(variables, seed=None, criterion='maximin'):
     design_var, fixed_var = get_design_vars(variables)    
     list_vars_doe = []
     for var_ in design_var:
@@ -299,19 +303,26 @@ def get_mixint_context(variables, seed=None):
               variables[var_]['limits'][1]+variables[var_]['resolution'],
               variables[var_]['resolution'], dtype=dtype))
             list_vars_doe += [OrdinalVariable(val_list)]
-    mixint = MixedIntegerContext(DesignSpace(list_vars_doe, seed=seed))
+    if int(smt_major) == 2:
+        if int(smt_minor) < 4:
+            mixint = MixedIntegerContext(DesignSpace(list_vars_doe, seed=seed))
+        else:
+            ds = DesignSpace(list_vars_doe, random_state=seed)
+            ds.sampler = LHS(xlimits=ds.get_unfolded_num_bounds(),
+                             random_state=int(seed),
+                             criterion=criterion,)
+            mixint = MixedIntegerContext(ds)
     return mixint
 
 def get_sampling(mixint, seed, criterion='maximin'):
-    import smt
-    smt_version = smt.__version__.split('.')
-    major, minor = smt_version[:2]
-    if int(major) == 2:
-        if int(minor) < 1:
+    if int(smt_major) == 2:
+        if int(smt_minor) < 1:
             sampling = mixint.build_sampling_method(LHS, criterion=criterion, random_state=int(seed))
-        else:
+        elif int(smt_minor) >= 1:
             mixint._design_space.sampler = LHS(xlimits=mixint.get_unfolded_xlimits(), criterion=criterion, random_state=int(seed))
             sampling = mixint.build_sampling_method(random_state=int(seed))
+        # else:
+        #     sampling = mixint.build_sampling_method(random_state=int(seed))
         return sampling
             
     
@@ -443,7 +454,8 @@ class EfficientGlobalOptimizationDriver(Driver):
 
     def run(self):
         kwargs = self.kwargs
-
+        recorder = {'time': [],
+                    'yopt': [],}
         # -----------------
         # INPUTS
         # -----------------
@@ -541,9 +553,10 @@ class EfficientGlobalOptimizationDriver(Driver):
         kwargs['yopt'] = yopt
         yold = np.copy(yopt)
         # xold = None
-        print(f'  Current solution {opt_sign}*{opt_var} = {float(yopt):.3E}'.replace('1*',''))
+        print(f'  Current solution {opt_sign}*{opt_var} = {float(np.squeeze(yopt)):.3E}'.replace('1*',''))
         print(f'  Current No. model evals: {xdoe.shape[0]}\n')
-    
+        recorder['time'].append(time.time())
+        recorder['yopt'].append(float(np.squeeze(yopt)))
         sm_args = {'n_comp': min(len(design_vars), 4)}
         sm_args.update({k: v for k, v in kwargs.items() if k in ['theta_bounds', 'n_comp']})
         while itr < kwargs['max_iter']:
@@ -614,8 +627,11 @@ class EfficientGlobalOptimizationDriver(Driver):
             xopt = xdoe_upd[[np.argmin(ydoe_upd)],:]
             yopt = ydoe_upd[[np.argmin(ydoe_upd)],:]
             
+            recorder['time'].append(time.time())
+            recorder['yopt'].append(float(np.squeeze(yopt)))
+
             #if itr > 0:
-            error = opt_sign * float(1 - (yold/yopt) ) 
+            error = opt_sign * float(1 - (np.squeeze(yold)/np.squeeze(yopt)) ) 
         
             xdoe = np.copy(xdoe_upd)
             ydoe = np.copy(ydoe_upd)
@@ -624,7 +640,7 @@ class EfficientGlobalOptimizationDriver(Driver):
             itr = itr+1        
             lapse = np.round( ( time.time() - start_iter )/60, 2)
 
-            print(f'  Current solution {opt_sign}*{opt_var} = {float(yopt):.3E}'.replace('1*',''))
+            print(f'  Current solution {opt_sign}*{opt_var} = {float(np.squeeze(yopt)):.3E}'.replace('1*',''))
             print(f'  Current No. model evals: {xdoe.shape[0]}')
             print(f'  rel_yopt_change = {error:.2E}')
             print(f'Iteration {itr} took {lapse} minutes\n')
@@ -645,6 +661,9 @@ class EfficientGlobalOptimizationDriver(Driver):
         yopt = np.array(opt_sign*outs[[op_var_index]])[:,na]
         hpp_m.print_design(xopt[0,:], outs)
         
+        recorder['time'].append(time.time())
+        recorder['yopt'].append(float(np.squeeze(yopt)))
+
         n_model_evals = xdoe.shape[0] 
         
         lapse = np.round( ( time.time() - start_total )/60, 2)
@@ -668,9 +687,11 @@ class EfficientGlobalOptimizationDriver(Driver):
         self.result = design_df
         # store final model, to check or extract additional variables
         self.hpp_m = hpp_m
+        self.recorder = recorder
 
 if __name__ == '__main__':
-    from hydesign.hpp_assembly import hpp_model
+    from hydesign.assembly.hpp_assembly import hpp_model
+    
     inputs = {
         'example': 4,
         'name': None,
@@ -679,24 +700,24 @@ if __name__ == '__main__':
         'altitude': None,
         'input_ts_fn': None,
         'sim_pars_fn': None,
-
+    
         'opt_var': "NPV_over_CAPEX",
-        'num_batteries': 1,
-        'n_procs': 7,
-        'n_doe': 16,
-        'n_clusters': 4, # total number of evals per iteration = n_clusters + 2*n_dims
+        'num_batteries': 10,
+        'n_procs': 4,
+        'n_doe': 10,
+        'n_clusters': 2, # total number of evals per iteration = n_clusters + 2*n_dims
         'n_seed': 0,
-        'max_iter': 4,
+        'max_iter': 10,
         'final_design_fn': 'hydesign_design_0.csv',
-        'npred': 3e4,
+        'npred': 2e4,
         'tol': 1e-6,
-        'theta_bounds': [1e-3, 1e2],
-        'n_comp': 1,
+        # 'theta_bounds': [1e-3, 1e2],
+        # 'n_comp': 2,
         'min_conv_iter': 3,
         'work_dir': './',
         'hpp_model': hpp_model,
         }
-
+    
     kwargs = get_kwargs(inputs)
     kwargs['variables'] = {
         'clearance [m]':
@@ -710,91 +731,99 @@ if __name__ == '__main__':
              'types':'int'
              },
         'p_rated [MW]':
-            {'var_type':'design',
-             'limits':[1, 10],
-             'types':'int'
-             },
-            # {'var_type':'fixed',
-            #  'value': 6
-             # },
+            # {'var_type':'design',
+            #  'limits':[1, 10],
+            #  'types':'int'
+            #  },
+            {'var_type':'fixed',
+              'value': 6
+              },
         'Nwt':
-            {'var_type':'design',
-             'limits':[0, 400],
-             'types':'int'
-             },
-            # {'var_type':'fixed',
-            #  'value': 200
+            # {'var_type':'design',
+            #  'limits':[0, 400],
+            #  'types':'int'
             #  },
+            {'var_type':'fixed',
+              'value': 200
+              },
         'wind_MW_per_km2 [MW/km2]':
-            {'var_type':'design',
-             'limits':[5, 9],
-             'types':'float'
-             },
-            # {'var_type':'fixed',
-            #  'value': 7
+            # {'var_type':'design',
+            #  'limits':[5, 9],
+            #  'types':'float'
             #  },
+            {'var_type':'fixed',
+              'value': 7
+              },
         'solar_MW [MW]':
-            {'var_type':'design',
-             'limits':[0, 400],
-             'types':'int'
-             },
-            # {'var_type':'fixed',
-            #  'value': 200
-            #  },
+            # {'var_type':'design',
+            #  'limits':[0, 400],
+            #  'types':'int'
+             # },
+            {'var_type':'fixed',
+              'value': 200
+              },
         'surface_tilt [deg]':
-            {'var_type':'design',
-             'limits':[0, 50],
-             'types':'float'
-             },
-            # {'var_type':'fixed',
-            #  'value': 25
+            # {'var_type':'design',
+            #  'limits':[0, 50],
+            #  'types':'float'
             #  },
+            {'var_type':'fixed',
+              'value': 25
+              },
         'surface_azimuth [deg]':
             {'var_type':'design',
              'limits':[150, 210],
              'types':'float'
              },
-    #     'DC_AC_ratio':
-    #         {'var_type':'design',
-    #          'limits':[1, 2.0],
-    #          'types':FLOAT
-    #          },
         'DC_AC_ratio':
-            {'var_type':'design',
-              'limits':[1, 2.0],
-              'types':'float'
-             },
-        # 'DC_AC_ratio':
-        #     {'var_type':'fixed',
-        #      'value':1.0,
-        #      },
+            # {'var_type':'design',
+            #   'limits':[1, 2.0],
+            #   'types':'float'
+            #  },
+            {'var_type':'fixed',
+              'value':1.0,
+              },
         'b_P [MW]':
-            {'var_type':'design',
-             'limits':[0, 100],
-             'types':'int'
-             },
-            # {'var_type':'fixed',
-            #  'value': 50
+            # {'var_type':'design',
+            #  'limits':[0, 100],
+            #  'types':'int'
             #  },
+            {'var_type':'fixed',
+              'value': 50
+              },
         'b_E_h [h]':
-            {'var_type':'design',
-             'limits':[1, 10],
-             'types':'int'
-             },
-            # {'var_type':'fixed',
-            #  'value': 6
+            # {'var_type':'design',
+            #  'limits':[1, 10],
+            #  'types':'int'
             #  },
+            {'var_type':'fixed',
+              'value': 6
+              },
         'cost_of_battery_P_fluct_in_peak_price_ratio':
-            {'var_type':'design',
-             'limits':[0, 20],
-             'types':'resolution',
-             'resolution':0.5,
-             },
-            # {'var_type':'fixed',
-            #  'value': 10
+            # {'var_type':'design',
+            #  'limits':[0, 20],
+            #  'types':'float',
+            #  # 'resolution':0.5,
+            #  },
+            {'var_type':'fixed',
+              'value': 10},
     }    
     EGOD = EfficientGlobalOptimizationDriver(**kwargs)
     EGOD.run()
     result = EGOD.result
+    
+    import matplotlib.pyplot as plt
+    rec = EGOD.recorder
+    xs = np.asarray(rec['time'])
+    xs = xs - xs[0]
+    ys = np.asarray(rec['yopt'])
+    plt.plot(xs, ys)
+    plt.xlabel('time [s]')
+    plt.ylabel('yopt [-]')
 
 
+    
+    # import pickle
+    # with open('recording.pkl', 'wb') as f:
+    #     pickle.dump(EGOD.recorder, f)
+    
