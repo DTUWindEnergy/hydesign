@@ -14,8 +14,7 @@ import pandas as pd
 
 
 parameter_dict = {
-        # country of the HPP
-        'country': 'DK',  # DK, NO, SE, FL, others
+        
         # hpp parameters
         'hpp_grid_connection': 100,  # in MW
 
@@ -52,6 +51,7 @@ parameter_dict = {
         'dispatch_interval': 1/4,
         'settlement_interval': 1/4,
         
+        'imbalance_fee': 0.13,  # DK: 0.13 €/MWh, other Nordic countries: , others: 0.001
     }
 
 simulation_dict = {
@@ -59,7 +59,7 @@ simulation_dict = {
         'solar_as_component': 0,  # The code does not support for solar power plant
         'battery_as_component': 1,
         'start_date': '1/1/22',
-        'number_of_run_day': 15,   # 
+        'number_of_run_day': 3,   # 
         'out_dir':"./test/",
 
         'DA_wind': "DA",   #DA, Measurement
@@ -73,13 +73,13 @@ simulation_dict = {
         'BP': 1, #1:forecast value 2: perfect value
         
         # Data
-        'wind_dir': "../Data/Winddata2022_15min.csv",
-        'solar_dir': "../Data/Solardata.csv",
-        'market_dir': "../Data/Market2022.csv",
+        'wind_dir': "./hydesign/examples/HiFiEMS_inputs/Winddata2022_15min.csv",
+        'solar_dir': "./hydesign/examples/HiFiEMS_inputs/Solardata.csv",
+        'market_dir': "./hydesign/examples/HiFiEMS_inputs/Market2022.csv",
         
         # for DDEMS (spot market) -- Historical data
-        'history_wind_dir': "../Data/Winddata2022_15min.csv",
-        'history_market_dir': "../Data/Market2021.csv",
+        'history_wind_dir': "./hydesign/examples/HiFiEMS_inputs/Winddata2022_15min.csv",
+        'history_market_dir': "./hydesign/examples/HiFiEMS_inputs/Market2021.csv",
         
         # for REMS (balancing market)
         'HA_wind_error_ub': "5%_fc_error",
@@ -92,11 +92,13 @@ simulation_dict = {
         'number_of_price_scenario': 3, 
     }
 
-utils.run_SM(
+utils.run(
         parameter_dict = parameter_dict,
         simulation_dict = simulation_dict,
         EMS = EMS,
-        EMStype="DEMS"
+        EMStype="DEMS",
+        BMOpt_as_component=False,
+        RDOpt_as_component=False
        )   # run EMS with only spot market optimization
     
 #EMS.run_SM_RD(

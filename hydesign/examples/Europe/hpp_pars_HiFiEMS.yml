@@ -142,23 +142,14 @@ elevation_fn: '/groups/INP/era5/SRTMv3_plus_ViewFinder_coarsen.nc' # Altitude ma
 # --------------------------------------------------------------------------------------------
 
         
-country: 'DK'  # DK, NO, SE, FL, others   
+
 # HPP parameters     
-hpp_grid_connection': 300  # in MW
-wind_capacity: 120 #in MW
-solar_capacity: 0  # in MW
-battery_energy_capacity: 120  # in MWh
-battery_power_capacity: 40  # in MW
-battery_minimum_SoC: 0.1
 battery_maximum_SoC: 0.9
 battery_initial_SoC: 0.5
 battery_hour_discharge_efficiency: 0.985  #
 battery_hour_charge_efficiency: 0.975
-battery_self_discharge_efficiency': 0
-# HPP battery degradation parameters
-battery_initial_degradation: 0  
-battery_marginal_degradation_cost: 142000 # in €/MWh
-battery_capital_cost: 142000 # in €/MWh
+battery_self_discharge_efficiency: 0
+
 degradation_in_optimization: 1 # 1:yes 0:no
 
 # mFRR bid parameters
@@ -171,10 +162,9 @@ min_dw_bid: 5
 dispatch_interval: 0.25
 settlement_interval: 0.25
 
+imbalance_fee: 0.13 # DK: 0.13€/MWh
 
-wind_as_component: 1
-solar_as_component: 0  # The code does not support for solar power plant
-battery_as_component: 1
+
 start_date: '1/1/22'
 number_of_run_day: 15   # 
 out_dir: "./test/"
