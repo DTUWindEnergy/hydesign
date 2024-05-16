@@ -9,7 +9,7 @@ import DEMS as EMS
 import utils
 from matplotlib import pyplot as plt
 import pandas as pd
-
+from hydesign.examples import examples_filepath
 
 
 
@@ -60,7 +60,7 @@ simulation_dict = {
         'battery_as_component': 1,
         'start_date': '1/1/22',
         'number_of_run_day': 3,   # 
-        'out_dir':"./test/",
+        'out_dir':"./HiFiEMS_results/",
 
         'DA_wind': "DA",   #DA, Measurement
         'HA_wind': "HA" ,  #HA, Measurement
@@ -73,9 +73,9 @@ simulation_dict = {
         'BP': 1, #1:forecast value 2: perfect value
         
         # Data
-        'wind_dir': "./hydesign/examples/HiFiEMS_inputs/Winddata2022_15min.csv",
-        'solar_dir': "./hydesign/examples/HiFiEMS_inputs/Solardata.csv",
-        'market_dir': "./hydesign/examples/HiFiEMS_inputs/Market2022.csv",
+        'wind_dir': examples_filepath+"HiFiEMS_inputs/Winddata2022_15min.csv",
+        'solar_dir': examples_filepath+"HiFiEMS_inputs/Solardata.csv",
+        'market_dir': examples_filepath+"HiFiEMS_inputs/Market2022.csv",
         
         # for DDEMS (spot market) -- Historical data
         'history_wind_dir': "./hydesign/examples/HiFiEMS_inputs/Winddata2022_15min.csv",
@@ -97,7 +97,7 @@ utils.run(
         simulation_dict = simulation_dict,
         EMS = EMS,
         EMStype="DEMS",
-        BMOpt_as_component=False,
+        BMOpt_as_component=True,
         RDOpt_as_component=False
        )   # run EMS with only spot market optimization
     
