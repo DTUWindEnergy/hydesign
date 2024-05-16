@@ -357,7 +357,7 @@ def RTSim(dt, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCmax, Emax, eta_dis, 
 
 
 
-def run(parameter_dict, simulation_dict, EMS, EMStype, BMOpt_as_component=False, RDOpt_as_component=False):
+def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=False):
     
     DI = parameter_dict["dispatch_interval"]
     DI_num = int(1/DI)    
@@ -520,7 +520,7 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BMOpt_as_component=False,
         P_HPP_DW_bid_ts = pd.DataFrame(np.zeros(T))
 
         
-        if BMOpt_as_component == True and RDOpt_as_component == True:    
+        if BM_model == True and RD_model == True:    
            for i in range(0,24):
                 BM_up_price_forecast_settle = BM_up_price_forecast.squeeze().repeat(SI_num)
                 BM_up_price_forecast_settle.index = range(T_SI + int(exten_num/SIDI_num))
@@ -631,7 +631,7 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BMOpt_as_component=False,
                 P_HPP_UP_t0 = P_HPP_UP_t1
                 P_HPP_DW_t0 = P_HPP_DW_t1
 
-        elif BMOpt_as_component == True and RDOpt_as_component == False:
+        elif BM_model == True and RD_model == False:
              
              for i in range(0,24):
                 BM_up_price_forecast_settle = BM_up_price_forecast.squeeze().repeat(SI_num)
@@ -742,7 +742,7 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BMOpt_as_component=False,
                 P_HPP_DW_t0 = P_HPP_DW_t1
         
 
-        elif BMOpt_as_component == False and RDOpt_as_component == True:
+        elif BM_model == False and RD_model == True:
 
             for i in range(0,24):   
                 RD_wind_forecast1 = pd.Series(np.r_[RT_wind_forecast.values[i*DI_num:i*DI_num+2], HA_wind_forecast.values[i*DI_num+2:(i+2)*DI_num], Wind_measurement.values[(i+2)*DI_num:] + 0.8*(DA_wind_forecast.values[(i+2)*DI_num:] - Wind_measurement.values[(i+2)*DI_num:])])
@@ -898,7 +898,16 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BMOpt_as_component=False,
         P_dis_RT_ts.index = range(T)
         P_cha_RT_ts.index = range(T)   
         
-        
+        '''
+        P_HPP_SM_t_opt, Spot market schedule, power [MW]
+        P_dis_SM_t_opt, Battery discharge schedule in spot market, power [MW]
+        P_cha_SM_t_opt, 
+        P_w_SM_t_opt, 
+        P_HPP_RT_ts, Final HPP output, power [MW] 
+        P_HPP_RT_refs, 
+        P_dis_RT_ts, Final discharge operation of battery, power [MW]
+        P_cha_RT_ts: Final charge operation of battery, power [MW]
+        '''
         output_schedule = pd.concat([P_HPP_SM_t_opt, P_dis_SM_t_opt, P_cha_SM_t_opt, P_w_SM_t_opt, P_HPP_RT_ts, P_HPP_RT_refs, P_dis_RT_ts, P_cha_RT_ts], axis=1)
         output_revenue = pd.DataFrame([SM_revenue, reg_revenue, im_revenue, im_special_revenue_DK1, Deg_cost, Deg_cost_by_cycle]).T
         output_revenue.columns=['SM_revenue','reg_revenue','im_revenue','im_special_revenue_DK1', 'Deg_cost','Deg_cost_by_cycle']
@@ -940,3 +949,5 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BMOpt_as_component=False,
         if day_num > simulation_dict["number_of_run_day"]:
             print(P_grid_limit)
             break
+        
+    return P_HPP_RT_ts, RES_RT_cur_ts, 
