@@ -24,7 +24,7 @@ parameter_dict = {
 
 
         # hpp solar parameters
-        'solar_capacity': 0,  # in MW
+        'solar_capacity': 10,  # in MW
        
 
         # hpp battery parameters
@@ -57,10 +57,10 @@ parameter_dict = {
 
 simulation_dict = {
         'wind_as_component': 1,
-        'solar_as_component': 0,  # The code does not support for solar power plant
+        'solar_as_component': 1,  # The code does not support for solar power plant
         'battery_as_component': 1,
         'start_date': '1/1/22',
-        'number_of_run_day': 365,   # 
+        'number_of_run_day': 3,   # 
         'out_dir':"./test/",
 
         'DA_wind': "DA",   #DA, Measurement

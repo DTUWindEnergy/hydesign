@@ -877,4 +877,4 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
             print(P_grid_limit)
             break
         
-    return P_HPP_RT_ts, RES_RT_cur_ts, 
+    return P_HPP_RT_ts, RES_RT_cur_ts, P_cha_RT_ts, P_dis_RT_ts, SoC_ts
