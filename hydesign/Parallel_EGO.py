@@ -280,12 +280,13 @@ def get_xtypes(variables, design_var=[]):
     return [variables[var_]['types'] for var_ in design_var]
 
 def cast_to_mixint(x,variables):
+    design_var, fixed_var = get_design_vars(variables)
     types_ = get_xtypes(variables)
     for i,ty in enumerate(types_):
         if ty == 'int':
             x[:,i] = np.round(x[:,i])
         elif ty == 'resolution':
-            res = variables[list(variables.keys())[i]]['resolution']
+            res = variables[design_var[i]]['resolution']
             x[:,i] = np.round(x[:,i]/res, decimals=0)*res
     return x
 

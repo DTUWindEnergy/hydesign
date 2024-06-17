@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from hydesign.hpp_assembly import hpp_model
+from hydesign.assembly.hpp_assembly import hpp_model
 from hydesign.Parallel_EGO import get_kwargs, EfficientGlobalOptimizationDriver
 from hydesign.examples import examples_filepath
 
@@ -28,9 +28,11 @@ if __name__ == '__main__':
     parser=argparse.ArgumentParser()
     parser.add_argument('--ID', default=0, 
                         help='ID (index) to run HPP sizing, based on grid_points_sample.csv')    
+    parser.add_argument('--ID_start', default=0)
     args=parser.parse_args()
     
-    iloc = int(args.ID)
+    ID_start = int(args.ID_start)
+    iloc = int(args.ID)+ID_start
 
     # parameters
     year = 2025
@@ -38,7 +40,8 @@ if __name__ == '__main__':
 
 
     #sites  = pd.read_csv('grid_points_sample.csv')
-    sites  = pd.read_csv('grid_points.csv')
+    sites  = pd.read_csv('grid_points_onshore.csv')
+
     sites['name'] = sites.index.values
     site_sel = sites.loc[iloc,:]
     
@@ -73,8 +76,9 @@ if __name__ == '__main__':
         'latitude': latitude,
         'altitude': None,
         'input_ts_fn': None,
-        'sim_pars_fn': examples_filepath+'Europe/hpp_pars.yml',
+        'sim_pars_fn': 'hpp_pars.yml',
         'price_fn': prices,
+        #
         'opt_var': "NPV_over_CAPEX",
         'num_batteries': 5,
         'n_procs': 32,
@@ -87,40 +91,31 @@ if __name__ == '__main__':
         'tol': 1e-6,
         'min_conv_iter': 3,
         'work_dir': './',
+        #
+        'hpp_model': hpp_model,
         }
 
     kwargs = get_kwargs(inputs)
     kwargs['variables'] = {
         'clearance [m]':
-            {'var_type':'design',
-             'limits':[10, 60],
-             #'types':'int'
-             'types':'resolution',
-             'resolution':5,
+            {'var_type':'fixed',
+             'value':10,
              },
          'sp [W/m2]':
-            {'var_type':'design',
-             'limits':[200, 400],
-             #'types':'int'
-             'types':'resolution',
-             'resolution':20,
+            {'var_type':'fixed',
+             'value':200,
              },
         'p_rated [MW]':
-            {'var_type':'design',
-             'limits':[1, 10],
-             'types':'int'
+            {'var_type':'fixed',
+             'value':1,
              },
         'Nwt':
-            {'var_type':'design',
-             'limits':[0, 400],
-             'types':'int'
+            {'var_type':'fixed',
+             'value':0,
              },
         'wind_MW_per_km2 [MW/km2]':
-            {'var_type':'design',
-             'limits':[5, 9],
-             #'types':'float'
-             'types':'resolution',
-             'resolution':0.2,
+            {'var_type':'fixed',
+             'value':5,
              },
         'solar_MW [MW]':
             {'var_type':'design',
@@ -153,7 +148,7 @@ if __name__ == '__main__':
              },
         'b_E_h [h]':
             {'var_type':'design',
-             'limits':[1, 10],
+             'limits':[1, 4],
              'types':'int'
              },
         'cost_of_battery_P_fluct_in_peak_price_ratio':
@@ -167,4 +162,5 @@ if __name__ == '__main__':
     EGOD = EfficientGlobalOptimizationDriver(model=hpp_model, **kwargs)
     EGOD.run()
     result = EGOD.result
-
+    
+    

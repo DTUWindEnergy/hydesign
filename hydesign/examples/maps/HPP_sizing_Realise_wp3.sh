@@ -6,6 +6,7 @@
 #SBATCH --partition=rome
 # #SBATCH --partition=workq 
 # #SBATCH --partition=windq 
+# #SBATCH --partition=windfatq
 
 #SBATCH --ntasks-per-core 1 
 #SBATCH --ntasks-per-node 32 
@@ -16,8 +17,10 @@
 # job array:
 #      run sites 0 to 546
 #      maximum of 10 sites running in parallel
-# #SBATCH --array=0-546%10
-#SBATCH --array=0-2201%25
+#SBATCH --array=0-220%25
+# #SBATCH --array=551-1000%25
+# #SBATCH --array=0-2201%25
+# #SBATCH --array=0-1
 
 #NODE_ID=$(head -1 $SLURM_JOB_NODELIST)
 NODE_ID=$(scontrol show hostnames $SLURM_JOB_NODELIST)
@@ -36,7 +39,7 @@ echo -----------------------------------------------------------------
 # Set environment
 source /home/jumu/miniconda3/bin/activate
 conda activate hydesign
-python HPP_sizing_Realise_wp3.py --ID $SLURM_ARRAY_TASK_ID
+python HPP_sizing_Realise_wp3.py --ID_start 2000 --ID $SLURM_ARRAY_TASK_ID
 
 # Example usage:
 # --------------
