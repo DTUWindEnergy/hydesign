@@ -5,17 +5,16 @@ Created on Thu Sep  8 13:05:20 2022
 @author: ruzhu
 """
 
-from hydesign.HiFiEMS import DEMS
+from hydesign.HiFiEMS import DEMS as EMS
 from hydesign.HiFiEMS import utils
-#from matplotlib import pyplot as plt
-#import pandas as pd
-
+from matplotlib import pyplot as plt
+import pandas as pd
+from hydesign.examples import examples_filepath
 
 
 
 parameter_dict = {
-        # country of the HPP
-        'country': 'DK',  # DK, NO, SE, FL, others
+        
         # hpp parameters
         'hpp_grid_connection': 100,  # in MW
 
@@ -52,6 +51,7 @@ parameter_dict = {
         'dispatch_interval': 1/4,
         'settlement_interval': 1/4,
         
+        'imbalance_fee': 0.13,  # DK: 0.13 €/MWh, other Nordic countries: , others: 0.001
     }
 
 simulation_dict = {
@@ -59,44 +59,46 @@ simulation_dict = {
         'solar_as_component': 0,  # The code does not support for solar power plant
         'battery_as_component': 1,
         'start_date': '1/1/22',
-        'number_of_run_day': 15,   # 
-        'out_dir':"./scripts/HiFiEMS_outputs/",
+        'number_of_run_day': 365,   # 
+        'out_dir':"./test/",
 
         'DA_wind': "DA",   #DA, Measurement
         'HA_wind': "HA" ,  #HA, Measurement
         'FMA_wind':"RT",#5min_ahead, Measurement
-        'DA_solar': "Measurement",
-        'HA_solar': "Measurement",
-        'FMA_solar': "Measurement",
+        'DA_solar': "DA",
+        'HA_solar': "HA",
+        'FMA_solar': "RT",
         'SP': "SM_forecast",  # SM_forecast;SM_cleared
-        'RP': "reg_forecast_DNN", #reg_cleared;reg_forecast_pre
+        'RP': "reg_forecast", #reg_cleared;reg_forecast_pre
         'BP': 1, #1:forecast value 2: perfect value
         
         # Data
-        'wind_dir': "./examples/HiFiEMS_inputs/Winddata2022_15min.csv",
-        'solar_dir': "./examples/HiFiEMS_inputs/Solardata.csv",
-        'market_dir': "./examples/HiFiEMS_inputs/Market2022.csv",
+        'wind_dir': examples_filepath + "HiFiEMS_inputs/Winddata2022_15min.csv",
+        'solar_dir': examples_filepath + "HiFiEMS_inputs/Solardata2021_15min.csv",
+        'market_dir': examples_filepath + "HiFiEMS_inputs/Market2021.csv",
         
         # for DDEMS (spot market) -- Historical data
-        'history_wind_dir': "./examples/HiFiEMS_inputs/Winddata2022_15min.csv",
-        'history_market_dir': "./examples/HiFiEMS_inputs/Market2021.csv",
+        'history_wind_dir': examples_filepath + "HiFiEMS_inputs/Winddata2022_15min.csv",
+        'history_market_dir': examples_filepath + "HiFiEMS_inputs/Market2021.csv",
         
         # for REMS (balancing market)
         'HA_wind_error_ub': "5%_fc_error",
         'HA_wind_error_lb': "95%_fc_error",
         
         # for SEMS
-        #'wind_scenario_dir': "./examples/HiFiEMS_inputs/Winddata2022_15min.csv",  # "../HiFiEMS_inputs/probabilistic_wind2022.csv"
-        'price_scenario_dir': None,  # "./examples/HiFiEMS_inputs/xxx.csv", if None then use the build in method to generate price scenarios
+        #'wind_scenario_dir': "../Data/Winddata2022_15min.csv",  # "../Data/probabilistic_wind2022.csv"
+        'price_scenario_dir': None,  # "../Data/xxx.csv", if None then use the build in method to generate price scenarios
         'number_of_wind_scenario': 3, 
         'number_of_price_scenario': 3, 
     }
 
-utils.run_SM(
+utils.run(
         parameter_dict = parameter_dict,
         simulation_dict = simulation_dict,
-        EMS = DEMS,
-        EMStype="DEMS"
+        EMS = EMS,
+        EMStype="DEMS",
+        BM_model=False,
+        RD_model=False
        )   # run EMS with only spot market optimization
     
 #EMS.run_SM_RD(

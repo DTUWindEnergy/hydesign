@@ -341,21 +341,21 @@ def BMOpt(dt, ds, dk, T, EBESS, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCma
     print(aa.status)
     if sol:
 
-        P_HPP_HA_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_HA_t), orient='index')
+        P_HPP_HA_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_HA_t), orient='index').reindex(setT, fill_value=0)
         P_HPP_HA_t_opt.columns = ['HA']
-        P_W_HA_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_W_HA_t), orient='index')
-        P_S_HA_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_S_HA_t), orient='index')
-        P_dis_HA_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_dis_HA_t), orient='index')
-        P_cha_HA_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_cha_HA_t), orient='index')
+        P_W_HA_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_W_HA_t), orient='index').reindex(setT, fill_value=0)
+        P_S_HA_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_S_HA_t), orient='index').reindex(setT, fill_value=0)
+        P_dis_HA_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_dis_HA_t), orient='index').reindex(setT, fill_value=0)
+        P_cha_HA_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_cha_HA_t), orient='index').reindex(setT, fill_value=0)
 
-        SoC_HA_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(SoC_HA_t), orient='index')
-        P_HPP_UP_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_UP_t), orient='index')
-        P_HPP_DW_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_DW_t), orient='index')
-        P_HPP_UP_k_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_UP_k), orient='index')
-        P_HPP_DW_k_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_DW_k), orient='index')
-        delta_P_HPP_s_opt = pd.DataFrame.from_dict(sol.get_value_dict(delta_P_HPP_s), orient='index')
-        delta_P_HPP_UP_s_opt = pd.DataFrame.from_dict(sol.get_value_dict(delta_P_HPP_UP_s), orient='index')
-        delta_P_HPP_DW_s_opt = pd.DataFrame.from_dict(sol.get_value_dict(delta_P_HPP_DW_s), orient='index')
+        SoC_HA_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(SoC_HA_t), orient='index').reindex(set_SoCT, fill_value=0)
+        P_HPP_UP_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_UP_t), orient='index').reindex(setT1, fill_value=0)
+        P_HPP_DW_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_DW_t), orient='index').reindex(setT1, fill_value=0)
+        P_HPP_UP_k_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_UP_k), orient='index').reindex(setK1, fill_value=0)
+        P_HPP_DW_k_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_DW_k), orient='index').reindex(setK1, fill_value=0)
+        delta_P_HPP_s_opt = pd.DataFrame.from_dict(sol.get_value_dict(delta_P_HPP_s), orient='index').reindex(setS, fill_value=0)
+        delta_P_HPP_UP_s_opt = pd.DataFrame.from_dict(sol.get_value_dict(delta_P_HPP_UP_s), orient='index').reindex(setS, fill_value=0)
+        delta_P_HPP_DW_s_opt = pd.DataFrame.from_dict(sol.get_value_dict(delta_P_HPP_DW_s), orient='index').reindex(setS, fill_value=0)
 
 
         E_HPP_HA_t_opt = P_HPP_HA_t_opt * dt
@@ -366,7 +366,7 @@ def BMOpt(dt, ds, dk, T, EBESS, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCma
         P_S_HA_cur_t_opt = pd.DataFrame(P_S_HA_cur_t_opt)
 
 
-        z_ts = pd.DataFrame.from_dict(sol.get_value_dict(z_t), orient='index')
+        z_ts = pd.DataFrame.from_dict(sol.get_value_dict(z_t), orient='index').reindex(setT, fill_value=0)
 
     else:
         print("BMOpt has no solution")
@@ -410,8 +410,8 @@ def RDOpt(dt, ds, dk, T, EBESS, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCma
     RDOpt_mdl = Model()
     print('RDOpt model is constructed')
   # Define variables (must define lb and ub, otherwise may cause issues on cplex)
-    P_HPP_UP_t = RDOpt_mdl.continuous_var_dict(setT1, lb=0, name='BM UP bidding')
-    P_HPP_DW_t = RDOpt_mdl.continuous_var_dict(setT1, lb=0, name='BM DW bidding')
+    P_HPP_UP_t = RDOpt_mdl.continuous_var_dict(setT1, lb=0, name='BM UP bidding 5min')
+    P_HPP_DW_t = RDOpt_mdl.continuous_var_dict(setT1, lb=0, name='BM DW bidding 5min')
     P_HPP_UP_k = RDOpt_mdl.continuous_var_dict(setK1, lb=0, name='BM UP bidding')
     P_HPP_DW_k = RDOpt_mdl.continuous_var_dict(setK1, lb=0, name='BM DW bidding')
     
@@ -487,20 +487,20 @@ def RDOpt(dt, ds, dk, T, EBESS, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCma
 
     if sol:
 
-        P_HPP_RD_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_RD_t), orient='index')
+        P_HPP_RD_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_RD_t), orient='index').reindex(setT, fill_value=0)
         P_HPP_RD_t_opt.columns = ['RD']
-        P_W_RD_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_W_RD_t), orient='index')
-        P_S_RD_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_S_RD_t), orient='index')
-        P_dis_RD_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_dis_RD_t), orient='index')
-        P_cha_RD_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_cha_RD_t), orient='index')
-        SoC_RD_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(SoC_RD_t), orient='index')
-        P_HPP_UP_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_UP_t), orient='index')
-        P_HPP_DW_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_DW_t), orient='index')
-        P_HPP_UP_k_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_UP_k), orient='index')
-        P_HPP_DW_k_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_DW_k), orient='index')
-        delta_P_HPP_s_opt = pd.DataFrame.from_dict(sol.get_value_dict(delta_P_HPP_s), orient='index')
-        delta_P_HPP_UP_s_opt = pd.DataFrame.from_dict(sol.get_value_dict(delta_P_HPP_UP_s), orient='index')
-        delta_P_HPP_DW_s_opt = pd.DataFrame.from_dict(sol.get_value_dict(delta_P_HPP_DW_s), orient='index')
+        P_W_RD_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_W_RD_t), orient='index').reindex(setT, fill_value=0)
+        P_S_RD_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_S_RD_t), orient='index').reindex(setT, fill_value=0)
+        P_dis_RD_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_dis_RD_t), orient='index').reindex(setT, fill_value=0)
+        P_cha_RD_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_cha_RD_t), orient='index').reindex(setT, fill_value=0)
+        SoC_RD_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(SoC_RD_t), orient='index').reindex(set_SoCT, fill_value=0)
+        P_HPP_UP_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_UP_t), orient='index').reindex(setT1, fill_value=0)
+        P_HPP_DW_t_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_DW_t), orient='index').reindex(setT1, fill_value=0)
+        P_HPP_UP_k_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_UP_k), orient='index').reindex(setK1, fill_value=0)
+        P_HPP_DW_k_opt = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_DW_k), orient='index').reindex(setK1, fill_value=0)
+        delta_P_HPP_s_opt = pd.DataFrame.from_dict(sol.get_value_dict(delta_P_HPP_s), orient='index').reindex(setS, fill_value=0)
+        delta_P_HPP_UP_s_opt = pd.DataFrame.from_dict(sol.get_value_dict(delta_P_HPP_UP_s), orient='index').reindex(setS, fill_value=0)
+        delta_P_HPP_DW_s_opt = pd.DataFrame.from_dict(sol.get_value_dict(delta_P_HPP_DW_s), orient='index').reindex(setS, fill_value=0)
 
 
 

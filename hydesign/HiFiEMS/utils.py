@@ -152,118 +152,41 @@ def scenario_generation(simulation_dict, SM_price_cleared, BM_dw_price_cleared, 
     return probability, BP_up_forecast, BP_dw_forecast, reg_forecast
 
 
-def Revenue_calculation(parameter_dict, DI_num, T_SI, SI_num, SIDI_num, T, DI, SI, BI, P_HPP_SM_k_opt, P_HPP_RT_ts, P_HPP_RT_refs, SM_price_cleared, BM_dw_price_cleared, BM_up_price_cleared, P_HPP_UP_bid_ts, P_HPP_DW_bid_ts, s_UP_t, s_DW_t, residual_imbalance, exten_num):    
-    P_HPP_SM_k = P_HPP_SM_k_opt.to_numpy()
-    SM_price = SM_price_cleared.to_numpy()
+def Revenue_calculation(parameter_dict, DI_num, T_SI, SI_num, SIDI_num, T, DI, SI, BI, P_HPP_SM_t_opt, P_HPP_RT_ts, P_HPP_RT_refs, SM_price_cleared, BM_dw_price_cleared, BM_up_price_cleared, P_HPP_UP_bid_ts, P_HPP_DW_bid_ts, s_UP_t, s_DW_t, residual_imbalance, exten_num):    
+    # Spot market revenue
+    SM_price_cleared_DI = SM_price_cleared.repeat(DI_num)
+    SM_revenue = (P_HPP_SM_t_opt.squeeze()*SM_price_cleared_DI*DI).sum()
     
-    BM_up_price_settle_cleared = BM_up_price_cleared.squeeze().repeat(SI_num)
-    BM_up_price_settle_cleared.index = range(T_SI + int(exten_num/SIDI_num))
-    BM_dw_price_settle_cleared = BM_dw_price_cleared.squeeze().repeat(SI_num)
-    BM_dw_price_settle_cleared.index = range(T_SI + int(exten_num/SIDI_num))    
-    
-    
-    
-    
-    #P_HPP_RT = P_HPP_RT_ts.to_numpy()
-    BM_up_settle_price = BM_up_price_settle_cleared.to_numpy()
-    BM_dw_settle_price = BM_dw_price_settle_cleared.to_numpy() 
-    BM_up_bid_price = BM_up_settle_price[0:T_SI:SI_num]
-    BM_dw_bid_price = BM_dw_settle_price[0:T_SI:SI_num]
-    pos_imbalance = residual_imbalance[residual_imbalance>0]
-    pos_imbalance = pos_imbalance.replace(np.nan, 0)
-    pos_imbalance = pos_imbalance.to_numpy()
-    pos_imbalance = pos_imbalance[:,0]
-    neg_imbalance = residual_imbalance[residual_imbalance<0]
-    neg_imbalance = neg_imbalance.replace(np.nan, 0)
-    neg_imbalance = neg_imbalance.to_numpy()
-    neg_imbalance = neg_imbalance[:,0]
-    
-    s_UP_t = s_UP_t[0:T:DI_num]
-    s_DW_t = s_DW_t[0:T:DI_num]
-    P_HPP_UP_bid_ts = P_HPP_UP_bid_ts.to_numpy()
-    P_HPP_UP_bid_ts = P_HPP_UP_bid_ts[0:T:DI_num,0]
-    P_HPP_DW_bid_ts = P_HPP_DW_bid_ts.to_numpy()
-    P_HPP_DW_bid_ts = P_HPP_DW_bid_ts[0:T:DI_num,0]
-    
-    # spot market revenue
-    SM_revenue = np.sum(P_HPP_SM_k*SM_price)
-    # regulation market revenue
-    reg_revenue = np.sum(s_UP_t*P_HPP_UP_bid_ts*BI*BM_up_bid_price) - np.sum(s_DW_t*P_HPP_DW_bid_ts*BI*BM_dw_bid_price) 
-    # imbalance revenue
-    im_revenue = np.sum(pos_imbalance*BM_dw_settle_price) + np.sum(neg_imbalance*BM_up_settle_price)
-    
-    #if parameter_dict["country"] == "DK":
-    # power imbalance expenses (only for DK1)  
-    #if SI == 1 or SI == 1/4:
-    AU_up_price = SM_price + 13.45 # 100DKK = 13.45 €
-    AU_dw_price = SM_price - 13.45
 
-    BM_up_price_cleared_DK1 = BM_up_price_cleared.squeeze().repeat(4)
-    BM_up_price_cleared_DK1.index = range(96 + int(exten_num/3))
-    BM_dw_price_cleared_DK1 = BM_dw_price_cleared.squeeze().repeat(4)
-    BM_dw_price_cleared_DK1.index = range(96 + int(exten_num/3)) 
+    # Regulation revenue
+    BM_up_price_cleared_DI = BM_up_price_cleared.repeat(DI_num)
+    BM_dw_price_cleared_DI = BM_dw_price_cleared.repeat(DI_num)
+   
+    s_UP_t = pd.Series(s_UP_t)
+    s_DW_t = pd.Series(s_DW_t)
 
+    reg_revenue = (s_UP_t*P_HPP_UP_bid_ts.squeeze()*DI*BM_up_price_cleared_DI).sum() - (s_DW_t*P_HPP_DW_bid_ts.squeeze()*BI*BM_dw_price_cleared_DI).sum() 
+    
+    # Imbalance revenue
+    BM_up_price_cleared_SI = BM_up_price_cleared.repeat(SI_num)
+    BM_dw_price_cleared_SI = BM_dw_price_cleared.repeat(SI_num)
     P_HPP_RT_ts_15min = f_xmin_to_ymin(P_HPP_RT_ts, DI, 1/4)    
     P_HPP_RT_refs_15min = f_xmin_to_ymin(P_HPP_RT_refs, DI, 1/4)
-
-    SI_num_DK1 = 4
-
-    im_power_cost_DK1 = 0
-    for ii in range(len(P_HPP_RT_ts_15min)):
-        notification = P_HPP_SM_k[int(ii/SI_num_DK1)] + s_UP_t[int(ii/SI_num_DK1)]*P_HPP_UP_bid_ts[int(ii/SI_num_DK1)] - s_DW_t[int(ii/SI_num_DK1)]*P_HPP_DW_bid_ts[int(ii/SI_num_DK1)]
-        metered_result = P_HPP_RT_ts_15min.iloc[ii,0]
-        power_schedule = P_HPP_RT_refs_15min.iloc[ii,0]
     
-        power_imbalance = metered_result - power_schedule
-        if power_imbalance <=10 and power_imbalance >=-10:
-            power_imbalance = 0
-        elif power_imbalance > 10:
-            power_imbalance = power_imbalance - 10
-        else:
-            power_imbalance = power_imbalance + 10
-        if metered_result > power_schedule and power_schedule > notification:
-            
-            punish_price = BM_dw_price_cleared_DK1.iloc[ii] - AU_dw_price[int(ii/SI_num_DK1)]  
-            
-            if punish_price < 0:
-                punish_price = 0                                                                          
-            
-        elif power_schedule > metered_result and metered_result > notification:
-            
-            punish_price = BM_dw_price_cleared_DK1.iloc[ii] - AU_up_price[int(ii/SI_num_DK1)]    
-                                                                                        
-        elif metered_result > notification and notification > power_schedule:
-            
-            punish_price = BM_up_price_cleared_DK1.iloc[ii] - BM_dw_price_cleared_DK1.iloc[ii]
+    power_imbalance = pd.Series((P_HPP_RT_ts_15min.values -P_HPP_RT_refs_15min.values)[:,0])
+
+    pos_imbalance = power_imbalance.apply(lambda x: x if x > 0 else 0)
+    neg_imbalance = power_imbalance.apply(lambda x: x if x < 0 else 0)
+
+    im_revenue = np.sum(pos_imbalance*SI*BM_dw_price_cleared_SI) + np.sum(neg_imbalance*SI*BM_up_price_cleared_SI)
     
-        elif notification > power_schedule and power_schedule > metered_result:
-            
-            punish_price = BM_up_price_cleared_DK1.iloc[ii] - AU_up_price[int(ii/SI_num_DK1)] 
-            
-            if punish_price > 0:
-                punish_price = 0   
-        elif notification > metered_result and metered_result > power_schedule:
-        
-            punish_price = BM_up_price_cleared_DK1.iloc[ii] - AU_dw_price[int(ii/SI_num_DK1)] 
-        
-        elif power_schedule > notification and notification > metered_result:
-        
-            punish_price = BM_dw_price_cleared_DK1.iloc[ii] - BM_up_price_cleared_DK1.iloc[ii]
-        elif power_schedule == notification:
-            if metered_result > power_schedule:
-                punish_price = max(np.array([BM_dw_price_cleared_DK1.iloc[ii] - AU_dw_price[int(ii/SI_num_DK1)], BM_up_price_cleared_DK1.iloc[ii] - BM_dw_price_cleared_DK1.iloc[ii]]))
-            elif metered_result < power_schedule:
-                punish_price = min(np.array([BM_dw_price_cleared_DK1.iloc[ii] - BM_up_price_cleared_DK1.iloc[ii], BM_up_price_cleared_DK1.iloc[ii] - AU_up_price[int(ii/SI_num_DK1)]]))
-            else:
-                punish_price = 0                  
-        else:
-            punish_price = 0
-                
-        im_power_cost_DK1 = im_power_cost_DK1 + power_imbalance * 1/4 * punish_price
-    #else:
-    #    im_power_cost_DK1 = 0
-        
+    # imbalance fee
+
+    im_power_cost_DK1 = (abs(power_imbalance*SI)*parameter_dict['imbalance_fee']).sum()
+
+    # Balancing market revenue    
     BM_revenue = reg_revenue + im_revenue - im_power_cost_DK1 
+   
     return SM_revenue, reg_revenue, im_revenue, BM_revenue, im_power_cost_DK1
 
 
@@ -504,6 +427,7 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
         P_HPP_SM_t_opt.index = range(T)
         #write_results(P_HPP_SM_t_opt, 'results_run.xlsx', (day_num-1)*T, 0, 'power schedule')
 
+        P_HPP_RT_ref = P_HPP_SM_t_opt.iloc[0,0]
                       
         P_HPP_RT_ts = []
         P_HPP_RT_refs = []
@@ -554,11 +478,21 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
                 # Run BMOpt
                 E_HPP_HA_t_opt, P_HPP_HA_t_opt, P_dis_HA_t_opt, P_cha_HA_t_opt, P_HPP_UP_t_opt, P_HPP_DW_t_opt, P_HPP_UP_k_opt, P_HPP_DW_k_opt, SoC_HA_t_opt, P_W_HA_cur_t_opt, P_S_HA_cur_t_opt, P_W_HA_t_opt, P_S_HA_t_opt, delta_P_HPP_s_opt, delta_P_HPP_UP_s_opt, delta_P_HPP_DW_s_opt = EMS.BMOpt(DI, SI, BI, T, EBESS, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCmax, Emax, eta_dis, eta_cha, eta_leak, mu, ad,
                     HA_wind_forecast1, HA_solar_forecast1, BM_dw_price_forecast, BM_up_price_forecast, BM_dw_price_forecast_settle, BM_up_price_forecast_settle, reg_up_sign_forecast, reg_dw_sign_forecast, P_HPP_SM_t_opt, i, s_UP_t, s_DW_t, P_HPP_UP_t0, P_HPP_DW_t0, SoC0, exten_num, deg_indicator)
+                
+                if i < 24 - 1:
+                    P_HPP_UP_t1 = P_HPP_UP_k_opt.loc[i+1].iloc[0]
+                    P_HPP_DW_t1 = P_HPP_DW_k_opt.loc[i+1].iloc[0]
+                    P_HPP_UP_bid_ts.iloc[(i+1)*DI_num:(i+2)*DI_num,0] = P_HPP_UP_t1
+                    P_HPP_DW_bid_ts.iloc[(i+1)*DI_num:(i+2)*DI_num,0] = P_HPP_UP_t1
+                else:
+                    P_HPP_UP_t1 = 0
+                    P_HPP_DW_t1 = 0
+
 
                 # Run RTSim
            
                 E_HPP_RT_t_opt, P_HPP_RT_t_opt, P_dis_RT_t_opt, P_cha_RT_t_opt, SoC_RT_t_opt, RES_RT_cur_t_opt, P_W_RT_t_opt, P_S_RT_t_opt = RTSim(DI, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCmax, Emax, eta_dis, eta_cha, eta_leak,
-                    Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_RT_ref, i * DI_num) 
+                    Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_RT_ref, i * DI_num, P_HPP_UP_t0, P_HPP_DW_t0) 
            
                 SoC_ts.append({'SoC': SoC0})
                 P_HPP_RT_ts.append({'RT': P_HPP_RT_t_opt}) 
@@ -572,14 +506,9 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
           
                 exist_imbalance = (P_HPP_RT_t_opt - (P_HPP_UP_t0 * s_UP_t[i*DI_num] - P_HPP_DW_t0 * s_DW_t[i*DI_num]) - P_HPP_SM_t_opt.iloc[i * DI_num,0]) * DI
 
-                if i < 24 - 1:
-                    P_HPP_UP_t1 = P_HPP_UP_t_opt.iloc[0, 0]
-                    P_HPP_DW_t1 = P_HPP_DW_t_opt.iloc[0, 0]   
-                    P_HPP_UP_bid_ts = P_HPP_UP_bid_ts.append(pd.DataFrame([P_HPP_UP_t1], columns=['bid_up']))
-                    P_HPP_DW_bid_ts = P_HPP_DW_bid_ts.append(pd.DataFrame([P_HPP_DW_t1], columns=['bid_dw']))
-                else:
-                    P_HPP_UP_t1 = 0
-                    P_HPP_DW_t1 = 0
+                if DI == 1/4:
+                    residual_imbalance.append({'energy_imbalance': exist_imbalance})
+                    exist_imbalance = 0
 
                 SoC0 = SoC_RT_t_opt.iloc[1,0]
 
@@ -600,7 +529,7 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
 
                     # Run RTSim
                     E_HPP_RT_t_opt, P_HPP_RT_t_opt, P_dis_RT_t_opt, P_cha_RT_t_opt, SoC_RT_t_opt, RES_RT_cur_t_opt, P_W_RT_t_opt, P_S_RT_t_opt = RTSim(DI, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCmax, Emax, eta_dis, eta_cha, eta_leak,
-                                Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_RT_ref, RT_interval)
+                                Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_RT_ref, RT_interval, P_HPP_UP_t0, P_HPP_DW_t0)
                     SoC_ts.append({'SoC': SoC0})
                     P_HPP_RT_ts.append({'RT': P_HPP_RT_t_opt}) 
                     P_HPP_RT_refs.append({'Ref': P_HPP_RT_ref}) 
@@ -621,8 +550,6 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
                         exist_imbalance = exist_imbalance + (P_HPP_RT_t_opt- (P_HPP_UP_t0 * s_UP_t[i*DI_num + j] - P_HPP_DW_t0 * s_DW_t[i*DI_num + j]) - P_HPP_SM_t_opt.iloc[RT_interval, 0]) * DI
                         residual_imbalance.append({'energy_imbalance': exist_imbalance})
                         exist_imbalance = 0
-                    elif RT_interval%SIDI_num == 0: 
-                        exist_imbalance = (P_HPP_RT_t_opt - (P_HPP_UP_t0 * s_UP_t[i*DI_num + j] - P_HPP_DW_t0 * s_DW_t[i*DI_num + j]) - P_HPP_SM_t_opt.iloc[RT_interval, 0]) * DI
                     else:
                         exist_imbalance = exist_imbalance + (P_HPP_RT_t_opt- (P_HPP_UP_t0 * s_UP_t[i*DI_num + j] - P_HPP_DW_t0 * s_DW_t[i*DI_num + j]) - P_HPP_SM_t_opt.iloc[RT_interval, 0]) * DI
 
@@ -666,11 +593,20 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
                 # Run BMOpt
                 E_HPP_HA_t_opt, P_HPP_HA_t_opt, P_dis_HA_t_opt, P_cha_HA_t_opt, P_HPP_UP_t_opt, P_HPP_DW_t_opt, P_HPP_UP_k_opt, P_HPP_DW_k_opt, SoC_HA_t_opt, P_W_HA_cur_t_opt, P_S_HA_cur_t_opt, P_W_HA_t_opt, P_S_HA_t_opt, delta_P_HPP_s_opt, delta_P_HPP_UP_s_opt, delta_P_HPP_DW_s_opt = EMS.BMOpt(DI, SI, BI, T, EBESS, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCmax, Emax, eta_dis, eta_cha, eta_leak, mu, ad,
                     HA_wind_forecast1, HA_solar_forecast1, BM_dw_price_forecast, BM_up_price_forecast, BM_dw_price_forecast_settle, BM_up_price_forecast_settle, reg_up_sign_forecast, reg_dw_sign_forecast, P_HPP_SM_t_opt, i, s_UP_t, s_DW_t, P_HPP_UP_t0, P_HPP_DW_t0, SoC0, exten_num, deg_indicator)
+                
+                if i < 24 - 1:
+                    P_HPP_UP_t1 = P_HPP_UP_k_opt.loc[i+1].iloc[0]
+                    P_HPP_DW_t1 = P_HPP_DW_k_opt.loc[i+1].iloc[0]
+                    P_HPP_UP_bid_ts.iloc[(i+1)*DI_num:(i+2)*DI_num,0] = P_HPP_UP_t1
+                    P_HPP_DW_bid_ts.iloc[(i+1)*DI_num:(i+2)*DI_num,0] = P_HPP_UP_t1
+                else:
+                    P_HPP_UP_t1 = 0
+                    P_HPP_DW_t1 = 0
 
                 # Run RTSim
            
                 E_HPP_RT_t_opt, P_HPP_RT_t_opt, P_dis_RT_t_opt, P_cha_RT_t_opt, SoC_RT_t_opt, RES_RT_cur_t_opt, P_W_RT_t_opt, P_S_RT_t_opt = RTSim(DI, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCmax, Emax, eta_dis, eta_cha, eta_leak,
-                    Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_RT_ref, i * DI_num) 
+                    Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_RT_ref, i * DI_num, P_HPP_UP_t0, P_HPP_DW_t0) 
            
                 SoC_ts.append({'SoC': SoC0})
                 P_HPP_RT_ts.append({'RT': P_HPP_RT_t_opt}) 
@@ -679,19 +615,14 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
                 P_dis_RT_ts.append({'dis_RT': P_dis_RT_t_opt})
                 P_cha_RT_ts.append({'cha_RT': P_cha_RT_t_opt})
                 
-                P_HPP_RT_ref = P_HPP_HA_t_opt.iloc[1, 0] 
+                P_HPP_RT_ref = P_HPP_HA_t_opt.iloc[1, 0]
            
           
                 exist_imbalance = (P_HPP_RT_t_opt - (P_HPP_UP_t0 * s_UP_t[i*DI_num] - P_HPP_DW_t0 * s_DW_t[i*DI_num]) - P_HPP_SM_t_opt.iloc[i * DI_num,0]) * DI
 
-                if i < 24 - 1:
-                    P_HPP_UP_t1 = P_HPP_UP_t_opt.iloc[0, 0]
-                    P_HPP_DW_t1 = P_HPP_DW_t_opt.iloc[0, 0]   
-                    P_HPP_UP_bid_ts = P_HPP_UP_bid_ts.append(pd.DataFrame([P_HPP_UP_t1], columns=['bid_up']))
-                    P_HPP_DW_bid_ts = P_HPP_DW_bid_ts.append(pd.DataFrame([P_HPP_DW_t1], columns=['bid_dw']))
-                else:
-                    P_HPP_UP_t1 = 0
-                    P_HPP_DW_t1 = 0
+                if DI == 1/4:
+                    residual_imbalance.append({'energy_imbalance': exist_imbalance})
+                    exist_imbalance = 0
 
                 SoC0 = SoC_RT_t_opt.iloc[1,0]
 
@@ -711,7 +642,7 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
 
                     # Run RTSim
                     E_HPP_RT_t_opt, P_HPP_RT_t_opt, P_dis_RT_t_opt, P_cha_RT_t_opt, SoC_RT_t_opt, RES_RT_cur_t_opt, P_W_RT_t_opt, P_S_RT_t_opt = RTSim(DI, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCmax, Emax, eta_dis, eta_cha, eta_leak,
-                                Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_RT_ref, RT_interval)
+                                Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_RT_ref, RT_interval, P_HPP_UP_t0, P_HPP_DW_t0)
                     SoC_ts.append({'SoC': SoC0})
                     P_HPP_RT_ts.append({'RT': P_HPP_RT_t_opt}) 
                     P_HPP_RT_refs.append({'Ref': P_HPP_RT_ref}) 
@@ -722,18 +653,14 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
 
 
                     if RT_interval < T - 1:
-                        P_HPP_RT_ref = P_HPP_HA_t_opt.iloc[1,0]  
+                        P_HPP_RT_ref = P_HPP_HA_t_opt.loc[RT_interval+1].iloc[0]
       
 
-                    
-                        
                     if RT_interval%SIDI_num == SIDI_num-1:
-                        exist_imbalance = exist_imbalance + (P_HPP_RT_t_opt- (P_HPP_UP_t0 * s_UP_t[i*DI_num + j] - P_HPP_DW_t0 * s_DW_t[i*DI_num + j]) - P_HPP_SM_t_opt.iloc[RT_interval, 0]) * DI
-                        residual_imbalance.append({'energy_imbalance': exist_imbalance})
-                        exist_imbalance = 0
-                    elif RT_interval%SIDI_num == 0: 
-                        exist_imbalance = (P_HPP_RT_t_opt - (P_HPP_UP_t0 * s_UP_t[i*DI_num + j] - P_HPP_DW_t0 * s_DW_t[i*DI_num + j]) - P_HPP_SM_t_opt.iloc[RT_interval, 0]) * DI
-                    else:
+                        exist_imbalance = exist_imbalance + (P_HPP_RT_t_opt - (P_HPP_UP_t0 * s_UP_t[i*DI_num + j] - P_HPP_DW_t0 * s_DW_t[i*DI_num + j]) - P_HPP_SM_t_opt.iloc[RT_interval, 0]) * DI     
+                        residual_imbalance.append({'energy_imbalance': exist_imbalance})    
+                        exist_imbalance = 0          
+                    else:    
                         exist_imbalance = exist_imbalance + (P_HPP_RT_t_opt- (P_HPP_UP_t0 * s_UP_t[i*DI_num + j] - P_HPP_DW_t0 * s_DW_t[i*DI_num + j]) - P_HPP_SM_t_opt.iloc[RT_interval, 0]) * DI
 
                     SoC0 = SoC_RT_t_opt.iloc[1,0]
@@ -763,10 +690,13 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
 
                 E_HPP_RD_t_opt, P_HPP_RD_t_opt, P_dis_RD_t_opt, P_cha_RD_t_opt, SoC_RD_t_opt, P_W_RD_cur_t_opt, P_S_RD_cur_t_opt, P_W_RD_t_opt, P_S_RD_t_opt, delta_P_HPP_s_opt, delta_P_HPP_UP_s_opt, delta_P_HPP_DW_s_opt = EMS.RBOpt(DI, SI, BI, T, EBESS, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCmax, Emax, eta_dis, eta_cha, eta_leak, mu, ad,
                      RD_wind_forecast1, RD_solar_forecast1, BM_dw_price_forecast, BM_up_price_forecast, BM_dw_price_forecast_settle, BM_up_price_forecast_settle, reg_up_sign_forecast, reg_dw_sign_forecast, P_HPP_SM_t_opt, i*DI_num, s_UP_t, s_DW_t, 0, 0, 0, 0, SoC0, exist_imbalance, exten_num, deg_indicator)
+          
+          
+          
           # Run RTSim
            
                 E_HPP_RT_t_opt, P_HPP_RT_t_opt, P_dis_RT_t_opt, P_cha_RT_t_opt, SoC_RT_t_opt, RES_RT_cur_t_opt, P_W_RT_t_opt, P_S_RT_t_opt = RTSim(DI, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCmax, Emax, eta_dis, eta_cha, eta_leak,
-                            Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_RT_ref, i * DI_num) 
+                            Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_RT_ref, i * DI_num, P_HPP_UP_t0, P_HPP_DW_t0) 
                 
                 SoC_ts.append({'SoC': SoC0})
                 P_HPP_RT_ts.append({'RT': P_HPP_RT_t_opt}) 
@@ -776,12 +706,12 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
                 P_cha_RT_ts.append({'cha_RT': P_cha_RT_t_opt})
                 
                 P_HPP_RT_ref = P_HPP_RD_t_opt.iloc[1, 0] 
-                
+
                 
                 exist_imbalance = (P_HPP_RT_t_opt - P_HPP_SM_t_opt.iloc[i * DI_num,0]) * DI
 
                 if DI == 1/4:
-                    residual_imbalance = residual_imbalance.append(pd.DataFrame([exist_imbalance], columns=['energy_imbalance'])) 
+                    residual_imbalance.append({'energy_imbalance': exist_imbalance}) 
                     exist_imbalance = 0               
 
 
@@ -804,7 +734,7 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
 
                     # Run RTSim
                     E_HPP_RT_t_opt, P_HPP_RT_t_opt, P_dis_RT_t_opt, P_cha_RT_t_opt, SoC_RT_t_opt, RES_RT_cur_t_opt, P_W_RT_t_opt, P_S_RT_t_opt = RTSim(DI, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCmax, Emax, eta_dis, eta_cha, eta_leak,
-                                Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_RT_ref, RT_interval)
+                                Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_RT_ref, RT_interval, P_HPP_UP_t0, P_HPP_DW_t0)
                     SoC_ts.append({'SoC': SoC0})
                     P_HPP_RT_ts.append({'RT': P_HPP_RT_t_opt}) 
                     P_HPP_RT_refs.append({'Ref': P_HPP_RT_ref}) 
@@ -813,15 +743,13 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
                     P_cha_RT_ts.append({'cha_RT': P_cha_RT_t_opt})
                     
                     if RT_interval < T - 1:
-                        P_HPP_RT_ref = P_HPP_RD_t_opt.iloc[1,0]  
+                        P_HPP_RT_ref = P_HPP_RD_t_opt.iloc[1,0] 
                     
                         
                     if RT_interval%SIDI_num == SIDI_num-1:
                         exist_imbalance = exist_imbalance + (P_HPP_RT_t_opt- P_HPP_SM_t_opt.iloc[RT_interval, 0]) * DI
                         residual_imbalance.append({'energy_imbalance': exist_imbalance})
                         exist_imbalance = 0
-                    elif RT_interval%SIDI_num == 0: 
-                        exist_imbalance = (P_HPP_RT_t_opt - P_HPP_SM_t_opt.iloc[RT_interval, 0]) * DI
                     else:
                         exist_imbalance = exist_imbalance + (P_HPP_RT_t_opt- P_HPP_SM_t_opt.iloc[RT_interval, 0]) * DI
 
@@ -832,13 +760,12 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
                 for j in range(0, DI_num):    
                     RT_interval = i * DI_num + j
                     # run RTSim
-                    P_activated_UP_t = 0
-                    P_activated_DW_t = 0
-                    P_HPP_RT_ref = P_HPP_SM_t_opt.iloc[RT_interval,0] + P_activated_UP_t - P_activated_DW_t
+
+                    P_HPP_RT_ref = P_HPP_SM_t_opt.iloc[RT_interval,0] 
         
                         
                     E_HPP_RT_t_opt, P_HPP_RT_t_opt, P_dis_RT_t_opt, P_cha_RT_t_opt, SoC_RT_t_opt, RES_RT_cur_t_opt, P_W_RT_t_opt, P_S_RT_t_opt = RTSim(DI, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCmax, Emax, eta_dis, eta_cha, eta_leak,
-                                    Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_RT_ref, RT_interval, P_activated_UP_t, P_activated_DW_t) 
+                                    Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_RT_ref, RT_interval, P_HPP_UP_t0, P_HPP_DW_t0) 
                     SoC0 = SoC_RT_t_opt.iloc[1,0]
                     
                     SoC_ts.append({'SoC': SoC0})
@@ -863,7 +790,7 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
 
         
         
-        SM_revenue, reg_revenue, im_revenue, BM_revenue, im_special_revenue_DK1 = Revenue_calculation(parameter_dict, DI_num, T_SI, SI_num, SIDI_num, T, DI, SI, BI, P_HPP_SM_k_opt, P_HPP_RT_ts, P_HPP_RT_refs, SM_price_cleared, BM_dw_price_cleared, BM_up_price_cleared, P_HPP_UP_bid_ts, P_HPP_DW_bid_ts, s_UP_t, s_DW_t, residual_imbalance, exten_num)     
+        SM_revenue, reg_revenue, im_revenue, BM_revenue, im_special_revenue_DK1 = Revenue_calculation(parameter_dict, DI_num, T_SI, SI_num, SIDI_num, T, DI, SI, BI, P_HPP_SM_t_opt, P_HPP_RT_ts, P_HPP_RT_refs, SM_price_cleared, BM_dw_price_cleared, BM_up_price_cleared, P_HPP_UP_bid_ts, P_HPP_DW_bid_ts, s_UP_t, s_DW_t, residual_imbalance, exten_num)     
         
 
         

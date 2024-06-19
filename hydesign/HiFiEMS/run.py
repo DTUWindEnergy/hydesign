@@ -66,17 +66,17 @@ simulation_dict = {
         'DA_wind': "DA",   #DA, Measurement
         'HA_wind': "HA" ,  #HA, Measurement
         'FMA_wind':"RT",#5min_ahead, Measurement
-        'DA_solar': "Measurement",
-        'HA_solar': "Measurement",
-        'FMA_solar': "Measurement",
+        'DA_solar': "DA",
+        'HA_solar': "HA",
+        'FMA_solar': "RT",
         'SP': "SM_forecast",  # SM_forecast;SM_cleared
         'RP': "reg_forecast", #reg_cleared;reg_forecast_pre
         'BP': 1, #1:forecast value 2: perfect value
         
         # Data
         'wind_dir': examples_filepath + "HiFiEMS_inputs/Winddata2022_15min.csv",
-        'solar_dir': examples_filepath + "HiFiEMS_inputs/Solardata.csv",
-        'market_dir': examples_filepath + "HiFiEMS_inputs/Market2022.csv",
+        'solar_dir': examples_filepath + "HiFiEMS_inputs/Solardata2021_15min.csv",
+        'market_dir': examples_filepath + "HiFiEMS_inputs/Market2021.csv",
         
         # for DDEMS (spot market) -- Historical data
         'history_wind_dir': examples_filepath + "HiFiEMS_inputs/Winddata2022_15min.csv",
