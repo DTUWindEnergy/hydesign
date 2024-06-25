@@ -38,13 +38,15 @@ class battery_degradation(om.ExplicitComponent):
         self, 
         weather_fn,
         num_batteries = 1,
-        life_h = 25*365*24,
+        life_y = 25,
+        intervals_per_hour = 1,
         weeks_per_season_per_year = None,
         battery_deg = True,
     ):
 
         super().__init__()
-        self.life_h = life_h
+        self.life_h = 365 * 24 * life_y * intervals_per_hour
+        self.yearly_intervals = 365 * 24 * intervals_per_hour
         self.num_batteries = num_batteries
         self.weather_fn = weather_fn
         self.battery_deg = battery_deg
@@ -57,10 +59,11 @@ class battery_degradation(om.ExplicitComponent):
 
         air_temp_K_t = expand_to_lifetime(
             weather.temp_air_1.values, 
-            life_h = life_h, 
+            life_y = life_y, intervals_per_hour=intervals_per_hour,
             weeks_per_season_per_year = weeks_per_season_per_year)
 
         self.air_temp_K_t = air_temp_K_t
+        # print(life_y, self.life_h)
 
     def setup(self):
         self.add_input(
@@ -112,8 +115,8 @@ class battery_degradation(om.ExplicitComponent):
                         break         
 
                 SoH_all = np.interp( 
-                    x = np.arange(life_h)/(24*365),
-                    xp = np.array(rf_i_start)/(24*365),
+                    x = np.arange(life_h)/self.yearly_intervals,
+                    xp = np.array(rf_i_start)/self.yearly_intervals,
                     fp = 1-LoC )
                 outputs['SoH'] = SoH_all
                 outputs['n_batteries'] = n_batteries
@@ -139,13 +142,15 @@ class battery_loss_in_capacity_due_to_temp(om.ExplicitComponent):
         self, 
         weather_fn,
         num_batteries = 1,
-        life_h = 25*365*24,
+        life_y = 25,
+        intervals_per_hour = 1,
         weeks_per_season_per_year = None,
         battery_deg = True,
     ):
 
         super().__init__()
-        self.life_h = life_h
+        self.life_h = 365 * 24 * life_y * intervals_per_hour
+        self.yearly_intervals = 365 * 24 * intervals_per_hour
         self.num_batteries = num_batteries
         self.weather_fn = weather_fn
         self.battery_deg = battery_deg
@@ -157,7 +162,7 @@ class battery_loss_in_capacity_due_to_temp(om.ExplicitComponent):
 
         air_temp_C_t = expand_to_lifetime(
             (weather.temp_air_1 - 273.15).values, 
-            life_h = life_h, 
+            life_y=life_y, intervals_per_hour=intervals_per_hour,
             weeks_per_season_per_year = weeks_per_season_per_year)
 
         self.air_temp_C_t = air_temp_C_t
@@ -177,7 +182,7 @@ class battery_loss_in_capacity_due_to_temp(om.ExplicitComponent):
 
     def compute(self, inputs, outputs):
         
-        life_h = self.life_h
+        # life_h = self.life_h
         air_temp_C_t = self.air_temp_C_t
 
         B_E_loss_due_to_low_temp = thermal_loss_of_storage(air_temp_C_t)
@@ -192,11 +197,11 @@ class battery_loss_in_capacity_due_to_temp(om.ExplicitComponent):
 # Auxiliar functions for bat_deg modelling
 # -----------------------------------------------------------------------
 
-def incerase_resolution(ii_time, SoH, life_h, nn):
+def incerase_resolution(ii_time, SoH, life_h, nn, hourly_intervals=1):
     iis = 1
     n_obtained = len(ii_time)
     while nn > n_obtained:
-        ii_add = range(life_h - 24*iis, life_h, 24)
+        ii_add = range(life_h - 24*iis*hourly_intervals, life_h, 24*hourly_intervals)
         ii_time_new = np.unique( np.sort( np.append( ii_time, ii_add) ) )
         n_obtained = len(ii_time_new)
         iis += 1

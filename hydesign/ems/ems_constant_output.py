@@ -54,14 +54,15 @@ class ems_long_term_operation(om.ExplicitComponent):
         self, 
         N_time,
         num_batteries = 1,
-        life_h = 25*365*24, 
+        life_y = 25,
+        intervals_per_hour = 1,
         ems_type='energy_penalty',
         load_min_penalty_factor=1e6,
         ):
 
         super().__init__()
         self.N_time = N_time
-        self.life_h = life_h
+        self.life_h = 365 * 24 * life_y * intervals_per_hour
         self.ems_type = ems_type
         self.load_min_penalty_factor = load_min_penalty_factor
 
@@ -265,7 +266,8 @@ class ems_constantoutput(om.ExplicitComponent):
     def __init__(
         self, 
         N_time, 
-        life_h = 25*365*24, 
+        life_y = 25,
+        intervals_per_hour = 1,
         weeks_per_season_per_year = None,
         ems_type='cplex',
         load_min_penalty_factor=1e6):
@@ -274,7 +276,7 @@ class ems_constantoutput(om.ExplicitComponent):
         self.weeks_per_season_per_year = weeks_per_season_per_year
         self.N_time = int(N_time)
         self.ems_type = ems_type
-        self.life_h = int(life_h)
+        self.life_h = int(365 * 24 * life_y * intervals_per_hour)
         self.load_min_penalty_factor = load_min_penalty_factor
         
     def setup(self):
@@ -435,8 +437,8 @@ class ems_constantoutput(om.ExplicitComponent):
             P_curtailment_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
         outputs['b_t'] = expand_to_lifetime(
             P_charge_discharge_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['b_E_SOC_t'] = expand_to_lifetime(
-            E_SOC_ts[:-1], life_h = self.life_h + 1, weeks_per_season_per_year = self.weeks_per_season_per_year)
+        outputs['b_E_SOC_t'] = np.hstack([expand_to_lifetime(
+            E_SOC_ts[:-1], life_y = self.life_y, weeks_per_season_per_year = self.weeks_per_season_per_year), E_SOC_ts[-1]])
         outputs['penalty_t'] = expand_to_lifetime(
             penalty_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)        
 

@@ -131,7 +131,8 @@ class pvp_with_degradation(om.ExplicitComponent):
     """
     def __init__(
         self, 
-        life_h = 25*365*24,
+        life_y = 25,
+        intervals_per_hour=1,
         pv_deg_yr = [0, 25],
         pv_deg = [0, 25*1/100],
         ):
@@ -143,7 +144,8 @@ class pvp_with_degradation(om.ExplicitComponent):
 
         """ 
         super().__init__()
-        self.life_h = life_h
+        self.life_y = life_y
+        self.life_h = life_y*365*24
         
         # PV degradation curve
         self.pv_deg_yr = pv_deg_yr

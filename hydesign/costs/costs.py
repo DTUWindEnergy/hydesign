@@ -263,8 +263,10 @@ class battery_cost(om.ExplicitComponent):
                  battery_BOP_installation_commissioning_cost,
                  battery_control_system_cost,
                  battery_energy_onm_cost,
-                 N_life = 25,
-                 life_h = 25*365*24):
+                 life_y = 25,
+                 # life_h = 25*365*24
+                 intervals_per_hour = 1,
+                 ):
         """Initialization of the battery cost model
 
         Parameters
@@ -286,8 +288,10 @@ class battery_cost(om.ExplicitComponent):
         self.battery_BOP_installation_commissioning_cost = battery_BOP_installation_commissioning_cost
         self.battery_control_system_cost = battery_control_system_cost
         self.battery_energy_onm_cost = battery_energy_onm_cost
-        self.N_life = N_life
-        self.life_h = life_h
+        self.N_life = life_y
+        self.life_h = life_y * 365 * 24
+        self.yearly_intervals = 365 * 24 * intervals_per_hour
+        # print(life_y, self.life_h)
 
 
     def setup(self):
@@ -330,7 +334,7 @@ class battery_cost(om.ExplicitComponent):
         
         N_life = self.N_life
         life_h = self.life_h
-        age = np.arange(life_h)/(24*365)
+        age = np.arange(life_h)/self.yearly_intervals
         
         b_E = inputs['b_E']
         b_P = inputs['b_P']
@@ -466,7 +470,9 @@ class ptg_cost(om.ExplicitComponent):
                  transportation_cost,
                  transportation_distance,
                  N_time,
-                 life_h = 25*365*24,):
+                 life_y = 25,
+                 intervals_per_hour = 1,
+                 ):
 
         super().__init__()
         self.electrolyzer_capex_cost = electrolyzer_capex_cost
@@ -480,7 +486,8 @@ class ptg_cost(om.ExplicitComponent):
         self.transportation_cost = transportation_cost
         self.transportation_distance = transportation_distance
         self.N_time = N_time
-        self.life_h = life_h
+        self.life_h = 365 * 24 * life_y * intervals_per_hour
+        self.yearly_intervals = 365 * 24 * intervals_per_hour
 
     def setup(self):
 
@@ -534,9 +541,9 @@ class ptg_cost(om.ExplicitComponent):
         transportation_distance = self.transportation_distance
 
         outputs['CAPEX_ptg'] = ptg_MW * (electrolyzer_capex_cost + electrolyzer_power_electronics_cost) + storage_capex_cost * HSS_kg + \
-                               (m_H2_offtake_t.mean()*365*24 * transportation_cost * transportation_distance) 
+                               (m_H2_offtake_t.mean()*self.yearly_intervals * transportation_cost * transportation_distance) 
         outputs['OPEX_ptg'] = ptg_MW * (electrolyzer_opex_cost) + storage_opex_cost * HSS_kg
-        outputs['water_consumption_cost'] = (m_H2_offtake_t.mean()*365*24 * water_consumption * (water_cost + water_treatment_cost)/1000) # annual mean water consumption to produce hydrogen over an year
+        outputs['water_consumption_cost'] = (m_H2_offtake_t.mean()*self.yearly_intervals * water_consumption * (water_cost + water_treatment_cost)/1000) # annual mean water consumption to produce hydrogen over an year
 
 
        

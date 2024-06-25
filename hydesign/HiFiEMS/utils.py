@@ -877,4 +877,7 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
             print(P_grid_limit)
             break
         
-    return P_HPP_RT_ts, RES_RT_cur_ts, P_cha_RT_ts, P_dis_RT_ts, SoC_ts
+    # return P_HPP_RT_ts, P_HPP_SM_k_opt, P_HPP_RT_refs, P_HPP_UP_bid_ts, P_HPP_DW_bid_ts, RES_RT_cur_ts, P_cha_RT_ts, P_dis_RT_ts, SoC_ts
+    return P_HPP_SM_k_opt.values.ravel(),SM_price_cleared.values,BM_dw_price_cleared.values,BM_up_price_cleared.values,P_HPP_RT_ts.values.ravel(),P_HPP_RT_refs.values.ravel(),P_HPP_UP_bid_ts.values.ravel(),P_HPP_DW_bid_ts.values.ravel(),s_UP_t,s_DW_t,residual_imbalance.values.ravel(), RES_RT_cur_ts.values.ravel(), P_dis_RT_ts.values.ravel(), P_cha_RT_ts.values.ravel(), pd.DataFrame(SoC_ts).values.ravel()
+
+

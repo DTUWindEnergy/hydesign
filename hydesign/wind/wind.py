@@ -282,7 +282,7 @@ class wpp_with_degradation(om.ExplicitComponent):
         N_time,
         N_ws = 51,
         wpp_efficiency = 0.95,
-        life_h = 25*365*24,
+        life_y = 25,
         wind_deg_yr = [0, 25],
         wind_deg = [0, 25*1/100],
         share_WT_deg_types = 0.5,
@@ -290,7 +290,8 @@ class wpp_with_degradation(om.ExplicitComponent):
         ):
         super().__init__()
         self.N_time = N_time
-        self.life_h = life_h
+        self.life_y = life_y
+        self.life_h = life_y*365*24
         # number of points in the power curves
         self.N_ws = N_ws
         self.wpp_efficiency = wpp_efficiency
@@ -329,7 +330,7 @@ class wpp_with_degradation(om.ExplicitComponent):
         wst = inputs['wst']
 
         wst_ext = expand_to_lifetime(
-            wst, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
+            wst, life_y = self.life_y, weeks_per_season_per_year = self.weeks_per_season_per_year)
         
         outputs['wind_t_ext_deg'] = self.wpp_efficiency*get_wind_ts_degradation(
             ws = ws, 
