@@ -414,8 +414,8 @@ class hpp_model:
                 # 'peak_hr_quantile',
                 # 'n_full_power_hours_expected_per_day_at_peak_price'
                 ],
-            # promotes_outputs=[
-            #     'total_curtailment']
+            promotes_outputs=[
+                'total_curtailment_deg']
             )
         
         model.add_subsystem(
@@ -789,7 +789,7 @@ class hpp_model:
             solar_MW,
             b_E,
             b_P,
-            prob['total_curtailment']/1e3, #[GWh]
+            prob['total_curtailment_deg']/1e3, #[GWh]
             Awpp,
             prob.get_val('shared_cost.Apvp'),
             max( Awpp , prob.get_val('shared_cost.Apvp') ),

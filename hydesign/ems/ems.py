@@ -146,7 +146,7 @@ class ems(om.ExplicitComponent):
         self.add_output(
             'penalty_t',
             desc="penalty for not reaching expected energy productin at peak hours",
-            shape=[self.life_h])        
+            shape=[self.life_h])     
 
     # def setup_partials(self):
     #    self.declare_partials('*', '*',  method='fd')
@@ -222,6 +222,7 @@ class ems(om.ExplicitComponent):
             E_SOC_ts[:-1], life_h = self.life_h + 1, weeks_per_season_per_year = self.weeks_per_season_per_year)
         outputs['penalty_t'] = expand_to_lifetime(
             penalty_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
+       
 
 class ems_long_term_operation(om.ExplicitComponent):
     """Long term operation EMS. Predicts the operation of the plant throughout the entire lifetime, taking into account the battery
@@ -372,11 +373,15 @@ class ems_long_term_operation(om.ExplicitComponent):
             desc="penalty for not reaching expected energy productin at peak hours",
             shape=[self.life_h])   
         self.add_output(
+            'total_curtailment_with_deg',
+            desc="total curtailment in the lifetime after degradation",
+            units='GW*h',
+           )
+        self.add_output(
             'total_curtailment',
             desc="total curtailment in the lifetime",
             units='GW*h',
-           )
-        
+           ) 
 
     # def setup_partials(self):
     #    self.declare_partials('*', '*',  method='fd')
@@ -435,7 +440,8 @@ class ems_long_term_operation(om.ExplicitComponent):
         outputs['b_t_with_deg'] = b_t_sat
         outputs['b_E_SOC_t_with_deg'] = b_E_SOC_t_sat
         outputs['penalty_t_with_deg'] = penalty_t_with_deg
-        outputs['total_curtailment'] = P_curt_deg.sum()
+        outputs['total_curtailment_with_deg'] = P_curt_deg.sum()
+        outputs['total_curtailment'] = hpp_curt_t.sum()
 
 # -----------------------------------------------------------------------
 # Auxiliar functions for ems modelling

@@ -165,8 +165,8 @@ class finance_P2X(om.ExplicitComponent):
         self.add_output('NPV_over_CAPEX',
                         desc="NPV/CAPEX")
         
-        self.add_output('mean_Power2Grid',
-                        desc="Power to grid")
+        # self.add_output('mean_Power2Grid',
+        #                 desc="Power to grid")
         
         self.add_output('mean_AEP',
                         desc="mean AEP")
@@ -364,21 +364,24 @@ class finance_P2X(om.ExplicitComponent):
         # LCOE calculation
         hpp_discount_factor_LCOE = WACC_after_tax_LCOE
         level_costs = np.sum(OPEX_LCOE / (1 + hpp_discount_factor_LCOE)**iy) + CAPEX_LCOE
-        AEP_per_year = df.groupby('i_year').hpp_t.mean()*365*24 + df.groupby('i_year').P_ptg_t.mean()*365*24
+        AEP_per_year = df.groupby('i_year').hpp_t.mean()*365*24 
         level_AEP = np.sum(AEP_per_year / (1 + hpp_discount_factor_LCOE)**iy)
-
         mean_AEP_per_year = np.mean(AEP_per_year)
-        Power2Grid_per_year = df.groupby('i_year').hpp_t.mean()*365*24
-        mean_Power2Grid_per_year = np.mean(Power2Grid_per_year)
-        
-        if level_AEP > 0:
-            LCOE = level_costs / (level_AEP) # in Euro/MWh
+
+        P_ptg_per_year = df.groupby('i_year').P_ptg_t.mean()*365*24
+        mean_P_ptg_per_year = np.mean(P_ptg_per_year)
+        level_P_ptg = np.sum(P_ptg_per_year / (1 + hpp_discount_factor_LCOE)**iy)
+
+        # Power2Grid_per_year = df.groupby('i_year').hpp_t.mean()*365*24
+        # mean_Power2Grid_per_year = np.mean(Power2Grid_per_year)
+        level_energy = level_AEP+level_P_ptg
+        if level_energy > 0:
+            LCOE = level_costs / (level_energy) # in Euro/MWh
         else:
             LCOE = 1e6
         outputs['LCOE'] = LCOE
 
-        P_ptg_per_year = df.groupby('i_year').P_ptg_t.mean()*365*24
-        mean_P_ptg_per_year = np.mean(P_ptg_per_year)
+        
 
         # LCOH calculation using LCOE
         OPEX_ptg = inputs['OPEX_ptg'] + inputs['water_consumption_cost']
@@ -429,7 +432,7 @@ class finance_P2X(om.ExplicitComponent):
         outputs['Revenue'] = np.sum(revenues.values.flatten())
         outputs['annual_P_ptg'] = mean_P_ptg_per_year
         outputs['mean_AEP'] = mean_AEP_per_year
-        outputs['mean_Power2Grid'] = mean_Power2Grid_per_year
+        # outputs['mean_Power2Grid'] = mean_Power2Grid_per_year
         outputs['annual_H2'] = mean_AHP_per_year
         outputs['penalty_lifetime'] = df['penalty_t'].sum()
         outputs['break_even_H2_price'] = break_even_H2_price

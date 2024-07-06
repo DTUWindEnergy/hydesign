@@ -344,7 +344,8 @@ class hpp_model:
                 'n_full_power_hours_expected_per_day_at_peak_price'
                 ],
             promotes_outputs=[
-                'total_curtailment'
+                'total_curtailment',
+                'total_curtailment_with_deg'
             ])
         
         model.add_subsystem(
@@ -546,6 +547,7 @@ class hpp_model:
             'Battery Energy [MWh]',
             'Battery Power [MW]',
             'Total curtailment [GWh]',
+            'Total curtailment with deg [GWh]',
             'Awpp [km2]',
             'Apvp [km2]',
             'Plant area [km2]',
@@ -679,6 +681,7 @@ class hpp_model:
             b_E,
             b_P,
             prob['total_curtailment']/1e3, #[GWh]
+            prob['total_curtailment_with_deg']/1e3, #[GWh]
             Awpp,
             prob.get_val('shared_cost.Apvp'),
             max( Awpp , prob.get_val('shared_cost.Apvp') ),
@@ -743,6 +746,7 @@ class hpp_model:
                                             'Battery Energy [MWh]',
                                             'Battery Power [MW]',
                                             'Total curtailment [GWh]',
+                                            'Total curtailment with deg [GWh]',
                                             'Awpp [km2]',
                                             'Apvp [km2]',
                                             'Plant area [km2]',

@@ -253,7 +253,7 @@ class hpp_model_P2X:
                 'hhv',
                 'm_H2_demand_t',
                 'penalty_factor_H2',
-                # 'min_power_standby',
+                'min_power_standby',
                 # 'ramp_up_limit',
                 # 'ramp_down_limit',
                 ],
@@ -401,7 +401,7 @@ class hpp_model_P2X:
                               'LCOH',
                               'Revenue',
                               'mean_AEP',
-                              'mean_Power2Grid',
+                            #   'mean_Power2Grid',
                               'annual_H2',
                               'annual_P_ptg',
                               # 'annual_P_ptg_H2',
@@ -503,6 +503,7 @@ class hpp_model_P2X:
         prob.set_val('tax_rate', sim_pars['tax_rate'])
         prob.set_val('land_use_per_solar_MW', sim_pars['land_use_per_solar_MW'])
         prob.set_val('hhv', sim_pars['hhv'])
+        prob.set_val('min_power_standby', sim_pars['min_power_standby'])
         prob.set_val('ptg_deg', sim_pars['ptg_deg'])
         prob.set_val('price_H2', sim_pars['price_H2'])
         prob.set_val('penalty_factor_H2', sim_pars['penalty_factor_H2'])
@@ -525,7 +526,7 @@ class hpp_model_P2X:
             'OPEX [MEuro]',
             'penalty lifetime [MEuro]',
             'AEP [GWh]',
-            'annual_Power2Grid [GWh]',
+            # 'annual_Power2Grid [GWh]',
             'GUF',
             'annual_H2 [tons]',
             'annual_P_ptg [GWh]',
@@ -609,8 +610,7 @@ class hpp_model_P2X:
         prob['CAPEX'] : Total capital expenditure costs of the HPP
         prob['OPEX'] : Operational and maintenance costs of the HPP
         prob['penalty_lifetime'] : Lifetime penalty
-        prob['AEP']: Annual energy production
-        prob['mean_Power2Grid']: Power to grid
+        prob['AEP']: Annual energy production injected to the grid
         prob['mean_AEP']/(self.sim_pars['G_MW']*365*24) : Grid utilization factor
         prob['annual_H2']: Annual H2 production
         prob['annual_P_ptg']: Annual power converted to hydrogen
@@ -683,7 +683,7 @@ class hpp_model_P2X:
             prob['OPEX']/1e6,
             prob['penalty_lifetime']/1e6,
             prob['mean_AEP']/1e3, #[GWh]
-            prob['mean_Power2Grid']/1e3, #GWh
+            # prob['mean_Power2Grid']/1e3, #GWh
             # Grid Utilization factor
             prob['mean_AEP']/(self.sim_pars['G_MW']*365*24),
             prob['annual_H2']/1e3, # in tons
@@ -748,7 +748,7 @@ class hpp_model_P2X:
                                             'OPEX [MEuro]',
                                             'penalty lifetime [MEuro]',
                                             'AEP [GWh]',
-                                            'Power to grid',
+                                            # 'Power to grid',
                                             'GUF',
                                             'annual_H2',
                                             'annual_P_ptg',

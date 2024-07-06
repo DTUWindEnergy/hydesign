@@ -6,7 +6,7 @@ def main():
         # Simple example to size wind only with a single core to run test machines and colab
         
         inputs = {
-            'example': 17,
+            'example': 11,
             'name': None,
             'longitude': None,
             'latitude': None,
@@ -18,11 +18,11 @@ def main():
             'num_batteries': 5,
             'n_procs': 1,
             'n_doe': 8,
-            'n_comp': 3,
+            # 'n_comp': 3,
             'n_clusters': 1,
             'n_seed': 0,
-            'max_iter': 1,
-            'final_design_fn': 'hydesign_design_9.csv',
+            'max_iter': 2,
+            'final_design_fn': 'hydesign_design_11_BM.csv',
             'npred': 3e4,
             'tol': 1e-6,
             'min_conv_iter': 2,
@@ -58,7 +58,7 @@ def main():
                  },
             'Nwt':
                 {'var_type':'design',
-                  'limits':[0, 100],
+                  'limits':[50, 100],
                   'types':'int'
                   },
                 # {'var_type':'fixed',
@@ -102,11 +102,11 @@ def main():
                 #   'types':'float'
                 #   },
                 {'var_type':'fixed',
-                  'value':1.0,
+                  'value':1.5,
                   },
             'b_P [MW]':
                 {'var_type':'design',
-                  'limits':[1, 100],
+                  'limits':[50, 500],
                   'types':'int'
                   },
                 # {'var_type':'fixed',
@@ -114,11 +114,11 @@ def main():
                 #   },
             'b_E_h [h]':
                 {'var_type':'design',
-                  'limits':[1, 5],
+                  'limits':[3, 5],
                   'types':'int'
                   },
                 # {'var_type':'fixed',
-                #   'value': 6
+                #   'value': 3
                 #   },
             'cost_of_battery_P_fluct_in_peak_price_ratio':
                 # {'var_type':'design',
@@ -126,7 +126,7 @@ def main():
                 #   'types':'float'
                 #   },
                 {'var_type':'fixed',
-                  'value': 10},
+                  'value': 2},
             }
         EGOD = EfficientGlobalOptimizationDriver(**kwargs)
         EGOD.run()
