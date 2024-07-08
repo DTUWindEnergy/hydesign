@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quickstart &mdash; hydesign 1.2.3 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script>window.MathJax = {"TeX": {"equationNumbers": {"autoNumber": "AMS", "useLabelIds": true}}, "tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            hydesign
+          </a>
+              <div class="version">
+                1.2.3
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../license_citation.html">License, Citation, and Source Code</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../license_citation.html#license">License:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../license_citation.html#citation">Citation:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../license_citation.html#source-code">Source code:</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#pre-installation">Pre-Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#simple-installation">Simple Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#developer-installation">Developer Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/ChangeLog.html">Updates log</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/ChangeLog.html#hydesign-v1.3.4-(April-08,-2024)">hydesign v1.3.4 (April 08, 2024)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/ChangeLog.html#New-features">New features</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/ChangeLog.html#hydesign-v1.3.3-(April-06,-2024)">hydesign v1.3.3 (April 06, 2024)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/ChangeLog.html#id1">New features</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/ChangeLog.html#hydesign-v1.3.2-(December-22,-2023)">hydesign v1.3.2 (December 22, 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/ChangeLog.html#id2">New features</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/ChangeLog.html#hydesign-v1.3.1-(December-14,-2023)">hydesign v1.3.1 (December 14, 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/ChangeLog.html#id3">New features</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/ChangeLog.html#hydesign-v1.3.0-(November-16,-2023)">hydesign v1.3.0 (November 16, 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/ChangeLog.html#Improvements">Improvements</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/ChangeLog.html#hydesign-v1.2.0-(August-18,-2023)">hydesign v1.2.0 (August 18, 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/ChangeLog.html#improvements-1">Improvements</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/ChangeLog.html#hydesign-v1.1.0-(May-5,-2023)">hydesign v1.1.0 (May 5, 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/ChangeLog.html#New-Features-and-API-changes">New Features and API changes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/ChangeLog.html#New-models-and-functions">New models and functions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/Quickstart.html">Quickstart</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Quickstart.html#Evaluating-the-HPP-model">Evaluating the HPP model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Quickstart.html#Understanding-the-sub-models">Understanding the sub-models</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Quickstart.html#Plot-the-HPP-operation">Plot the HPP operation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Quickstart.html#Plot-battery,-wind-and-PV-degradation">Plot battery, wind and PV degradation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Quickstart.html#Compare-ideal-operation-(ems)-wit-h-actual-long-term-opertation-with-degradation">Compare ideal operation (ems) wit h actual long-term opertation with degradation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Quickstart.html#Compare-battery-degradation-results-by-changing-the-cost-of-battery-fluctuations-factor">Compare battery degradation results by changing the cost of battery fluctuations factor</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/Advanced_hpp_model.html">Advanced HPP Model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Advanced_hpp_model.html#Evaluating-the-HPP-model">Evaluating the HPP model</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/HPP_evaluation_P2X.html">HPP with P2X</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/HPP_evaluation_P2X.html#Evaluating-the-HPP-model">Evaluating the HPP model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/HPP_evaluation_P2X.html#Plot-the-HPP-operation">Plot the HPP operation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/hpp_sizing.html">Size a HPP plant based on a simplified hpp model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/hpp_sizing.html#design-variables">Design Variables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/hpp_sizing.html#possible-objective-functions">Possible objective functions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/hpp_sizing.html#optimize-using-ego">Optimize using EGO</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/more_sizing_examples.html">HyDesign sizing examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/break_even_price_and_PPA.html">Break-even price and power purchase agreement</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/break_even_price_and_PPA.html#Break-even-price-of-H2">Break-even price of H2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/break_even_price_and_PPA.html#Power-Purchase-Agreement-(PPA)">Power Purchase Agreement (PPA)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/constant_output.html">HPP for constant load</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/constant_output.html#Evaluation">Evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/constant_output.html#Sizing">Sizing</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/constant_output.html#Export-the-DOE">Export the DOE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/offshore.html">Offshore HPP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/Example_ISO_prob.html">Iso-Probabilistic Transformation for Weather-Correlated Spot Markets</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Example_ISO_prob.html#1.-Sample-a-target-distrubtion,-the-number-of-samples-can-be-different-between-input-data-and-desired-distribution">1. Sample a target distrubtion, the number of samples can be different between input data and desired distribution</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/HPP_evaluation_BM.html">HPP with multiple energy markets</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/HPP_evaluation_BM.html#Evaluating-the-HPP-model">Evaluating the HPP model</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/Hybridize.html">Hybridize</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Hybridize.html#Evaluating-hybridizing-of-a-single-technology-power-plant">Evaluating hybridizing of a single technology power plant</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Hybridize.html#Existing-PV">Existing PV</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Hybridize.html#Existing-wind">Existing wind</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/battery_degradation.html">Battery degradation API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/costs.html">Costs API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/ems.html">Energy Management Optimization Model (EMS) API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/finance.html">Finance API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/hpp_assembly.html">Hybrid power plant model assembly (HPP) API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/pv.html">Photovoltaic power plant API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/weather.html">Weather API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/wind.html">Wind power plant API</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../contact_info.html">Contact Us</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">hydesign</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Quickstart</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/_build/notebooks/Quickstart.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="admonition note">
+<p><span class="raw-html"><a href="https://colab.research.google.com/github/DTUWindEnergy/hydesign/blob/main/docs/_build\notebooks\Quickstart.ipynb"><img alt="Open and run in Colab (interactive)" src="../_static/colab-badge.svg" style="vertical-align:text-bottom"></a>
+<a href="https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign/-/tree/main/docs/_build\notebooks\Quickstart.ipynb"><img alt="Edit on Gitlab" src="https://img.shields.io/badge/Edit%20on-Gitlab-blue?style=flat&logo=gitlab" style="vertical-align:text-bottom"></a>
+<a href="https://kaggle.com/kernels/welcome?src=https://github.com/DTUWindEnergy/hydesign/blob/main/docs/_build\notebooks\Quickstart.ipynb"><img alt="Open and run in Kaggle (interactive)" src="https://kaggle.com/static/images/open-in-kaggle.svg" style="vertical-align:text-bottom"></a></span></p>
+</div>
+<section id="Quickstart">
+<h1>Quickstart<a class="headerlink" href="#Quickstart" title="Permalink to this heading"></a></h1>
+<section id="Evaluating-the-performance-of-a-hybrid-power-plant-using-HyDesign">
+<h2>Evaluating the performance of a hybrid power plant using HyDesign<a class="headerlink" href="#Evaluating-the-performance-of-a-hybrid-power-plant-using-HyDesign" title="Permalink to this heading"></a></h2>
+<p>Welcome to the HyDesign Quickstart Guide. HyDesign is an open-source tool for design and optimization of utility scale wind-solar-storage based hybrid power plants. This tutorial will help you get up and running quickly with HyDesign. You will learn how to install the software, set up your environment, load data for a specfic site from HyDesign example sites, create a simple hybrid power plant (HPP) model, and visualize the results. This guide is designed for users who are new to HyDesign and
+want to start modeling hybrid power plants with minimal setup.</p>
+<p>In this notebook we will evaluate a simplified hybrid power plant design in France with good wind. A simplified hybrid power plant design consists on selecting the following parameters:</p>
+<p><strong>Wind Plant design:</strong></p>
+<ol class="arabic simple">
+<li><p>Number of wind turbines in the wind plant [-] (<code class="docutils literal notranslate"><span class="pre">Nwt</span></code>)</p></li>
+<li><p>Wind power installation density [MW/km2] (<code class="docutils literal notranslate"><span class="pre">wind_MW_per_km2</span></code>): This parameter controls how closely spaced are the turbines, which in turns affect how much wake losses are present.</p></li>
+</ol>
+<p><strong>PV Plant design:</strong></p>
+<ol class="arabic simple" start="3">
+<li><p>Solar plant power capacity [MW] (<code class="docutils literal notranslate"><span class="pre">solar_MW</span></code>)</p></li>
+</ol>
+<p><strong>Battery Storage design:</strong></p>
+<ol class="arabic simple" start="4">
+<li><p>Battery power [MW] (<code class="docutils literal notranslate"><span class="pre">b_P</span></code>)</p></li>
+<li><p>Battery energy capacity in hours [MWh] (<code class="docutils literal notranslate"><span class="pre">b_E_h</span></code>): Battery storage capacity in hours of full battery power (<code class="docutils literal notranslate"><span class="pre">b_E</span> <span class="pre">=</span> <span class="pre">b_E_h</span> <span class="pre">*</span> <span class="pre">b_P</span></code>).</p></li>
+<li><p>Cost of battery power fluctuations in peak price ratio [-] (<code class="docutils literal notranslate"><span class="pre">cost_of_batt_degr</span></code>): This parameter controls how much penalty is given to do ramps in battery power in the HPP operation.</p></li>
+</ol>
+<p><strong>Imports</strong></p>
+<p>Install hydesign if needed. Import basic libraries. Import HPP model assembly class. Import the examples file path.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Detect if running in Kaggle</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;KAGGLE_KERNEL_RUN_TYPE&#39;</span><span class="p">):</span>
+    <span class="n">mypaths</span> <span class="o">=</span> <span class="o">!</span>python -c <span class="s2">&quot;import sysconfig; print(sysconfig.get_paths()[&#39;purelib&#39;])&quot;</span>
+    <span class="n">mypath</span> <span class="o">=</span> <span class="n">mypaths</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="o">!</span>pip install trash-cli
+    <span class="o">!</span>trash <span class="nv">$mypath</span>/numpy*
+    <span class="o">!</span>pip install --upgrade numpy
+    <span class="o">!</span>pip install finitediff
+    <span class="kn">import</span> <span class="nn">os</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">kill</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span> <span class="mi">9</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install hydesign if needed</span>
+<span class="kn">import</span> <span class="nn">importlib</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">importlib</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">find_spec</span><span class="p">(</span><span class="s2">&quot;hydesign&quot;</span><span class="p">):</span>
+    <span class="o">!</span>pip install git+https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign.git
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">yaml</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="kn">from</span> <span class="nn">hydesign.assembly.hpp_assembly</span> <span class="kn">import</span> <span class="n">hpp_model</span>
+<span class="kn">from</span> <span class="nn">hydesign.examples</span> <span class="kn">import</span> <span class="n">examples_filepath</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+C:\Users\mikf\Anaconda3\envs\hd2\lib\site-packages\pyoptsparse\pyOpt_MPI.py:68: UserWarning: mpi4py could not be imported. mpi4py is required to use the parallel gradient analysis and parallel objective analysis for non-gradient based optimizers. Continuing using a dummy MPI module from pyOptSparse.
+  warnings.warn(warn)
+</pre></div></div>
+</div>
+<p><strong>Specifying the site</strong></p>
+<p>Hydesign, provides example data from several sites in India and Europe.</p>
+<p>The site coordinates (longitude, latitude, and altitude) are given in <code class="docutils literal notranslate"><span class="pre">examples_sites.csv</span></code>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">examples_sites</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">examples_filepath</span><span class="si">}</span><span class="s1">examples_sites.csv&#39;</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;;&#39;</span><span class="p">)</span>
+<span class="n">examples_sites</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>case</th>
+      <th>name</th>
+      <th>longitude</th>
+      <th>latitude</th>
+      <th>altitude</th>
+      <th>input_ts_fn</th>
+      <th>sim_pars_fn</th>
+      <th>price_fn</th>
+      <th>price_col</th>
+      <th>H2_demand_col</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>India</td>
+      <td>Indian_site_good_wind</td>
+      <td>77.500226</td>
+      <td>8.334294</td>
+      <td>679.803454</td>
+      <td>India/GWA3/input_ts_Indian_site_good_wind.csv</td>
+      <td>India/hpp_pars.yml</td>
+      <td>India/Indian_elec_price_t.csv</td>
+      <td>Price</td>
+      <td>India/H2_demand.csv</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>India</td>
+      <td>Indian_site_good_solar</td>
+      <td>68.542204</td>
+      <td>23.542099</td>
+      <td>29.883557</td>
+      <td>India/GWA3/input_ts_Indian_site_good_solar.csv</td>
+      <td>India/hpp_pars.yml</td>
+      <td>India/Indian_elec_price_t.csv</td>
+      <td>Price</td>
+      <td>India/H2_demand.csv</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>India</td>
+      <td>Indian_site_bad_solar_bad_wind</td>
+      <td>77.916878</td>
+      <td>17.292316</td>
+      <td>627.424643</td>
+      <td>India/GWA3/input_ts_Indian_site_bad_solar_bad_...</td>
+      <td>India/hpp_pars.yml</td>
+      <td>India/Indian_elec_price_t.csv</td>
+      <td>Price</td>
+      <td>India/H2_demand.csv</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>Europe</td>
+      <td>France_good_solar</td>
+      <td>4.229736</td>
+      <td>44.422011</td>
+      <td>204.000000</td>
+      <td>Europe/GWA3/input_ts_France_good_solar.csv</td>
+      <td>Europe/hpp_pars.yml</td>
+      <td>Europe/2030-EL_PRICE.csv</td>
+      <td>FR_R</td>
+      <td>Europe/H2_demand.csv</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>Europe</td>
+      <td>France_good_wind</td>
+      <td>-0.864258</td>
+      <td>48.744116</td>
+      <td>302.000000</td>
+      <td>Europe/GWA3/input_ts_France_good_wind.csv</td>
+      <td>Europe/hpp_pars.yml</td>
+      <td>Europe/2030-EL_PRICE.csv</td>
+      <td>FR_R</td>
+      <td>Europe/H2_demand.csv</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>Europe</td>
+      <td>France_bad_solar_n_wind</td>
+      <td>2.167969</td>
+      <td>47.428087</td>
+      <td>140.000000</td>
+      <td>Europe/GWA3/input_ts_France_bad_solar_n_wind.csv</td>
+      <td>Europe/hpp_pars.yml</td>
+      <td>Europe/2030-EL_PRICE.csv</td>
+      <td>FR_R</td>
+      <td>Europe/H2_demand.csv</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>Europe</td>
+      <td>Germany_bad_solar_n_wind</td>
+      <td>10.766602</td>
+      <td>49.310798</td>
+      <td>442.000000</td>
+      <td>Europe/GWA3/input_ts_Germany_bad_solar_n_wind.csv</td>
+      <td>Europe/hpp_pars.yml</td>
+      <td>Europe/2030-EL_PRICE.csv</td>
+      <td>DE_ME</td>
+      <td>Europe/H2_demand.csv</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>Europe</td>
+      <td>Germany_good_wind</td>
+      <td>7.873535</td>
+      <td>53.287111</td>
+      <td>5.000000</td>
+      <td>Europe/GWA3/input_ts_Germany_good_wind.csv</td>
+      <td>Europe/hpp_pars.yml</td>
+      <td>Europe/2030-EL_PRICE.csv</td>
+      <td>DE_NW</td>
+      <td>Europe/H2_demand.csv</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>Europe</td>
+      <td>Denmark_good_solar</td>
+      <td>11.813965</td>
+      <td>55.397760</td>
+      <td>42.000000</td>
+      <td>Europe/GWA3/input_ts_Denmark_good_solar.csv</td>
+      <td>Europe/hpp_pars.yml</td>
+      <td>Europe/2030-EL_PRICE.csv</td>
+      <td>DK_E</td>
+      <td>Europe/H2_demand.csv</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>Europe</td>
+      <td>Denmark_good_wind</td>
+      <td>8.594398</td>
+      <td>56.227322</td>
+      <td>85.000000</td>
+      <td>Europe/GWA3/input_ts_Denmark_good_wind.csv</td>
+      <td>Europe/hpp_pars.yml</td>
+      <td>Europe/2030-EL_PRICE.csv</td>
+      <td>DK_W</td>
+      <td>Europe/H2_demand.csv</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<p>select a site to run</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;France_good_wind&#39;</span>
+<span class="n">ex_site</span> <span class="o">=</span> <span class="n">examples_sites</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">examples_sites</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">name</span><span class="p">]</span>
+
+<span class="n">longitude</span> <span class="o">=</span> <span class="n">ex_site</span><span class="p">[</span><span class="s1">&#39;longitude&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">latitude</span> <span class="o">=</span> <span class="n">ex_site</span><span class="p">[</span><span class="s1">&#39;latitude&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">altitude</span> <span class="o">=</span> <span class="n">ex_site</span><span class="p">[</span><span class="s1">&#39;altitude&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Input data: weather and electricity price</strong></p>
+<p>For each site a csv input file is provided. This file contains the weather and the spot market electricity prices.</p>
+<p>The columns required are:</p>
+<ul class="simple">
+<li><p>Wind speed at multiple heights (<code class="docutils literal notranslate"><span class="pre">WS_hh</span></code>, where hh is the height in meters). In order to estimate the PV cell temperature, it is important to have a wind speed close to the ground (<code class="docutils literal notranslate"><span class="pre">WS_1</span></code>).</p></li>
+<li><p>(optional) Wind direction at multiple heights (<code class="docutils literal notranslate"><span class="pre">WD_hh</span></code>, where hh is the height in meters). Wind directions can be used when the layout of the wind farm is known and therefore the wind generation depends on the wind direction.</p></li>
+<li><p>Air temperature in Kelvin close to the ground (<code class="docutils literal notranslate"><span class="pre">temp_air_1</span></code>)</p></li>
+<li><p>Global horizontal irradiance (<code class="docutils literal notranslate"><span class="pre">ghi</span></code>).</p></li>
+<li><p>Direct normal irradiance (<code class="docutils literal notranslate"><span class="pre">dni</span></code>).</p></li>
+<li><p>Diffuse horizontal irradiance (<code class="docutils literal notranslate"><span class="pre">dhi</span></code>).</p></li>
+<li><p>Spot market electricity prices (<code class="docutils literal notranslate"><span class="pre">Price</span></code>)</p></li>
+</ul>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">input_ts_fn</span> <span class="o">=</span> <span class="n">examples_filepath</span><span class="o">+</span><span class="n">ex_site</span><span class="p">[</span><span class="s1">&#39;input_ts_fn&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">input_ts</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">input_ts_fn</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">parse_dates</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">required_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">input_ts</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="s1">&#39;WD&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">col</span><span class="p">]</span>
+<span class="n">input_ts</span> <span class="o">=</span> <span class="n">input_ts</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span><span class="n">required_cols</span><span class="p">]</span>
+<span class="n">input_ts</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>WS_1</th>
+      <th>WS_50</th>
+      <th>WS_100</th>
+      <th>WS_150</th>
+      <th>WS_200</th>
+      <th>temp_air_1</th>
+      <th>ghi</th>
+      <th>dni</th>
+      <th>dhi</th>
+      <th>Price</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>2012-01-01 00:00:00</th>
+      <td>5.031528</td>
+      <td>11.491562</td>
+      <td>13.293840</td>
+      <td>15.697655</td>
+      <td>16.581168</td>
+      <td>284.873662</td>
+      <td>0.10670</td>
+      <td>0.0</td>
+      <td>0.10670</td>
+      <td>32.685</td>
+    </tr>
+    <tr>
+      <th>2012-01-01 01:00:00</th>
+      <td>4.527461</td>
+      <td>10.535852</td>
+      <td>12.225673</td>
+      <td>14.449516</td>
+      <td>15.304116</td>
+      <td>284.759079</td>
+      <td>0.05335</td>
+      <td>0.0</td>
+      <td>0.05335</td>
+      <td>32.685</td>
+    </tr>
+    <tr>
+      <th>2012-01-01 02:00:00</th>
+      <td>4.485136</td>
+      <td>10.576099</td>
+      <td>12.302628</td>
+      <td>14.711214</td>
+      <td>15.679654</td>
+      <td>284.682409</td>
+      <td>0.00000</td>
+      <td>0.0</td>
+      <td>0.00000</td>
+      <td>32.685</td>
+    </tr>
+    <tr>
+      <th>2012-01-01 03:00:00</th>
+      <td>4.684235</td>
+      <td>10.943120</td>
+      <td>12.708081</td>
+      <td>15.154307</td>
+      <td>16.165412</td>
+      <td>284.804835</td>
+      <td>0.00000</td>
+      <td>0.0</td>
+      <td>0.00000</td>
+      <td>32.685</td>
+    </tr>
+    <tr>
+      <th>2012-01-01 04:00:00</th>
+      <td>4.698410</td>
+      <td>11.066226</td>
+      <td>12.869864</td>
+      <td>15.381294</td>
+      <td>16.433400</td>
+      <td>284.912742</td>
+      <td>0.00000</td>
+      <td>0.0</td>
+      <td>0.00000</td>
+      <td>32.685</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>2012-12-31 19:00:00</th>
+      <td>6.927975</td>
+      <td>15.510276</td>
+      <td>17.877532</td>
+      <td>19.361598</td>
+      <td>21.069684</td>
+      <td>281.919356</td>
+      <td>0.00000</td>
+      <td>0.0</td>
+      <td>0.00000</td>
+      <td>37.591</td>
+    </tr>
+    <tr>
+      <th>2012-12-31 20:00:00</th>
+      <td>6.355326</td>
+      <td>14.262557</td>
+      <td>16.448514</td>
+      <td>17.822397</td>
+      <td>19.521058</td>
+      <td>281.790435</td>
+      <td>0.00000</td>
+      <td>0.0</td>
+      <td>0.00000</td>
+      <td>35.839</td>
+    </tr>
+    <tr>
+      <th>2012-12-31 21:00:00</th>
+      <td>5.456462</td>
+      <td>12.476146</td>
+      <td>14.429818</td>
+      <td>15.918705</td>
+      <td>17.597519</td>
+      <td>281.700990</td>
+      <td>0.00000</td>
+      <td>0.0</td>
+      <td>0.00000</td>
+      <td>35.362</td>
+    </tr>
+    <tr>
+      <th>2012-12-31 22:00:00</th>
+      <td>4.000478</td>
+      <td>9.516692</td>
+      <td>11.088230</td>
+      <td>12.442577</td>
+      <td>13.866160</td>
+      <td>281.499113</td>
+      <td>0.00000</td>
+      <td>0.0</td>
+      <td>0.00000</td>
+      <td>34.468</td>
+    </tr>
+    <tr>
+      <th>2012-12-31 23:00:00</th>
+      <td>3.073095</td>
+      <td>7.789771</td>
+      <td>9.176926</td>
+      <td>10.399925</td>
+      <td>11.612548</td>
+      <td>281.450042</td>
+      <td>0.00000</td>
+      <td>0.0</td>
+      <td>0.00000</td>
+      <td>33.417</td>
+    </tr>
+  </tbody>
+</table>
+<p>8784 rows × 10 columns</p>
+</div></div>
+</div>
+<p><strong>Additional data</strong></p>
+<p>Each region has a different hybrid power plant evaluation parameter file (<code class="docutils literal notranslate"><span class="pre">hpp_pars.yml</span></code>). This file contains all the assumptions on the valuation of a hyrbid power plant.</p>
+<p>In the examples, the Indian sites have specified a requiredment to provide power at peak hours. This requirement is specified by setting the minimum number of full power hours at peak prices times per day.</p>
+<p>For example the Indian case penalty has expected hours of <code class="docutils literal notranslate"><span class="pre">0.85*3=</span> <span class="pre">2.55</span></code>:</p>
+<p><code class="docutils literal notranslate"><span class="pre">n_full_power_hours_expected_per_day_at_peak_price:</span> <span class="pre">2.55</span></code></p>
+<p>While the Europe sites have no penalty.</p>
+<p><code class="docutils literal notranslate"><span class="pre">n_full_power_hours_expected_per_day_at_peak_price:</span> <span class="pre">0</span></code></p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sim_pars_fn</span> <span class="o">=</span> <span class="n">examples_filepath</span><span class="o">+</span><span class="n">ex_site</span><span class="p">[</span><span class="s1">&#39;sim_pars_fn&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">sim_pars_fn</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+    <span class="n">sim_pars</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">Loader</span><span class="o">=</span><span class="n">yaml</span><span class="o">.</span><span class="n">FullLoader</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">sim_pars_fn</span><span class="p">)</span>
+<span class="n">sim_pars</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+c:/sandbox/repo/topfarm/hydesign/hydesign/examples/Europe/hpp_pars.yml
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+{&#39;G_MW&#39;: 300,
+ &#39;year&#39;: &#39;2012&#39;,
+ &#39;N_life&#39;: 25,
+ &#39;wind_turbine_cost&#39;: 640000,
+ &#39;wind_civil_works_cost&#39;: 260000,
+ &#39;wind_fixed_onm_cost&#39;: 12600,
+ &#39;wind_variable_onm_cost&#39;: 1.35,
+ &#39;d_ref&#39;: 145,
+ &#39;hh_ref&#39;: 100,
+ &#39;p_rated_ref&#39;: 5.0,
+ &#39;wpp_efficiency&#39;: 1,
+ &#39;wind_deg_yr&#39;: [0, 25],
+ &#39;wind_deg&#39;: [0, 0.25],
+ &#39;share_WT_deg_types&#39;: 0.5,
+ &#39;solar_PV_cost&#39;: 110000,
+ &#39;solar_hardware_installation_cost&#39;: 100000,
+ &#39;solar_inverter_cost&#39;: 20000,
+ &#39;solar_fixed_onm_cost&#39;: 4500,
+ &#39;land_use_per_solar_MW&#39;: 0.01226,
+ &#39;tracking&#39;: &#39;No&#39;,
+ &#39;pv_deg_yr&#39;: [0, 1, 25],
+ &#39;pv_deg&#39;: [0.03, 0.03, 0.28],
+ &#39;battery_energy_cost&#39;: 45000,
+ &#39;battery_power_cost&#39;: 16000,
+ &#39;battery_BOP_installation_commissioning_cost&#39;: 18000,
+ &#39;battery_control_system_cost&#39;: 4500,
+ &#39;battery_energy_onm_cost&#39;: 0,
+ &#39;battery_depth_of_discharge&#39;: 0.9,
+ &#39;battery_charge_efficiency&#39;: 0.98,
+ &#39;battery_price_reduction_per_year&#39;: 0.1,
+ &#39;min_LoH&#39;: 0.7,
+ &#39;n_full_power_hours_expected_per_day_at_peak_price&#39;: 0,
+ &#39;peak_hr_quantile&#39;: 0.9,
+ &#39;price_H2&#39;: 5,
+ &#39;storage_eff&#39;: 0.9,
+ &#39;ptg_deg&#39;: 2,
+ &#39;hhv&#39;: 39.3,
+ &#39;water_consumption&#39;: 9.4,
+ &#39;electrolyzer_capex_cost&#39;: 480000,
+ &#39;electrolyzer_opex_cost&#39;: 9600,
+ &#39;electrolyzer_power_electronics_cost&#39;: 0,
+ &#39;water_cost&#39;: 4,
+ &#39;water_treatment_cost&#39;: 2,
+ &#39;H2_storage_capex_cost&#39;: 300,
+ &#39;H2_storage_opex_cost&#39;: 3,
+ &#39;H2_transportation_cost&#39;: 5,
+ &#39;H2_transportation_distance&#39;: 0,
+ &#39;penalty_factor_H2&#39;: 0.5,
+ &#39;electrolyzer_eff_curve_name&#39;: &#39;Alkaline electrolyzer H2 production&#39;,
+ &#39;min_power_standby&#39;: 0.1,
+ &#39;ramp_up_limit&#39;: 50,
+ &#39;ramp_down_limit&#39;: 50,
+ &#39;hpp_BOS_soft_cost&#39;: 119940,
+ &#39;hpp_grid_connection_cost&#39;: 50000,
+ &#39;land_cost&#39;: 300000,
+ &#39;wind_WACC&#39;: 0.052,
+ &#39;solar_WACC&#39;: 0.048,
+ &#39;battery_WACC&#39;: 0.08,
+ &#39;tax_rate&#39;: 0.22,
+ &#39;ptg_WACC&#39;: 0.07,
+ &#39;phasing_yr&#39;: [-1, 0],
+ &#39;phasing_CAPEX&#39;: [1, 1],
+ &#39;inflation_yr&#39;: [-3, 0, 1, 25],
+ &#39;inflation&#39;: [0.1, 0.1, 0.06, 0.06],
+ &#39;ref_yr_inflation&#39;: 0,
+ &#39;depreciation_yr&#39;: [0, 25],
+ &#39;depreciation&#39;: [0, 1],
+ &#39;era5_zarr&#39;: &#39;/groups/reanalyses/era5/app/era5.zarr&#39;,
+ &#39;ratio_gwa_era5&#39;: &#39;/groups/INP/era5/ratio_gwa2_era5.nc&#39;,
+ &#39;era5_ghi_zarr&#39;: &#39;/groups/INP/era5/ghi.zarr&#39;,
+ &#39;elevation_fn&#39;: &#39;/groups/INP/era5/SRTMv3_plus_ViewFinder_coarsen.nc&#39;}
+</pre></div></div>
+</div>
+<p><strong>Wind Turbine parameters:</strong></p>
+<ol class="arabic simple">
+<li><p>Hub height [m]</p></li>
+<li><p>Rotor diameters [m]</p></li>
+<li><p>Rated power of the wind turbine [MW] (<code class="docutils literal notranslate"><span class="pre">p_rated</span></code>)</p></li>
+</ol>
+<p><strong>PV parameters:</strong></p>
+<ol class="arabic simple" start="4">
+<li><p>Surface tilt [deg] (<code class="docutils literal notranslate"><span class="pre">surface_tilt</span></code>)</p></li>
+<li><p>Surface azimuth [deg] (<code class="docutils literal notranslate"><span class="pre">surface_azimuth</span></code>)</p></li>
+<li><p>DC-AC ratio [-] (<code class="docutils literal notranslate"><span class="pre">solar_DCAC</span></code>): This parameter controls how much over-planting of PV (in DC power) is connected to the inverters. It is common practice in PV design to have <code class="docutils literal notranslate"><span class="pre">solar_DCAC</span> <span class="pre">=</span> <span class="pre">1.5</span></code>.</p></li>
+</ol>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rotor_diameter_m</span> <span class="o">=</span> <span class="mi">220</span>
+<span class="n">hub_height_m</span> <span class="o">=</span> <span class="mi">130</span>
+<span class="n">wt_rated_power_MW</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">surface_tilt_deg</span> <span class="o">=</span> <span class="mi">35</span>
+<span class="n">surface_azimuth_deg</span> <span class="o">=</span> <span class="mi">180</span>
+<span class="n">DC_AC_ratio</span> <span class="o">=</span> <span class="mf">1.5</span>
+<br/></pre></div>
+</div>
+</div>
+<p><strong>Initializing the HPP model</strong></p>
+<p>Initialize the HPP model (hpp_model class) with the coordinates and the necessary input files.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">hpp</span> <span class="o">=</span> <span class="n">hpp_model</span><span class="p">(</span>
+        <span class="n">latitude</span><span class="p">,</span>
+        <span class="n">longitude</span><span class="p">,</span>
+        <span class="n">altitude</span><span class="p">,</span>
+        <span class="n">rotor_diameter_m</span> <span class="o">=</span> <span class="n">rotor_diameter_m</span><span class="p">,</span>
+        <span class="n">hub_height_m</span> <span class="o">=</span> <span class="n">hub_height_m</span><span class="p">,</span>
+        <span class="n">wt_rated_power_MW</span> <span class="o">=</span> <span class="n">wt_rated_power_MW</span><span class="p">,</span>
+        <span class="n">surface_tilt_deg</span> <span class="o">=</span> <span class="n">surface_tilt_deg</span><span class="p">,</span>
+        <span class="n">surface_azimuth_deg</span> <span class="o">=</span> <span class="n">surface_azimuth_deg</span><span class="p">,</span>
+        <span class="n">DC_AC_ratio</span> <span class="o">=</span> <span class="n">DC_AC_ratio</span><span class="p">,</span>
+        <span class="n">num_batteries</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="n">work_dir</span> <span class="o">=</span> <span class="s1">&#39;./&#39;</span><span class="p">,</span>
+        <span class="n">sim_pars_fn</span> <span class="o">=</span> <span class="n">sim_pars_fn</span><span class="p">,</span>
+        <span class="n">input_ts_fn</span> <span class="o">=</span> <span class="n">input_ts_fn</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Fixed parameters on the site
+-------------------------------
+longitude = -0.864258
+latitude = 48.744116
+altitude = 302.0
+</pre></div></div>
+</div>
+<section id="Extract-data-from-DTU's-ERA5-database">
+<h3>Extract data from DTU’s ERA5 database<a class="headerlink" href="#Extract-data-from-DTU's-ERA5-database" title="Permalink to this heading"></a></h3>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># price_fn = examples_filepath+ex_site[&#39;price_fn&#39;].values[0]</span>
+<span class="c1"># price = pd.read_csv(price_fn,index_col=0, parse_dates=True)[ex_site.price_col.values[0]]</span>
+
+<span class="c1"># hpp = hpp_model_simple(</span>
+<span class="c1">#         latitude,</span>
+<span class="c1">#         longitude,</span>
+<span class="c1">#         altitude,</span>
+<span class="c1">#         rotor_diameter_m = rotor_diameter_m,</span>
+<span class="c1">#         hub_height_m = hub_height_m,</span>
+<span class="c1">#         wt_rated_power_MW = wt_rated_power_MW,</span>
+<span class="c1">#         surface_tilt_deg = surface_tilt_deg,</span>
+<span class="c1">#         surface_azimuth_deg = surface_azimuth_deg,</span>
+<span class="c1">#         DC_AC_ratio = DC_AC_ratio,</span>
+<span class="c1">#         num_batteries = 1,</span>
+<span class="c1">#         work_dir = &#39;./&#39;,</span>
+<span class="c1">#         sim_pars_fn = sim_pars_fn,</span>
+<span class="c1">#         input_ts_fn=None,</span>
+<span class="c1">#         price_fn=price,</span>
+<span class="c1"># )</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Evaluating-the-HPP-model">
+<h3>Evaluating the HPP model<a class="headerlink" href="#Evaluating-the-HPP-model" title="Permalink to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+<span class="n">Nwt</span> <span class="o">=</span> <span class="mi">20</span>
+<span class="n">wind_MW_per_km2</span> <span class="o">=</span> <span class="mi">7</span>
+<span class="n">solar_MW</span> <span class="o">=</span> <span class="mi">150</span>
+<span class="n">b_P</span> <span class="o">=</span> <span class="mi">20</span>
+<span class="n">b_E_h</span>  <span class="o">=</span> <span class="mi">3</span>
+<span class="n">cost_of_batt_degr</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">clearance</span> <span class="o">=</span> <span class="n">hub_height_m</span> <span class="o">-</span> <span class="n">rotor_diameter_m</span> <span class="o">/</span> <span class="mi">2</span>
+<span class="n">sp</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">wt_rated_power_MW</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">**</span> <span class="mi">6</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="n">rotor_diameter_m</span> <span class="o">**</span> <span class="mi">2</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="c1"># Wind plant design</span>
+    <span class="n">clearance</span><span class="p">,</span> <span class="n">sp</span><span class="p">,</span> <span class="n">wt_rated_power_MW</span><span class="p">,</span> <span class="n">Nwt</span><span class="p">,</span> <span class="n">wind_MW_per_km2</span><span class="p">,</span>
+    <span class="c1"># PV plant design</span>
+    <span class="n">solar_MW</span><span class="p">,</span>  <span class="n">surface_tilt_deg</span><span class="p">,</span> <span class="n">surface_azimuth_deg</span><span class="p">,</span> <span class="n">DC_AC_ratio</span><span class="p">,</span>
+    <span class="c1"># Energy storage &amp; EMS price constrains</span>
+    <span class="n">b_P</span><span class="p">,</span> <span class="n">b_E_h</span><span class="p">,</span> <span class="n">cost_of_batt_degr</span><span class="p">]</span>
+
+<span class="n">outs</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">)</span>
+
+<span class="n">hpp</span><span class="o">.</span><span class="n">print_design</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">outs</span><span class="p">)</span>
+
+<span class="n">end</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;exec. time [min]:&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span><span class="o">/</span><span class="mi">60</span> <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Design:
+---------------
+clearance [m]: 20.000
+sp [W/m2]: 263.066
+p_rated [MW]: 10.000
+Nwt: 20.000
+wind_MW_per_km2 [MW/km2]: 7.000
+solar_MW [MW]: 150.000
+surface_tilt [deg]: 35.000
+surface_azimuth [deg]: 180.000
+DC_AC_ratio: 1.500
+b_P [MW]: 20.000
+b_E_h [h]: 3.000
+cost_of_battery_P_fluct_in_peak_price_ratio: 5.000
+
+
+NPV_over_CAPEX: 1.471
+NPV [MEuro]: 495.485
+IRR: 0.151
+LCOE [Euro/MWh]: 26.872
+CAPEX [MEuro]: 336.731
+OPEX [MEuro]: 6.416
+Wind CAPEX [MEuro]: 222.901
+Wind OPEX [MEuro]: 5.403
+PV CAPEX [MEuro]: 50.250
+PV OPEX [MEuro]: 1.012
+Batt CAPEX [MEuro]: 4.026
+Batt OPEX [MEuro]: 0.000
+Shared CAPEX [MEuro]: 59.553
+Shared Opex [MEuro]: 0.000
+penalty lifetime [MEuro]: 0.000
+AEP [GWh]: 1121.785
+GUF: 0.427
+grid [MW]: 300.000
+wind [MW]: 200.000
+solar [MW]: 150.000
+Battery Energy [MWh]: 60.000
+Battery Power [MW]: 20.000
+Total curtailment [GWh]: 13.997
+Awpp [km2]: 28.571
+Apvp [km2]: 1.839
+Plant area [km2]: 28.571
+Rotor diam [m]: 220.000
+Hub height [m]: 130.000
+Number of batteries used in lifetime: 2.000
+Break-even PPA price [Euro/MWh]: 17.961
+Capacity factor wind [-]: 0.533
+
+exec. time [min]: 0.22196700970331829
+</pre></div></div>
+</div>
+</section>
+<section id="Understanding-the-sub-models">
+<h3>Understanding the sub-models<a class="headerlink" href="#Understanding-the-sub-models" title="Permalink to this heading"></a></h3>
+<p>Plot an interactive N2 diagram (or N-squared diagram) to explore all components and interfaces between system elements.</p>
+<p>Hydesign consists of several submodels:</p>
+<p><strong>Wind turbines/plant:</strong></p>
+<ul class="simple">
+<li><p>genericWT: generic wind turbine model</p></li>
+<li><p>genericWake: generic wake losses model</p></li>
+<li><p>wpp: wind power plant</p></li>
+<li><p>wpp_cost: wind power plant cost model</p></li>
+</ul>
+<p><strong>PV plant:</strong></p>
+<ul class="simple">
+<li><p>pvp: PV power plant</p></li>
+<li><p>pvp_degradation_linear: PV degradation model</p></li>
+<li><p>pvp_cost: PV power plant cost model</p></li>
+</ul>
+<p><strong>Battery:</strong></p>
+<ul class="simple">
+<li><p>battery_degradation: Battery degradation model</p></li>
+<li><p>battery_cost: Battery cost model</p></li>
+</ul>
+<p><strong>HPP operation</strong></p>
+<ul class="simple">
+<li><p>ems: (Energy Management System) Idealized hpp operation design. This component optimizes the operation of a HPP without considering degradation (PV nor Battery).</p></li>
+<li><p>ems_long_term_operation: This component executes the hpp operation changes in expected generation profiles and/or degradation on battery. This component tries to follow the operation plan (results of ems).</p></li>
+</ul>
+<p><strong>HPP</strong></p>
+<ul class="simple">
+<li><p>shared_costs: Shared HPP infrastructure cost model</p></li>
+<li><p>finance: HPP financial performance metrics model</p></li>
+</ul>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">openmdao.visualization.n2_viewer.n2_viewer</span> <span class="kn">import</span> <span class="n">n2</span>
+<span class="c1">#n2(hpp.prob) ## execute to generate an interactive diagram</span>
+
+<span class="c1"># Static view</span>
+<span class="kn">from</span> <span class="nn">IPython</span> <span class="kn">import</span> <span class="n">display</span>
+<span class="n">display</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="s2">&quot;./n2.png&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/_build_notebooks_Quickstart_22_0.png" src="../../_images/_build_notebooks_Quickstart_22_0.png" />
+</div>
+</div>
+</section>
+<section id="Plot-the-HPP-operation">
+<h3>Plot the HPP operation<a class="headerlink" href="#Plot-the-HPP-operation" title="Permalink to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">b_E_SOC_t</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems.b_E_SOC_t&#39;</span><span class="p">)</span>
+<span class="n">b_t</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems.b_t&#39;</span><span class="p">)</span>
+<span class="n">price_t</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems.price_t&#39;</span><span class="p">)</span>
+
+<span class="n">wind_t</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems.wind_t&#39;</span><span class="p">)</span>
+<span class="n">solar_t</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems.solar_t&#39;</span><span class="p">)</span>
+<span class="n">hpp_t</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems.hpp_t&#39;</span><span class="p">)</span>
+<span class="n">hpp_curt_t</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems.hpp_curt_t&#39;</span><span class="p">)</span>
+<span class="n">grid_MW</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems.G_MW&#39;</span><span class="p">)</span>
+
+<span class="n">n_days_plot</span> <span class="o">=</span> <span class="mi">14</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">[</span><span class="mi">12</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">price_t</span><span class="p">[:</span><span class="mi">24</span><span class="o">*</span><span class="n">n_days_plot</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;price&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">b_E_SOC_t</span><span class="p">[:</span><span class="mi">24</span><span class="o">*</span><span class="n">n_days_plot</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;SoC [MWh]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">b_t</span><span class="p">[:</span><span class="mi">24</span><span class="o">*</span><span class="n">n_days_plot</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Battery P [MW]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;time [hours]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper center&#39;</span><span class="p">,</span> <span class="n">bbox_to_anchor</span><span class="o">=</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.15</span><span class="p">),</span>
+           <span class="n">ncol</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">fancybox</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">shadow</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">[</span><span class="mi">12</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">wind_t</span><span class="p">[:</span><span class="mi">24</span><span class="o">*</span><span class="n">n_days_plot</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;wind&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">solar_t</span><span class="p">[:</span><span class="mi">24</span><span class="o">*</span><span class="n">n_days_plot</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;PV&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">hpp_t</span><span class="p">[:</span><span class="mi">24</span><span class="o">*</span><span class="n">n_days_plot</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;HPP&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">hpp_curt_t</span><span class="p">[:</span><span class="mi">24</span><span class="o">*</span><span class="n">n_days_plot</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;HPP curtailed&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">grid_MW</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Grid MW&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;time [hours]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Power [MW]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper center&#39;</span><span class="p">,</span> <span class="n">bbox_to_anchor</span><span class="o">=</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.15</span><span class="p">),</span>
+           <span class="n">ncol</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">fancybox</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">shadow</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.legend.Legend at 0x215f13fbd00&gt;
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/_build_notebooks_Quickstart_24_1.png" src="../../_images/_build_notebooks_Quickstart_24_1.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/_build_notebooks_Quickstart_24_2.png" src="../../_images/_build_notebooks_Quickstart_24_2.png" />
+</div>
+</div>
+</section>
+<section id="Plot-battery,-wind-and-PV-degradation">
+<h3>Plot battery, wind and PV degradation<a class="headerlink" href="#Plot-battery,-wind-and-PV-degradation" title="Permalink to this heading"></a></h3>
+<p>A yearly loss factor is computed to plot the wind and battery degradation.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">N_life</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">sim_pars</span><span class="p">[</span><span class="s1">&#39;N_life&#39;</span><span class="p">]</span>
+<span class="n">life_h</span> <span class="o">=</span> <span class="n">N_life</span><span class="o">*</span><span class="mi">365</span><span class="o">*</span><span class="mi">24</span>
+<span class="n">age</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">life_h</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mi">24</span><span class="o">*</span><span class="mi">365</span><span class="p">)</span>
+
+<span class="n">SoH</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;battery_degradation.SoH&#39;</span><span class="p">)</span>
+<span class="n">SoH_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;battery_loss_in_capacity_due_to_temp.SoH_all&#39;</span><span class="p">))</span>
+
+<span class="n">wind_t_ext</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems_long_term_operation.wind_t_ext&#39;</span><span class="p">)</span>
+<span class="n">wind_t_ext_deg</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems_long_term_operation.wind_t_ext_deg&#39;</span><span class="p">)</span>
+
+<span class="n">solar_t_ext</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems_long_term_operation.solar_t_ext&#39;</span><span class="p">)</span>
+<span class="n">solar_t_ext_deg</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems_long_term_operation.solar_t_ext_deg&#39;</span><span class="p">)</span>
+
+<span class="n">hpp_t</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems.hpp_t&#39;</span><span class="p">)</span>
+<span class="n">hpp_t_with_deg</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems_long_term_operation.hpp_t_with_deg&#39;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+    <span class="n">index</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="s1">&#39;2023-01-01&#39;</span><span class="p">,</span><span class="n">end</span><span class="o">=</span><span class="s1">&#39;2048-01-01&#39;</span><span class="p">,</span><span class="n">freq</span><span class="o">=</span><span class="s1">&#39;1H&#39;</span><span class="p">),</span>
+    <span class="p">)</span>
+<span class="n">df</span><span class="p">[</span><span class="s1">&#39;wind_t_ext&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span>
+<span class="n">df</span><span class="p">[</span><span class="s1">&#39;wind_t_ext_deg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span>
+<span class="n">df</span><span class="p">[</span><span class="s1">&#39;solar_t_ext&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span>
+<span class="n">df</span><span class="p">[</span><span class="s1">&#39;solar_t_ext_deg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span>
+<span class="n">df</span><span class="p">[</span><span class="s1">&#39;hpp_t&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span>
+<span class="n">df</span><span class="p">[</span><span class="s1">&#39;hpp_t_with_deg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">NaN</span>
+
+<span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">age</span><span class="p">):,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">wind_t_ext</span>
+<span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">age</span><span class="p">):,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">wind_t_ext_deg</span>
+<span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">age</span><span class="p">):,</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">solar_t_ext</span>
+<span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">age</span><span class="p">):,</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">solar_t_ext_deg</span>
+<span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">age</span><span class="p">):,</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">hpp_t</span>
+<span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">age</span><span class="p">):,</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="n">hpp_t_with_deg</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="n">df_year</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">year</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+<span class="n">df_year</span><span class="p">[</span><span class="s1">&#39;age&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df_year</span><span class="p">))</span><span class="o">+</span><span class="mf">0.5</span>
+
+
+<span class="n">df_year</span><span class="p">[</span><span class="s1">&#39;eff_wind_ts_deg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_year</span><span class="o">.</span><span class="n">wind_t_ext_deg</span><span class="o">.</span><span class="n">values</span><span class="o">/</span><span class="n">df_year</span><span class="o">.</span><span class="n">wind_t_ext</span><span class="o">.</span><span class="n">values</span>
+<span class="n">df_year</span><span class="p">[</span><span class="s1">&#39;eff_solar_ts_deg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_year</span><span class="o">.</span><span class="n">solar_t_ext_deg</span><span class="o">.</span><span class="n">values</span><span class="o">/</span><span class="n">df_year</span><span class="o">.</span><span class="n">solar_t_ext</span><span class="o">.</span><span class="n">values</span>
+<span class="n">df_year</span><span class="p">[</span><span class="s1">&#39;eff_hpp_ts_deg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_year</span><span class="o">.</span><span class="n">hpp_t_with_deg</span><span class="o">.</span><span class="n">values</span><span class="o">/</span><span class="n">df_year</span><span class="o">.</span><span class="n">hpp_t</span><span class="o">.</span><span class="n">values</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">[</span><span class="mi">12</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">df_year</span><span class="o">.</span><span class="n">age</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">df_year</span><span class="o">.</span><span class="n">eff_wind_ts_deg</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Wind degr.&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">df_year</span><span class="o">.</span><span class="n">age</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">df_year</span><span class="o">.</span><span class="n">eff_solar_ts_deg</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Solar degr.&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">df_year</span><span class="o">.</span><span class="n">age</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">df_year</span><span class="o">.</span><span class="n">eff_hpp_ts_deg</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>  <span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;HPP degr.&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span> <span class="n">age</span><span class="p">,</span> <span class="n">SoH</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Battery degr.&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span> <span class="n">age</span><span class="p">,</span> <span class="n">SoH_all</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Battery degr. and low temp. losses&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;age [years]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;CF_deg/CF for wind, solar and hpp [-] </span><span class="se">\n</span><span class="s1"> Battery loss of storing capacity [-]&#39;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0, 0.5, &#39;CF_deg/CF for wind, solar and hpp [-] \n Battery loss of storing capacity [-]&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/_build_notebooks_Quickstart_28_1.png" src="../../_images/_build_notebooks_Quickstart_28_1.png" />
+</div>
+</div>
+</section>
+<section id="Compare-ideal-operation-(ems)-wit-h-actual-long-term-opertation-with-degradation">
+<h3>Compare ideal operation (ems) wit h actual long-term opertation with degradation<a class="headerlink" href="#Compare-ideal-operation-(ems)-wit-h-actual-long-term-opertation-with-degradation" title="Permalink to this heading"></a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1">#solar_t = hpp.prob.get_val(&#39;ems.solar_t_ext&#39;)</span>
+<span class="n">b_E_SOC_t</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems.b_E_SOC_t&#39;</span><span class="p">)</span>
+<span class="n">hpp_t</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems.hpp_t&#39;</span><span class="p">)</span>
+<span class="n">hpp_curt_t</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems.hpp_curt_t&#39;</span><span class="p">)</span>
+
+<span class="n">b_E_SOC_t_with_deg</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems_long_term_operation.b_E_SOC_t_with_deg&#39;</span><span class="p">)</span>
+<span class="n">hpp_t_with_deg</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems_long_term_operation.hpp_t_with_deg&#39;</span><span class="p">)</span>
+<span class="n">hpp_curt_t_with_deg</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems_long_term_operation.hpp_curt_t_with_deg&#39;</span><span class="p">)</span>
+
+<span class="n">price_t_ext</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;ems_long_term_operation.price_t_ext&#39;</span><span class="p">)</span>
+
+<span class="c1"># Plot the HPP operation in the 7th year (with and without degradation)</span>
+<span class="n">n_start</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">24</span><span class="o">*</span><span class="mi">365</span><span class="o">*</span><span class="mf">7.2</span><span class="p">)</span>
+<span class="n">n_days_plot</span> <span class="o">=</span> <span class="mi">14</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">[</span><span class="mi">12</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">price_t_ext</span><span class="p">[</span><span class="n">n_start</span><span class="p">:</span><span class="n">n_start</span><span class="o">+</span><span class="mi">24</span><span class="o">*</span><span class="n">n_days_plot</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;price&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">b_E_SOC_t</span><span class="p">[</span><span class="n">n_start</span><span class="p">:</span><span class="n">n_start</span><span class="o">+</span><span class="mi">24</span><span class="o">*</span><span class="n">n_days_plot</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;SoC [MWh]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">b_E_SOC_t_with_deg</span><span class="p">[</span><span class="n">n_start</span><span class="p">:</span><span class="n">n_start</span><span class="o">+</span><span class="mi">24</span><span class="o">*</span><span class="n">n_days_plot</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;SoC with degradation [MWh]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;time [hours]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper center&#39;</span><span class="p">,</span> <span class="n">bbox_to_anchor</span><span class="o">=</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.15</span><span class="p">),</span>
+           <span class="n">ncol</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">fancybox</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">shadow</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">[</span><span class="mi">12</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">hpp_t</span><span class="p">[</span><span class="n">n_start</span><span class="p">:</span><span class="n">n_start</span><span class="o">+</span><span class="mi">24</span><span class="o">*</span><span class="n">n_days_plot</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;HPP&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">hpp_t_with_deg</span><span class="p">[</span><span class="n">n_start</span><span class="p">:</span><span class="n">n_start</span><span class="o">+</span><span class="mi">24</span><span class="o">*</span><span class="n">n_days_plot</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;HPP with degradation&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">hpp_curt_t</span><span class="p">[</span><span class="n">n_start</span><span class="p">:</span><span class="n">n_start</span><span class="o">+</span><span class="mi">24</span><span class="o">*</span><span class="n">n_days_plot</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;HPP curtailed&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">hpp_curt_t_with_deg</span><span class="p">[</span><span class="n">n_start</span><span class="p">:</span><span class="n">n_start</span><span class="o">+</span><span class="mi">24</span><span class="o">*</span><span class="n">n_days_plot</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;HPP curtailed with degradation&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">grid_MW</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Grid MW&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;time [hours]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Power [MW]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper center&#39;</span><span class="p">,</span> <span class="n">bbox_to_anchor</span><span class="o">=</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.15</span><span class="p">),</span>
+           <span class="n">ncol</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">fancybox</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">shadow</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.legend.Legend at 0x2158e9c68f0&gt;
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/_build_notebooks_Quickstart_30_1.png" src="../../_images/_build_notebooks_Quickstart_30_1.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/_build_notebooks_Quickstart_30_2.png" src="../../_images/_build_notebooks_Quickstart_30_2.png" />
+</div>
+</div>
+</section>
+<section id="Compare-battery-degradation-results-by-changing-the-cost-of-battery-fluctuations-factor">
+<h3>Compare battery degradation results by changing the cost of battery fluctuations factor<a class="headerlink" href="#Compare-battery-degradation-results-by-changing-the-cost-of-battery-fluctuations-factor" title="Permalink to this heading"></a></h3>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cost_of_battery_P_fluct_in_peak_price_ratio</span> <span class="o">=</span> <span class="mf">0.0</span>
+<span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="n">clearance</span><span class="p">,</span> <span class="n">sp</span><span class="p">,</span> <span class="n">wt_rated_power_MW</span><span class="p">,</span> <span class="n">Nwt</span><span class="p">,</span> <span class="n">wind_MW_per_km2</span><span class="p">,</span>
+    <span class="n">solar_MW</span><span class="p">,</span>  <span class="n">surface_tilt_deg</span><span class="p">,</span> <span class="n">surface_azimuth_deg</span><span class="p">,</span> <span class="n">DC_AC_ratio</span><span class="p">,</span>
+    <span class="n">b_P</span><span class="p">,</span> <span class="n">b_E_h</span><span class="p">,</span> <span class="n">cost_of_battery_P_fluct_in_peak_price_ratio</span><span class="p">]</span>
+<span class="n">outs</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">)</span>
+
+<span class="n">SoH</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;battery_degradation.SoH&#39;</span><span class="p">))</span>
+
+<span class="n">cost_of_battery_P_fluct_in_peak_price_ratio_B</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="n">clearance</span><span class="p">,</span> <span class="n">sp</span><span class="p">,</span> <span class="n">wt_rated_power_MW</span><span class="p">,</span> <span class="n">Nwt</span><span class="p">,</span> <span class="n">wind_MW_per_km2</span><span class="p">,</span>
+    <span class="n">solar_MW</span><span class="p">,</span>  <span class="n">surface_tilt_deg</span><span class="p">,</span> <span class="n">surface_azimuth_deg</span><span class="p">,</span> <span class="n">DC_AC_ratio</span><span class="p">,</span>
+    <span class="n">b_P</span><span class="p">,</span> <span class="n">b_E_h</span><span class="p">,</span> <span class="n">cost_of_battery_P_fluct_in_peak_price_ratio_B</span><span class="p">]</span>
+<span class="n">outs</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">)</span>
+<span class="n">SoH_B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;battery_degradation.SoH&#39;</span><span class="p">))</span>
+
+<span class="n">cost_of_battery_P_fluct_in_peak_price_ratio_C</span> <span class="o">=</span> <span class="mi">20</span>
+<span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="n">clearance</span><span class="p">,</span> <span class="n">sp</span><span class="p">,</span> <span class="n">wt_rated_power_MW</span><span class="p">,</span> <span class="n">Nwt</span><span class="p">,</span> <span class="n">wind_MW_per_km2</span><span class="p">,</span>
+    <span class="n">solar_MW</span><span class="p">,</span>  <span class="n">surface_tilt_deg</span><span class="p">,</span> <span class="n">surface_azimuth_deg</span><span class="p">,</span> <span class="n">DC_AC_ratio</span><span class="p">,</span>
+    <span class="n">b_P</span><span class="p">,</span> <span class="n">b_E_h</span><span class="p">,</span> <span class="n">cost_of_batt_degr</span><span class="p">]</span>
+<span class="n">outs</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">)</span>
+<span class="n">SoH_C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="s1">&#39;battery_degradation.SoH&#39;</span><span class="p">))</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">[</span><span class="mi">12</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span> <span class="n">age</span><span class="p">,</span> <span class="n">SoH</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;$C_</span><span class="si">{bfl}</span><span class="s1">=0$&#39;</span><span class="p">)</span>
+<span class="c1">#plt.plot( age, SoH_B, label=f&#39;{cost_of_battery_P_fluct_in_peak_price_ratio_B}*Pr_Peak&#39;)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span> <span class="n">age</span><span class="p">,</span> <span class="n">SoH_C</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;$C_</span><span class="si">{bfl}</span><span class="s1">=$&#39;</span><span class="o">+</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cost_of_battery_P_fluct_in_peak_price_ratio_C</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span><span class="c1">#label=f&#39;{cost_of_battery_P_fluct_in_peak_price_ratio_C}*Pr_Peak&#39;)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span> <span class="n">age</span><span class="p">,</span> <span class="mf">0.7</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">age</span><span class="p">),</span> <span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;$min(1-L) = 0.7$&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;age [years]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;Battery State of Health, $1-L(t)$ [-]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s1">&#39;Cost of Battery fluctuations&#39;</span><span class="p">,</span>
+           <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper center&#39;</span><span class="p">,</span> <span class="n">bbox_to_anchor</span><span class="o">=</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.27</span><span class="p">),</span>
+           <span class="n">ncol</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">fancybox</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">shadow</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.legend.Legend at 0x2158f19e4d0&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/_build_notebooks_Quickstart_33_1.png" src="../../_images/_build_notebooks_Quickstart_33_1.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, DTU Wind and Energy Systems.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

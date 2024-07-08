@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Battery degradation API &mdash; hydesign 1.2.3 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            hydesign
+          </a>
+              <div class="version">
+                1.2.3
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">Battery degradation API</a></li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">hydesign</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Battery degradation API</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/battery_degradation.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-hydesign.battery_degradation">
+<span id="battery-degradation-api"></span><h1>Battery degradation API<a class="headerlink" href="#module-hydesign.battery_degradation" title="Permalink to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="hydesign.battery_degradation.battery_degradation">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">hydesign.battery_degradation.</span></span><span class="sig-name descname"><span class="pre">battery_degradation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">weather_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_batteries</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">life_h</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">219000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weeks_per_season_per_year</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">battery_deg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/hydesign/battery_degradation.html#battery_degradation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hydesign.battery_degradation.battery_degradation" title="Permalink to this definition"></a></dt>
+<dd><p>Battery degradation model to predict the degradation of the battery throughout the lifetime of the plant</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>b_E_SOC_t</strong> (<em>battery energy SOC time series</em>) – </p></li>
+<li><p><strong>min_LoH</strong> (<em>minimum level of health before death of battery</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>SoH</strong></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>battery state of health at discretization levels</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="hydesign.battery_degradation.battery_degradation.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">weather_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_batteries</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">life_h</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">219000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weeks_per_season_per_year</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">battery_deg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/hydesign/battery_degradation.html#battery_degradation.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hydesign.battery_degradation.battery_degradation.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>Store some bound methods so we can detect runtime overrides.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hydesign.battery_degradation.battery_degradation.compute">
+<span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inputs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outputs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/hydesign/battery_degradation.html#battery_degradation.compute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hydesign.battery_degradation.battery_degradation.compute" title="Permalink to this definition"></a></dt>
+<dd><p>Compute outputs given inputs. The model is assumed to be in an unscaled state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>inputs</strong> (<em>Vector</em>) – Unscaled, dimensional input variables read via inputs[key].</p></li>
+<li><p><strong>outputs</strong> (<em>Vector</em>) – Unscaled, dimensional output variables read via outputs[key].</p></li>
+<li><p><strong>discrete_inputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.12)"><em>dict</em></a><em> or </em><em>None</em>) – If not None, dict containing discrete input values.</p></li>
+<li><p><strong>discrete_outputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.12)"><em>dict</em></a><em> or </em><em>None</em>) – If not None, dict containing discrete output values.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hydesign.battery_degradation.battery_degradation.setup">
+<span class="sig-name descname"><span class="pre">setup</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/hydesign/battery_degradation.html#battery_degradation.setup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hydesign.battery_degradation.battery_degradation.setup" title="Permalink to this definition"></a></dt>
+<dd><p>Declare inputs and outputs.</p>
+<dl class="simple">
+<dt>Available attributes:</dt><dd><p>name
+pathname
+comm
+options</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="hydesign.battery_degradation.battery_replacement">
+<span class="sig-prename descclassname"><span class="pre">hydesign.battery_degradation.</span></span><span class="sig-name descname"><span class="pre">battery_replacement</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rf_DoD</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rf_SoC</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rf_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rf_i_start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">avr_tem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_LoH</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_steps_in_LoH</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_batteries</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/hydesign/battery_degradation.html#battery_replacement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hydesign.battery_degradation.battery_replacement" title="Permalink to this definition"></a></dt>
+<dd><p>Battery degradation in steps and battery replacement</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rf_DoD</strong> (<em>depth of discharge after rainflow counting</em>) – </p></li>
+<li><p><strong>rf_SoC</strong> (<em>mean SoC after rainflow counting</em>) – </p></li>
+<li><p><strong>rf_count</strong> (<em>half</em><em> or </em><em>full cycle after rainflow counting</em><em>, </em><em>ethier 0.5</em><em> or </em><em>1</em>) – </p></li>
+<li><p><strong>rf_i_start</strong> (<em>time index for the cycles</em><em> [</em><em>in hours</em><em>]</em>) – </p></li>
+<li><p><strong>avr_tem</strong> (<em>average temperature in the location</em><em>, </em><em>yearly</em><em> or </em><em>more long. default value is 20</em>) – </p></li>
+<li><p><strong>min_LoH</strong> (<em>minimum level of health before death of battery</em>) – </p></li>
+<li><p><strong>n_steps_in_LoH</strong> (<em>number of discretizations in battery state of health</em>) – </p></li>
+<li><p><strong>num_batteries</strong> (<em>number of battery replacements</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>LoC</strong> (<em>battery level of capacity</em>)</p></li>
+<li><p><strong>ind_q</strong> (<em>time indices for constant health levels</em>)</p></li>
+<li><p><strong>ind_q_last</strong> (<em>time index for battery replacement</em>)</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="hydesign.battery_degradation.degradation">
+<span class="sig-prename descclassname"><span class="pre">hydesign.battery_degradation.</span></span><span class="sig-name descname"><span class="pre">degradation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rf_DoD</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rf_SoC</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rf_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rf_i_start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">avr_tem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">LLoC_0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/hydesign/battery_degradation.html#degradation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hydesign.battery_degradation.degradation" title="Permalink to this definition"></a></dt>
+<dd><p>Calculating the new level of capacity of the battery.</p>
+<p>Xu, B., Oudalov, A., Ulbig, A., Andersson, G., and Kirschen, D. S.: Modeling of lithium-ion battery degradation for cell life assessment,
+IEEE Transactions on Smart Grid, 9, 1131–1140, 2016.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rf_DoD</strong> (<em>depth of discharge after rainflow counting</em>) – </p></li>
+<li><p><strong>rf_SoC</strong> (<em>mean SoC after rainflow counting</em>) – </p></li>
+<li><p><strong>rf_count</strong> (<em>half</em><em> or </em><em>full cycle after rainflow counting</em><em>, </em><em>ethier 0.5</em><em> or </em><em>1</em>) – </p></li>
+<li><p><strong>rf_i_start</strong> (<em>time index for the cycles</em><em> [</em><em>in hours</em><em>]</em>) – </p></li>
+<li><p><strong>avr_tem</strong> (<em>average temperature in the location</em><em>, </em><em>yearly</em><em> or </em><em>more long. default value is 20</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>LoC</strong> (<em>battery level of capacity</em>)</p></li>
+<li><p><em>LoC1</em></p></li>
+<li><p><em>LLoC</em></p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="hydesign.battery_degradation.Linear_Degfun">
+<span class="sig-prename descclassname"><span class="pre">hydesign.battery_degradation.</span></span><span class="sig-name descname"><span class="pre">Linear_Degfun</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rf_DoD</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rf_SoC</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rf_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rf_i_start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">avr_tem</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/hydesign/battery_degradation.html#Linear_Degfun"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hydesign.battery_degradation.Linear_Degfun" title="Permalink to this definition"></a></dt>
+<dd><p>Linear degradation function.</p>
+<p>Xu, B., Oudalov, A., Ulbig, A., Andersson, G., and Kirschen, D. S.: Modeling of lithium-ion battery degradation for cell life assessment,
+IEEE Transactions on Smart Grid, 9, 1131–1140, 2016.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rf_DoD</strong> (<em>depth of discharge after rainflow counting</em>) – </p></li>
+<li><p><strong>rf_SoC</strong> (<em>mean SoC after rainflow counting</em>) – </p></li>
+<li><p><strong>rf_count</strong> (<em>half</em><em> or </em><em>full cycle after rainflow counting</em><em>, </em><em>ethier 0.5</em><em> or </em><em>1</em>) – </p></li>
+<li><p><strong>rf_i_start</strong> (<em>time index for the cycles</em><em> [</em><em>in hours</em><em>]</em>) – </p></li>
+<li><p><strong>avr_tem</strong> (<em>average temperature in the location</em><em>, </em><em>yearly</em><em> or </em><em>more long. default value is 20</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.array(LLoC_hist)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="hydesign.battery_degradation.RFcount">
+<span class="sig-prename descclassname"><span class="pre">hydesign.battery_degradation.</span></span><span class="sig-name descname"><span class="pre">RFcount</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">SoC</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/hydesign/battery_degradation.html#RFcount"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hydesign.battery_degradation.RFcount" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, DTU Wind and Energy Systems.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

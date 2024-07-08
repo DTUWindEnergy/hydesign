@@ -1,0 +1,137 @@
+# --------------------------------------------------------------------------------------------
+# HPP Global
+# --------------------------------------------------------------------------------------------
+G_MW: 0 # Grid capacity
+year: '2012' # Single representative year
+N_life: 25
+
+# --------------------------------------------------------------------------------------------
+# Wind
+# --------------------------------------------------------------------------------------------
+wind_turbine_cost: 890_000  # [Euro/MW] for reference turbine
+wind_civil_works_cost: 370_000  # [Euro/MW]
+wind_fixed_onm_cost: 39_000  # Wind fixed O&M cost per year [Euro/MW /year]
+wind_variable_onm_cost: 3.89 #[EUR/MWh_e] Danish Energy Agency
+
+#wpp_efficiency: 0.95
+d_ref: 270
+hh_ref: 155
+p_rated_ref: 20 #[MW] 
+# Degradation
+wpp_efficiency: 0.95
+wind_deg_yr: [0, 25]
+wind_deg: [0, 0] #25yr * 0%/yr
+share_WT_deg_types: 0.5
+
+# --------------------------------------------------------------------------------------------
+# PV 
+# --------------------------------------------------------------------------------------------
+solar_PV_cost: 175_000   # [Euro/MW DC]
+solar_hardware_installation_cost: 150_000  # [Euro/MW DC]
+solar_inverter_cost: 25_000 #[Euro/MW]
+solar_fixed_onm_cost: 20_000  # Solar O&M cost per year [Euro/MW] DC
+#pv_deg_per_year: 0.5e-2
+land_use_per_solar_MW: 0.0001 # Danish energy agency
+
+#selected tracker
+tracking: 'No' # 'single_axis'  #
+
+# Degradation
+pv_deg_yr: [0,    25]
+pv_deg: [0, 0.125] #0.0 intial + 25yr * 0.5%/yr
+# --------------------------------------------------------------------------------------------
+# Battery
+# --------------------------------------------------------------------------------------------
+battery_energy_cost: 90_000  # [Euro/MWh]
+battery_power_cost: 32_000    # Power conversion system cost [Euro/MW]
+battery_BOP_installation_commissioning_cost: 36_000 # Electric BalanceOfPlant, instal+commission cost [Euro/MW]
+battery_control_system_cost: 9_000  # Grid management control system cost[Euro/MW]
+battery_energy_onm_cost: 0 
+
+#battery_energy_cost: 45_000  # [Euro/MWh]
+#battery_power_cost: 16_000    # Power conversion system cost [Euro/MW]
+#battery_BOP_installation_commissioning_cost: 18_000 # Electric BalanceOfPlant, instal+commission cost [Euro/MW]
+#battery_control_system_cost: 4_500  # Grid management control system cost[Euro/MW]
+#battery_energy_onm_cost: 0 
+
+# EMS and Degradation parameters
+battery_depth_of_discharge: 0.9 # 1 - Minimum energy level in the battery
+battery_charge_efficiency: 0.98  # Charge efficiency for Lithium-ion
+battery_price_reduction_per_year: 0.1 # Battery price reduction per year
+#n_steps_in_LoH: 20 # Number of battery degradation levels for discretization of lifetime operation
+min_LoH: 0.7 # Minimum energy storage capacity in percent for the storage to be replaced
+
+# Penalty is defined as: Number of peak hours of full load expected per day.
+peak_hr_quantile: 0.9 # An hour of peak price has prices above this quantile
+n_full_power_hours_expected_per_day_at_peak_price: 0 
+
+# Indian case Penalty has expected hours at 0.85*3= 2.55
+# n_full_power_hours_expected_per_day_at_peak_price: 2.55
+
+# --------------------------------------------------------------------------------------------
+# P2H parameters
+# efficiency curve parameters are mentioned in EMS component (https://doi.org/10.3390/en13030612)
+# --------------------------------------------------------------------------------------------
+price_H2: 5 #[Euro/kg]
+storage_eff: 0.9 #Compressor efficiency for hydrogen storage
+ptg_deg: 0.99 #Electrolyzer degradation over lifetime
+hhv: 39.3 #[kWh/kg]
+water_consumption : 9.4 #l/kg
+electrolyzer_capex_cost : 480_000  #[EUR/MW] This value is for PEM electrolyzers
+# For Alkaline electrolyzers CAPEX can be considered as 70% of PEM
+electrolyzer_opex_cost : 9600  #It is 2% of electrolyzer_capex_cost #[EUR/MW]
+electrolyzer_power_electronics_cost : 0  #[EUR/MW] included in the capex_cost but can be considered seperately also
+water_cost : 4 #[EUR/m3]
+water_treatment_cost : 2  #[EUR/m3]
+H2_storage_capex_cost: 300 #[EUR/kg] https://www.hydrogen.energy.gov/pdfs/review22/st235_houchins_2022_p.pdf
+H2_storage_opex_cost: 3 #[EUR/kg] 1% of CAPEX 
+H2_transportation_cost: 5 #[EUR/kg/km] transportation can be through pipelines or lorry
+# https://joint-research-centre.ec.europa.eu/system/files/2021-06/jrc124206_assessment_of_hydrogen_delivery_options.pdf
+H2_transportation_distance: 0 #[km]
+penalty_factor_H2: 0 #[Eur/kg] This is the penalty price for not meeting the demand of hydrogen in an hour, for infinite H2 offtake this value becomes ZERO
+electrolyzer_eff_curve_name: 'PEM electrolyzer simple'
+# min_power_standby: 0 # minimum percentage of rated electrolyzer power required to operate in standby mode
+# ramp_up_limit: 50 # ramp-up limit of electrolyzer in MW/h
+# ramp_down_limit: 50 # ramp-down limit of electrolyzer in MW/h
+
+# The storage size can be kept as zero when there is no storage
+# For infinite hydrogen offtake keep the demand very high in 'H2_demand.csv' file
+
+# --------------------------------------------------------------------------------------------
+# Shared costs
+# --------------------------------------------------------------------------------------------
+hpp_BOS_soft_cost: 100_000       # [Euro/MW]
+hpp_grid_connection_cost: 240_000 # [Euro/MW]
+#land cost not same format in excel it's per MW
+land_cost: 0  #  [Euro/km**2] from Hybridize imputs 6-12k Euro/acre. 1km2 = 247.105acre
+
+# --------------------------------------------------------------------------------------------
+# Financial and Economic data
+# --------------------------------------------------------------------------------------------
+#discount_factor: 0.06
+wind_WACC: 0.052    # Markup of after tax WACC for offshore WT
+solar_WACC: 0.048   # After tax WACC for solar PV
+battery_WACC: 0.08 # After tax WACC for stationary storge li-ion batteries
+tax_rate: 0.22      # Corporate tax rate
+ptg_WACC: 0.07      # After tax WACC for P2H plant
+
+# Early CAPEX payment, or phasing 
+phasing_yr: [-1,0]
+phasing_CAPEX: [0,1] # shares will be normalized to sum the CAPEX
+
+# Inflation will be linearly interpolated at integer year values
+inflation_yr: [ 0,    25]
+inflation: [0,  0]
+ref_yr_inflation: 0 # inflation index is computed with respect to this year
+
+# depreciation
+depreciation_yr: [0, 25]
+depreciation: [0, 0]
+# --------------------------------------------------------------------------------------------
+# Weather databases
+# Not required if the user provides input_ts_fn.csv to hpp_model
+# --------------------------------------------------------------------------------------------
+era5_zarr: '/groups/reanalyses/era5/app/era5.zarr' # location of wind speed renalysis
+ratio_gwa_era5: '/groups/INP/era5/ratio_gwa3_era5.nc' # location of mean wind speed correction factor
+era5_ghi_zarr: '/groups/INP/era5/ghi.zarr' # location of GHI renalysis
+elevation_fn: '/groups/INP/era5/SRTMv3_plus_ViewFinder_coarsen.nc' # Altitude map for extracting altitude

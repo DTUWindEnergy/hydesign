@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Installation Guide &mdash; hydesign 1.2.3 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            hydesign
+          </a>
+              <div class="version">
+                1.2.3
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">Installation Guide</a><ul>
+<li><a class="reference internal" href="#pre-installation">Pre-Installation</a></li>
+<li><a class="reference internal" href="#simple-installation">Simple Installation</a></li>
+<li><a class="reference internal" href="#developer-installation">Developer Installation</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">hydesign</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Installation Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/installation.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="installation-guide">
+<span id="installation"></span><h1>Installation Guide<a class="headerlink" href="#installation-guide" title="Permalink to this heading"></a></h1>
+<section id="pre-installation">
+<h2>Pre-Installation<a class="headerlink" href="#pre-installation" title="Permalink to this heading"></a></h2>
+<p>Before you can install the software, you must first have a working Python distribution with a package manager. For all platforms we recommend that you download and install Anaconda - a professional grade, full-blown scientific Python distribution.</p>
+<p>To set up Anaconda, you should:</p>
+<blockquote>
+<div><ul>
+<li><p>Download and install Anaconda (Python 3.x version, 64 bit installer is recommended) from <a class="reference external" href="https://www.continuum.io/downloads">https://www.continuum.io/downloads</a></p></li>
+<li><p>Update the root Anaconda environment (type in a terminal):</p>
+<blockquote>
+<div><p><code class="docutils literal notranslate"><span class="pre">&gt;&gt;</span> <span class="pre">conda</span> <span class="pre">update</span> <span class="pre">--all</span></code></p>
+</div></blockquote>
+</li>
+<li><p>Activate the Anaconda root environment in a terminal as follows:</p>
+<blockquote>
+<div><p><code class="docutils literal notranslate"><span class="pre">&gt;&gt;</span> <span class="pre">activate</span></code></p>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+<p>It is recommended to create a new environment to install hydesign if you have other Python programs. This ensures that the dependencies for the different packages do not conflict with one another. In the command prompt, create and active an environment with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">gitlab</span><span class="o">.</span><span class="n">windenergy</span><span class="o">.</span><span class="n">dtu</span><span class="o">.</span><span class="n">dk</span><span class="o">/</span><span class="n">TOPFARM</span><span class="o">/</span><span class="n">hydesign</span><span class="o">.</span><span class="n">git</span>
+<span class="n">cd</span> <span class="n">hydesign</span>
+<span class="n">conda</span> <span class="n">env</span> <span class="n">create</span> <span class="o">--</span><span class="n">file</span> <span class="n">environment</span><span class="o">.</span><span class="n">yml</span>
+<span class="n">conda</span> <span class="n">activate</span> <span class="n">hydesign</span>
+</pre></div>
+</div>
+</section>
+<section id="simple-installation">
+<h2>Simple Installation<a class="headerlink" href="#simple-installation" title="Permalink to this heading"></a></h2>
+<p>hydesign’s base code is open-sourced and freely available on <a class="reference external" href="https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign">GitLab</a> (MIT license).</p>
+<ul>
+<li><p>Install from PyPi.org (official releases):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">hydesign</span>
+</pre></div>
+</div>
+</li>
+<li><p>Install from GitLab  (includes any recent updates):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">git</span><span class="o">+</span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">gitlab</span><span class="o">.</span><span class="n">windenergy</span><span class="o">.</span><span class="n">dtu</span><span class="o">.</span><span class="n">dk</span><span class="o">/</span><span class="n">TOPFARM</span><span class="o">/</span><span class="n">hydesign</span><span class="o">.</span><span class="n">git</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</section>
+<section id="developer-installation">
+<h2>Developer Installation<a class="headerlink" href="#developer-installation" title="Permalink to this heading"></a></h2>
+<p>We highly recommend developers to install hydesign into the environment created previously. The commands to clone and install hydesign with developer options into the current active environment in an Anaconda Prompt are as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">gitlab</span><span class="o">.</span><span class="n">windenergy</span><span class="o">.</span><span class="n">dtu</span><span class="o">.</span><span class="n">dk</span><span class="o">/</span><span class="n">TOPFARM</span><span class="o">/</span><span class="n">hydesign</span><span class="o">.</span><span class="n">git</span>
+<span class="n">cd</span> <span class="n">hydesign</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">e</span> <span class="o">.</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, DTU Wind and Energy Systems.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

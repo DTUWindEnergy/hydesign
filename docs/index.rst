@@ -1,64 +1,44 @@
 Welcome to hydesign
-===========================================
+=====================
+**HyDesign** is an open-source tool developed by DTU Wind for design and control of utility scale wind-solar-storage based hybrid power plant. It provides a methodology for sizing 
+these plants by solving a nested optimization problem: an outer sizing optimization 
+and an internal operation optimization. The outer optimization maximizes net present value while considering capital expenditures, 
+and the internal optimization focuses on energy management. HyDesign incorporates turbine selection, wake loss models, and degradation models for wind and PV systems, 
+and includes battery degradation. The tool applies a parallel "efficient global optimization" algorithm to ensure efficient and effective global optimization.
 
-A tool for design and control of utility scale wind-solar-storage based hybrid power plant.
+	**- Key Features:**
 
-For installation instructions, please see the :ref:`Installation Guide <installation>`.
+		- **Hybrid Power Plant Optimization**: Optimizes the combination of wind, solar, and battery storage to maximize value.
+		- **Nested Optimization**: Combines sizing and operation optimization for comprehensive results.
+		- **Degradation Models**: Includes degradation over time for accurate long-term performance predictions.
+		- **Open-Source**: Available for use and modification by the community.
 
-Source code repository and issue tracker:
-    https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign
-    
-License:
-    MIT_
+	**- Use Cases:**
 
-.. _MIT: https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign/blob/main/LICENSE
-
-Getting Started
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+		HyDesign is particularly useful in scenarios where hybrid power plants can provide better returns than single technology plants, 
+		such as in locations with comparable wind and solar resources or in electricity markets with variable prices.
+		
 The :ref:`Quickstart </notebooks/Quickstart.ipynb>` section shows how to set up and perform some basic operations in hydesign.
 
-Explanations of hydesign's core objects can be found in the following tutorials:
-
-
-    .. toctree::
-        :maxdepth: 1
-	:caption: Contents
-    
-        installation
-        how_to_cite
-        notebooks/ChangeLog
-               
-    .. toctree::
-        :maxdepth: 1
-	:caption: Tutorials
-       
-	notebooks/Quickstart
-	notebooks/Advanced_hpp_model
-	notebooks/HPP_evaluation_P2X
-	notebooks/hpp_sizing
-	notebooks/more_sizing_examples
-	notebooks/break_even_price_and_PPA
-	notebooks/constant_output
-	notebooks/offshore
-	notebooks/Example_ISO_prob
-	notebooks/HPP_evaluation_BM
-	notebooks/Hybridize
+Documentation Content
+------------------------
 
     .. toctree::
         :maxdepth: 1
-	:caption: API Reference
-            
-        api/Parallel_EGO
-        api/battery_degradation
-        api/costs
-        api/ems
-        api/finance
-        api/hpp_assembly
-        api/hpp_assembly_P2X
-        api/nrel_csm_wrapper
-        api/pv
-        api/weather
-        api/wind
+
+	license_citation
+	installation
+	notebooks/ChangeLog
+	tutorials
+	api
+	contact_info
+
+
+
+
+
+
+
 
 
     

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>&lt;no title&gt; &mdash; hydesign 1.2.3 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script>window.MathJax = {"TeX": {"equationNumbers": {"autoNumber": "AMS", "useLabelIds": true}}, "tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            hydesign
+          </a>
+              <div class="version">
+                1.2.3
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul class="simple">
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">hydesign</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">&lt;no title&gt;</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/notebooks/sizing_example_BM.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="admonition note">
+<p><span class="raw-html"><a href="https://colab.research.google.com/github/DTUWindEnergy/hydesign/blob/main/docs/notebooks\sizing_example_BM.ipynb"><img alt="Open and run in Colab (interactive)" src="../_static/colab-badge.svg" style="vertical-align:text-bottom"></a>
+<a href="https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign/-/tree/main/docs/notebooks\sizing_example_BM.ipynb"><img alt="Edit on Gitlab" src="https://img.shields.io/badge/Edit%20on-Gitlab-blue?style=flat&logo=gitlab" style="vertical-align:text-bottom"></a>
+<a href="https://kaggle.com/kernels/welcome?src=https://github.com/DTUWindEnergy/hydesign/blob/main/docs/notebooks\sizing_example_BM.ipynb"><img alt="Open and run in Kaggle (interactive)" src="https://kaggle.com/static/images/open-in-kaggle.svg" style="vertical-align:text-bottom"></a></span></p>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">hydesign.assembly.hpp_assembly_BM</span> <span class="kn">import</span> <span class="n">hpp_model</span>
+<span class="kn">from</span> <span class="nn">hydesign.Parallel_EGO</span> <span class="kn">import</span> <span class="n">get_kwargs</span><span class="p">,</span> <span class="n">EfficientGlobalOptimizationDriver</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+C:\Users\mikf\Anaconda3\envs\hd2\lib\site-packages\pyoptsparse\pyOpt_MPI.py:68: UserWarning: mpi4py could not be imported. mpi4py is required to use the parallel gradient analysis and parallel objective analysis for non-gradient based optimizers. Continuing using a dummy MPI module from pyOptSparse.
+  warnings.warn(warn)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">inputs</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;example&#39;</span><span class="p">:</span> <span class="mi">17</span><span class="p">,</span>
+            <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;longitude&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;latitude&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;altitude&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;input_ts_fn&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;sim_pars_fn&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+
+            <span class="s1">&#39;opt_var&#39;</span><span class="p">:</span> <span class="s2">&quot;NPV_over_CAPEX&quot;</span><span class="p">,</span>
+            <span class="s1">&#39;num_batteries&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+            <span class="s1">&#39;n_procs&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s1">&#39;n_doe&#39;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+            <span class="s1">&#39;n_comp&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+            <span class="s1">&#39;n_clusters&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s1">&#39;n_seed&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;max_iter&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s1">&#39;final_design_fn&#39;</span><span class="p">:</span> <span class="s1">&#39;hydesign_design_9.csv&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;npred&#39;</span><span class="p">:</span> <span class="mf">3e4</span><span class="p">,</span>
+            <span class="s1">&#39;tol&#39;</span><span class="p">:</span> <span class="mf">1e-6</span><span class="p">,</span>
+            <span class="s1">&#39;min_conv_iter&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="s1">&#39;work_dir&#39;</span><span class="p">:</span> <span class="s1">&#39;./&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;hpp_model&#39;</span><span class="p">:</span> <span class="n">hpp_model</span><span class="p">,</span>
+            <span class="p">}</span>
+
+<span class="n">kwargs</span> <span class="o">=</span> <span class="n">get_kwargs</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+<span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;variables&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;clearance [m]&#39;</span><span class="p">:</span>
+        <span class="c1"># {&#39;var_type&#39;:&#39;design&#39;,</span>
+        <span class="c1">#   &#39;limits&#39;:[10, 60],</span>
+        <span class="c1">#   &#39;types&#39;:&#39;int&#39;</span>
+        <span class="c1">#   },</span>
+        <span class="p">{</span><span class="s1">&#39;var_type&#39;</span><span class="p">:</span><span class="s1">&#39;fixed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mi">10</span>
+            <span class="p">},</span>
+        <span class="s1">&#39;sp [W/m2]&#39;</span><span class="p">:</span>
+        <span class="c1"># {&#39;var_type&#39;:&#39;design&#39;,</span>
+        <span class="c1">#  &#39;limits&#39;:[200, 359],</span>
+        <span class="c1">#  &#39;types&#39;:&#39;int&#39;</span>
+        <span class="c1">#  },</span>
+        <span class="p">{</span><span class="s1">&#39;var_type&#39;</span><span class="p">:</span><span class="s1">&#39;fixed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mi">350</span>
+            <span class="p">},</span>
+    <span class="s1">&#39;p_rated [MW]&#39;</span><span class="p">:</span>
+        <span class="c1"># {&#39;var_type&#39;:&#39;design&#39;,</span>
+        <span class="c1">#   &#39;limits&#39;:[1, 10],</span>
+        <span class="c1">#   &#39;types&#39;:&#39;int&#39;</span>
+        <span class="c1">#   },</span>
+        <span class="p">{</span><span class="s1">&#39;var_type&#39;</span><span class="p">:</span><span class="s1">&#39;fixed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mi">5</span>
+            <span class="p">},</span>
+    <span class="s1">&#39;Nwt&#39;</span><span class="p">:</span>
+        <span class="p">{</span><span class="s1">&#39;var_type&#39;</span><span class="p">:</span><span class="s1">&#39;design&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;limits&#39;</span><span class="p">:[</span><span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">],</span>
+            <span class="s1">&#39;types&#39;</span><span class="p">:</span><span class="s1">&#39;int&#39;</span>
+            <span class="p">},</span>
+        <span class="c1"># {&#39;var_type&#39;:&#39;fixed&#39;,</span>
+        <span class="c1">#   &#39;value&#39;: 200</span>
+        <span class="c1">#   },</span>
+    <span class="s1">&#39;wind_MW_per_km2 [MW/km2]&#39;</span><span class="p">:</span>
+        <span class="c1"># {&#39;var_type&#39;:&#39;design&#39;,</span>
+        <span class="c1">#   &#39;limits&#39;:[5, 9],</span>
+        <span class="c1">#   &#39;types&#39;:&#39;float&#39;</span>
+        <span class="c1">#   },</span>
+        <span class="p">{</span><span class="s1">&#39;var_type&#39;</span><span class="p">:</span><span class="s1">&#39;fixed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mi">7</span>
+            <span class="p">},</span>
+    <span class="s1">&#39;solar_MW [MW]&#39;</span><span class="p">:</span>
+        <span class="c1"># {&#39;var_type&#39;:&#39;design&#39;,</span>
+        <span class="c1">#   &#39;limits&#39;:[0, 400],</span>
+        <span class="c1">#   &#39;types&#39;:&#39;int&#39;</span>
+        <span class="c1">#   },</span>
+        <span class="p">{</span><span class="s1">&#39;var_type&#39;</span><span class="p">:</span><span class="s1">&#39;fixed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mi">0</span>
+            <span class="p">},</span>
+    <span class="s1">&#39;surface_tilt [deg]&#39;</span><span class="p">:</span>
+        <span class="c1"># {&#39;var_type&#39;:&#39;design&#39;,</span>
+        <span class="c1">#   &#39;limits&#39;:[0, 50],</span>
+        <span class="c1">#   &#39;types&#39;:&#39;float&#39;</span>
+        <span class="c1">#   },</span>
+        <span class="p">{</span><span class="s1">&#39;var_type&#39;</span><span class="p">:</span><span class="s1">&#39;fixed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mi">25</span>
+            <span class="p">},</span>
+    <span class="s1">&#39;surface_azimuth [deg]&#39;</span><span class="p">:</span>
+        <span class="c1"># {&#39;var_type&#39;:&#39;design&#39;,</span>
+        <span class="c1">#   &#39;limits&#39;:[150, 210],</span>
+        <span class="c1">#   &#39;types&#39;:&#39;float&#39;</span>
+        <span class="c1">#   },</span>
+        <span class="p">{</span><span class="s1">&#39;var_type&#39;</span><span class="p">:</span><span class="s1">&#39;fixed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mi">180</span>
+            <span class="p">},</span>
+    <span class="s1">&#39;DC_AC_ratio&#39;</span><span class="p">:</span>
+        <span class="c1"># {&#39;var_type&#39;:&#39;design&#39;,</span>
+        <span class="c1">#   &#39;limits&#39;:[1, 2.0],</span>
+        <span class="c1">#   &#39;types&#39;:&#39;float&#39;</span>
+        <span class="c1">#   },</span>
+        <span class="p">{</span><span class="s1">&#39;var_type&#39;</span><span class="p">:</span><span class="s1">&#39;fixed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;value&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span>
+            <span class="p">},</span>
+    <span class="s1">&#39;b_P [MW]&#39;</span><span class="p">:</span>
+        <span class="p">{</span><span class="s1">&#39;var_type&#39;</span><span class="p">:</span><span class="s1">&#39;design&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;limits&#39;</span><span class="p">:[</span><span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">],</span>
+            <span class="s1">&#39;types&#39;</span><span class="p">:</span><span class="s1">&#39;int&#39;</span>
+            <span class="p">},</span>
+        <span class="c1"># {&#39;var_type&#39;:&#39;fixed&#39;,</span>
+        <span class="c1">#   &#39;value&#39;: 50</span>
+        <span class="c1">#   },</span>
+    <span class="s1">&#39;b_E_h [h]&#39;</span><span class="p">:</span>
+        <span class="p">{</span><span class="s1">&#39;var_type&#39;</span><span class="p">:</span><span class="s1">&#39;design&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;limits&#39;</span><span class="p">:[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span>
+            <span class="s1">&#39;types&#39;</span><span class="p">:</span><span class="s1">&#39;int&#39;</span>
+            <span class="p">},</span>
+        <span class="c1"># {&#39;var_type&#39;:&#39;fixed&#39;,</span>
+        <span class="c1">#   &#39;value&#39;: 6</span>
+        <span class="c1">#   },</span>
+    <span class="s1">&#39;cost_of_battery_P_fluct_in_peak_price_ratio&#39;</span><span class="p">:</span>
+        <span class="c1"># {&#39;var_type&#39;:&#39;design&#39;,</span>
+        <span class="c1">#   &#39;limits&#39;:[0, 20],</span>
+        <span class="c1">#   &#39;types&#39;:&#39;float&#39;</span>
+        <span class="c1">#   },</span>
+        <span class="p">{</span><span class="s1">&#39;var_type&#39;</span><span class="p">:</span><span class="s1">&#39;fixed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">},</span>
+    <span class="p">}</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Selected example site:
+---------------------------------------------------
+case                                                        Europe
+name                                          Denmark_good_wind_BM
+longitude                                                 8.594398
+latitude                                                 56.227322
+altitude                                                      85.0
+input_ts_fn             Europe/GWA2/input_ts_Denmark_good_wind.csv
+sim_pars_fn                                 Europe/hpp_pars_BM.yml
+price_fn                                  Europe/2030-EL_PRICE.csv
+price_col                                                     DK_W
+H2_demand_col                                 Europe/H2_demand.csv
+Unnamed: 11                                                    NaN
+input_HA_ts_fn    Europe/GWA2_HA/input_ts_Denmark_good_wind_HA.csv
+price_up_ts                      Europe/BM_Prices/Up_reg_price.csv
+price_dwn_ts                   Europe/BM_Prices/Down_reg_price.csv
+Name: 17, dtype: object
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">EGOD</span> <span class="o">=</span> <span class="n">EfficientGlobalOptimizationDriver</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="n">EGOD</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">EGOD</span><span class="o">.</span><span class="n">result</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+
+
+Sizing a HPP plant at Denmark_good_wind_BM:
+
+
+Fixed parameters on the site
+-------------------------------
+longitude = 8.594398
+latitude = 56.227322
+altitude = 85.0
+
+
+
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, DTU Wind and Energy Systems.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

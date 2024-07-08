@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iso-Probabilistic Transformation for Weather-Correlated Spot Markets &mdash; hydesign 1.2.3 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script>window.MathJax = {"TeX": {"equationNumbers": {"autoNumber": "AMS", "useLabelIds": true}}, "tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="HPP with multiple energy markets" href="HPP_evaluation_BM.html" />
+    <link rel="prev" title="Offshore HPP" href="offshore.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            hydesign
+          </a>
+              <div class="version">
+                1.2.3
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../license_citation.html">License, Citation, and Source Code</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../license_citation.html#license">License:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../license_citation.html#citation">Citation:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../license_citation.html#source-code">Source code:</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../installation.html#pre-installation">Pre-Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../installation.html#simple-installation">Simple Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../installation.html#developer-installation">Developer Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ChangeLog.html">Updates log</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ChangeLog.html#hydesign-v1.3.4-(April-08,-2024)">hydesign v1.3.4 (April 08, 2024)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ChangeLog.html#New-features">New features</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ChangeLog.html#hydesign-v1.3.3-(April-06,-2024)">hydesign v1.3.3 (April 06, 2024)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ChangeLog.html#id1">New features</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ChangeLog.html#hydesign-v1.3.2-(December-22,-2023)">hydesign v1.3.2 (December 22, 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ChangeLog.html#id2">New features</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ChangeLog.html#hydesign-v1.3.1-(December-14,-2023)">hydesign v1.3.1 (December 14, 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ChangeLog.html#id3">New features</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ChangeLog.html#hydesign-v1.3.0-(November-16,-2023)">hydesign v1.3.0 (November 16, 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ChangeLog.html#Improvements">Improvements</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ChangeLog.html#hydesign-v1.2.0-(August-18,-2023)">hydesign v1.2.0 (August 18, 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ChangeLog.html#improvements-1">Improvements</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ChangeLog.html#hydesign-v1.1.0-(May-5,-2023)">hydesign v1.1.0 (May 5, 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ChangeLog.html#New-Features-and-API-changes">New Features and API changes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ChangeLog.html#New-models-and-functions">New models and functions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="Quickstart.html">Quickstart</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Quickstart.html#Evaluating-the-HPP-model">Evaluating the HPP model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Quickstart.html#Understanding-the-sub-models">Understanding the sub-models</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Quickstart.html#Plot-the-HPP-operation">Plot the HPP operation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Quickstart.html#Plot-battery,-wind-and-PV-degradation">Plot battery, wind and PV degradation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Quickstart.html#Compare-ideal-operation-(ems)-wit-h-actual-long-term-opertation-with-degradation">Compare ideal operation (ems) wit h actual long-term opertation with degradation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Quickstart.html#Compare-battery-degradation-results-by-changing-the-cost-of-battery-fluctuations-factor">Compare battery degradation results by changing the cost of battery fluctuations factor</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Advanced_hpp_model.html">Advanced HPP Model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Advanced_hpp_model.html#Evaluating-the-HPP-model">Evaluating the HPP model</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="HPP_evaluation_P2X.html">HPP with P2X</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="HPP_evaluation_P2X.html#Evaluating-the-HPP-model">Evaluating the HPP model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="HPP_evaluation_P2X.html#Plot-the-HPP-operation">Plot the HPP operation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="hpp_sizing.html">Size a HPP plant based on a simplified hpp model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="hpp_sizing.html#design-variables">Design Variables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hpp_sizing.html#possible-objective-functions">Possible objective functions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hpp_sizing.html#optimize-using-ego">Optimize using EGO</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="more_sizing_examples.html">HyDesign sizing examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="break_even_price_and_PPA.html">Break-even price and power purchase agreement</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="break_even_price_and_PPA.html#Break-even-price-of-H2">Break-even price of H2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="break_even_price_and_PPA.html#Power-Purchase-Agreement-(PPA)">Power Purchase Agreement (PPA)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="constant_output.html">HPP for constant load</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="constant_output.html#Evaluation">Evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="constant_output.html#Sizing">Sizing</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="constant_output.html#Export-the-DOE">Export the DOE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="offshore.html">Offshore HPP</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Iso-Probabilistic Transformation for Weather-Correlated Spot Markets</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#1.-Sample-a-target-distrubtion,-the-number-of-samples-can-be-different-between-input-data-and-desired-distribution">1. Sample a target distrubtion, the number of samples can be different between input data and desired distribution</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="HPP_evaluation_BM.html">HPP with multiple energy markets</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="HPP_evaluation_BM.html#Evaluating-the-HPP-model">Evaluating the HPP model</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Hybridize.html">Hybridize</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Hybridize.html#Evaluating-hybridizing-of-a-single-technology-power-plant">Evaluating hybridizing of a single technology power plant</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Hybridize.html#Existing-PV">Existing PV</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Hybridize.html#Existing-wind">Existing wind</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/battery_degradation.html">Battery degradation API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/costs.html">Costs API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/ems.html">Energy Management Optimization Model (EMS) API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/finance.html">Finance API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/hpp_assembly.html">Hybrid power plant model assembly (HPP) API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/pv.html">Photovoltaic power plant API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/weather.html">Weather API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/wind.html">Wind power plant API</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../contact_info.html">Contact Us</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">hydesign</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../tutorials.html">Tutorials</a></li>
+      <li class="breadcrumb-item active">Iso-Probabilistic Transformation for Weather-Correlated Spot Markets</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/notebooks/Example_ISO_prob.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="admonition note">
+<p><span class="raw-html"><a href="https://colab.research.google.com/github/DTUWindEnergy/hydesign/blob/main/docs/notebooks\Example_ISO_prob.ipynb"><img alt="Open and run in Colab (interactive)" src="../_static/colab-badge.svg" style="vertical-align:text-bottom"></a>
+<a href="https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign/-/tree/main/docs/notebooks\Example_ISO_prob.ipynb"><img alt="Edit on Gitlab" src="https://img.shields.io/badge/Edit%20on-Gitlab-blue?style=flat&logo=gitlab" style="vertical-align:text-bottom"></a>
+<a href="https://kaggle.com/kernels/welcome?src=https://github.com/DTUWindEnergy/hydesign/blob/main/docs/notebooks\Example_ISO_prob.ipynb"><img alt="Open and run in Kaggle (interactive)" src="https://kaggle.com/static/images/open-in-kaggle.svg" style="vertical-align:text-bottom"></a></span></p>
+</div>
+<section id="Iso-Probabilistic-Transformation-for-Weather-Correlated-Spot-Markets">
+<h1>Iso-Probabilistic Transformation for Weather-Correlated Spot Markets<a class="headerlink" href="#Iso-Probabilistic-Transformation-for-Weather-Correlated-Spot-Markets" title="Permalink to this heading"></a></h1>
+<p>This tutorial describes how to use iso-probabilistic transformations to generate weather-correlated spot market data with desired distributions. This technique is crucial for accurate modeling and optimization of hybrid power plants (HPP) in markets where weather conditions significantly impact energy prices and availability. By following this guide, you will learn how to apply these transformations to align weather data with market requirements.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Detect if running in Kaggle</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;KAGGLE_KERNEL_RUN_TYPE&#39;</span><span class="p">):</span>
+    <span class="n">mypaths</span> <span class="o">=</span> <span class="o">!</span>python -c <span class="s2">&quot;import sysconfig; print(sysconfig.get_paths()[&#39;purelib&#39;])&quot;</span>
+    <span class="n">mypath</span> <span class="o">=</span> <span class="n">mypaths</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="o">!</span>pip install trash-cli
+    <span class="o">!</span>trash <span class="nv">$mypath</span>/numpy*
+    <span class="o">!</span>pip install --upgrade numpy
+    <span class="o">!</span>pip install finitediff
+    <span class="kn">import</span> <span class="nn">os</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">kill</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span> <span class="mi">9</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install hydesign if needed</span>
+<span class="kn">import</span> <span class="nn">importlib</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">importlib</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">find_spec</span><span class="p">(</span><span class="s2">&quot;hydesign&quot;</span><span class="p">):</span>
+    <span class="o">!</span>pip install git+https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign.git
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">newaxis</span> <span class="k">as</span> <span class="n">na</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">scipy</span>
+<span class="kn">from</span> <span class="nn">statsmodels.distributions.empirical_distribution</span> <span class="kn">import</span> <span class="n">ECDF</span><span class="p">,</span> <span class="n">monotone_fn_inverter</span>
+<span class="kn">from</span> <span class="nn">hydesign.weather.weather</span> <span class="kn">import</span> <span class="n">isoprob_transfrom</span>
+<span class="kn">from</span> <span class="nn">hydesign.examples</span> <span class="kn">import</span> <span class="n">examples_filepath</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">inputs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">examples_filepath</span><span class="o">+</span><span class="s1">&#39;Europe/GWA2/input_ts_Denmark_good_solar.csv&#39;</span><span class="p">,</span>
+                    <span class="n">index_col</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">parse_dates</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+<span class="n">inputs</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>WS_1</th>
+      <th>WS_50</th>
+      <th>WS_100</th>
+      <th>WS_150</th>
+      <th>WS_200</th>
+      <th>WD_1</th>
+      <th>WD_50</th>
+      <th>WD_100</th>
+      <th>WD_150</th>
+      <th>WD_200</th>
+      <th>temp_air_1</th>
+      <th>ghi</th>
+      <th>dni</th>
+      <th>dhi</th>
+      <th>Price</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>2012-01-01 00:00:00</th>
+      <td>2.810816</td>
+      <td>6.582182</td>
+      <td>7.993129</td>
+      <td>8.112989</td>
+      <td>9.236903</td>
+      <td>166.346357</td>
+      <td>168.595724</td>
+      <td>170.888214</td>
+      <td>173.593446</td>
+      <td>175.457612</td>
+      <td>275.686735</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>31.558</td>
+    </tr>
+    <tr>
+      <th>2012-01-01 01:00:00</th>
+      <td>2.904450</td>
+      <td>6.810934</td>
+      <td>8.275190</td>
+      <td>8.356479</td>
+      <td>9.566073</td>
+      <td>169.298921</td>
+      <td>171.004601</td>
+      <td>172.747782</td>
+      <td>175.411415</td>
+      <td>176.846748</td>
+      <td>275.846921</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>31.558</td>
+    </tr>
+    <tr>
+      <th>2012-01-01 02:00:00</th>
+      <td>2.991752</td>
+      <td>6.987023</td>
+      <td>8.481921</td>
+      <td>8.563847</td>
+      <td>9.907062</td>
+      <td>170.332390</td>
+      <td>172.071325</td>
+      <td>173.846343</td>
+      <td>176.856068</td>
+      <td>178.182438</td>
+      <td>275.908146</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>31.558</td>
+    </tr>
+    <tr>
+      <th>2012-01-01 03:00:00</th>
+      <td>3.081025</td>
+      <td>7.153487</td>
+      <td>8.673896</td>
+      <td>8.668350</td>
+      <td>10.113215</td>
+      <td>172.369415</td>
+      <td>174.117329</td>
+      <td>175.900884</td>
+      <td>179.006964</td>
+      <td>180.215424</td>
+      <td>275.985910</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>31.558</td>
+    </tr>
+    <tr>
+      <th>2012-01-01 04:00:00</th>
+      <td>3.032618</td>
+      <td>7.087701</td>
+      <td>8.604443</td>
+      <td>8.657067</td>
+      <td>10.226668</td>
+      <td>176.961308</td>
+      <td>179.096749</td>
+      <td>181.275850</td>
+      <td>185.728569</td>
+      <td>187.114208</td>
+      <td>276.139611</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>31.558</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>2012-12-30 19:00:00</th>
+      <td>4.346459</td>
+      <td>9.731132</td>
+      <td>11.725017</td>
+      <td>11.833588</td>
+      <td>13.738749</td>
+      <td>232.070531</td>
+      <td>233.096306</td>
+      <td>234.139569</td>
+      <td>235.862549</td>
+      <td>236.381657</td>
+      <td>276.787589</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>34.992</td>
+    </tr>
+    <tr>
+      <th>2012-12-30 20:00:00</th>
+      <td>4.351285</td>
+      <td>9.781253</td>
+      <td>11.793128</td>
+      <td>11.924614</td>
+      <td>13.851638</td>
+      <td>236.280844</td>
+      <td>237.063277</td>
+      <td>237.866713</td>
+      <td>239.526916</td>
+      <td>239.919572</td>
+      <td>276.550026</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>33.135</td>
+    </tr>
+    <tr>
+      <th>2012-12-30 21:00:00</th>
+      <td>4.131801</td>
+      <td>9.349829</td>
+      <td>11.286007</td>
+      <td>11.395169</td>
+      <td>13.252576</td>
+      <td>234.027128</td>
+      <td>235.111454</td>
+      <td>236.219895</td>
+      <td>237.857080</td>
+      <td>238.418164</td>
+      <td>276.707764</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>32.290</td>
+    </tr>
+    <tr>
+      <th>2012-12-30 22:00:00</th>
+      <td>4.226335</td>
+      <td>9.590430</td>
+      <td>11.581791</td>
+      <td>11.705639</td>
+      <td>13.626405</td>
+      <td>231.547924</td>
+      <td>233.116758</td>
+      <td>234.719448</td>
+      <td>236.786499</td>
+      <td>237.542031</td>
+      <td>276.996122</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>30.990</td>
+    </tr>
+    <tr>
+      <th>2012-12-30 23:00:00</th>
+      <td>4.142047</td>
+      <td>9.416042</td>
+      <td>11.376241</td>
+      <td>11.520482</td>
+      <td>13.401961</td>
+      <td>234.196810</td>
+      <td>235.697595</td>
+      <td>237.226551</td>
+      <td>239.410625</td>
+      <td>240.209847</td>
+      <td>277.489206</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>29.739</td>
+    </tr>
+  </tbody>
+</table>
+<p>8760 rows × 15 columns</p>
+</div></div>
+</div>
+<section id="1.-Sample-a-target-distrubtion,-the-number-of-samples-can-be-different-between-input-data-and-desired-distribution">
+<h2>1. Sample a target distrubtion, the number of samples can be different between input data and desired distribution<a class="headerlink" href="#1.-Sample-a-target-distrubtion,-the-number-of-samples-can-be-different-between-input-data-and-desired-distribution" title="Permalink to this heading"></a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1">#y_desired = np.random.normal(size=int(1e6)) * 5 + 35</span>
+
+<span class="n">y_desired</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">weibull</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="mf">1e6</span><span class="p">))</span> <span class="o">*</span> <span class="mi">25</span> <span class="o">+</span> <span class="mi">18</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">y_ISO</span> <span class="o">=</span> <span class="n">isoprob_transfrom</span><span class="p">(</span><span class="n">y_input</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">Price</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">y_desired</span><span class="o">=</span><span class="n">y_desired</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">inputs</span><span class="o">.</span><span class="n">Price</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">bins</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">histtype</span><span class="o">=</span><span class="s1">&#39;step&#39;</span><span class="p">,</span> <span class="n">density</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;SM input&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">y_desired</span><span class="p">,</span><span class="n">bins</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">histtype</span><span class="o">=</span><span class="s1">&#39;step&#39;</span><span class="p">,</span> <span class="n">density</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;Desired PDF&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">y_ISO</span><span class="p">,</span><span class="n">bins</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">histtype</span><span class="o">=</span><span class="s1">&#39;step&#39;</span><span class="p">,</span> <span class="n">density</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;SM ISO transformed&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;SM [EUR/MW.h]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;PDF(SM)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_Example_ISO_prob_9_1.png" src="../_images/notebooks_Example_ISO_prob_9_1.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">inputs</span><span class="p">[</span><span class="s1">&#39;SM_ISO&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">y_ISO</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">inputs</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,[</span><span class="s1">&#39;Price&#39;</span><span class="p">,</span><span class="s1">&#39;SM_ISO&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Price</th>
+      <th>SM_ISO</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>count</th>
+      <td>8760.000000</td>
+      <td>8760.000000</td>
+    </tr>
+    <tr>
+      <th>mean</th>
+      <td>39.597426</td>
+      <td>40.162819</td>
+    </tr>
+    <tr>
+      <th>std</th>
+      <td>14.988624</td>
+      <td>11.601875</td>
+    </tr>
+    <tr>
+      <th>min</th>
+      <td>3.946000</td>
+      <td>19.562333</td>
+    </tr>
+    <tr>
+      <th>25%</th>
+      <td>32.804000</td>
+      <td>31.420951</td>
+    </tr>
+    <tr>
+      <th>50%</th>
+      <td>35.428500</td>
+      <td>38.791135</td>
+    </tr>
+    <tr>
+      <th>75%</th>
+      <td>41.028500</td>
+      <td>47.430395</td>
+    </tr>
+    <tr>
+      <th>max</th>
+      <td>127.491000</td>
+      <td>115.507682</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">inputs</span><span class="o">.</span><span class="n">Price</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;SM input&#39;</span><span class="p">)</span>
+<span class="n">inputs</span><span class="o">.</span><span class="n">SM_ISO</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;SM ISO transformed&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;SM [EUR/MW.h]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_Example_ISO_prob_12_1.png" src="../_images/notebooks_Example_ISO_prob_12_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">inputs</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,[</span><span class="s1">&#39;WS_100&#39;</span><span class="p">,</span><span class="s1">&#39;Price&#39;</span><span class="p">,</span><span class="s1">&#39;SM_ISO&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">corr</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>WS_100</th>
+      <th>Price</th>
+      <th>SM_ISO</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>WS_100</th>
+      <td>1.000000</td>
+      <td>-0.272191</td>
+      <td>-0.289896</td>
+    </tr>
+    <tr>
+      <th>Price</th>
+      <td>-0.272191</td>
+      <td>1.000000</td>
+      <td>0.914447</td>
+    </tr>
+    <tr>
+      <th>SM_ISO</th>
+      <td>-0.289896</td>
+      <td>0.914447</td>
+      <td>1.000000</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">inputs</span><span class="p">[</span><span class="s1">&#39;ws_bin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">cut</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">WS_100</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">20</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
+
+<span class="n">inputs_grp</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;ws_bin&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><br/><span></span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">inputs_grp</span><span class="o">.</span><span class="n">WS_100</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">inputs_grp</span><span class="o">.</span><span class="n">Price</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;SM input&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">inputs_grp</span><span class="o">.</span><span class="n">WS_100</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">inputs_grp</span><span class="o">.</span><span class="n">SM_ISO</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;SM ISO transformed&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;E(SM|WS_10) [EUR/MW.h]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;WS_10 [m/s]&#39;</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_Example_ISO_prob_15_1.png" src="../_images/notebooks_Example_ISO_prob_15_1.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">scipy.stats</span> <span class="k">as</span> <span class="nn">st</span>
+<span class="k">def</span> <span class="nf">kde_plot</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span>
+    <span class="n">ax</span><span class="p">,</span>
+    <span class="n">c</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span>
+    <span class="n">levels</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1e-5</span><span class="p">,</span> <span class="mf">5e-5</span><span class="p">,</span> <span class="mf">1e-4</span><span class="p">,</span> <span class="mf">5e-4</span><span class="p">],</span>
+    <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%1.0e</span><span class="s1">&#39;</span><span class="p">,</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">):</span>
+    <span class="n">xmin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">xmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">ymin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">ymax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+    <span class="c1"># Peform the kernel density estimate</span>
+    <span class="n">xx</span><span class="p">,</span> <span class="n">yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mgrid</span><span class="p">[</span><span class="n">xmin</span><span class="p">:</span><span class="n">xmax</span><span class="p">:</span><span class="mi">100</span><span class="n">j</span><span class="p">,</span> <span class="n">ymin</span><span class="p">:</span><span class="n">ymax</span><span class="p">:</span><span class="mi">100</span><span class="n">j</span><span class="p">]</span>
+    <span class="n">positions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">xx</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">yy</span><span class="o">.</span><span class="n">ravel</span><span class="p">()])</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">])</span>
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">gaussian_kde</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">kernel</span><span class="p">(</span><span class="n">positions</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">xx</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="p">)</span>
+
+    <span class="c1"># Contour plot</span>
+    <span class="n">cset</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">contour</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">levels</span><span class="o">=</span><span class="n">levels</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="n">c</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">label</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cset</span><span class="o">.</span><span class="n">collections</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_label</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+    <span class="c1"># iso-prob labels on lines</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">clabel</span><span class="p">(</span><span class="n">cset</span><span class="p">,</span> <span class="n">inline</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">fmt</span> <span class="o">=</span> <span class="n">fmt</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+<span class="n">kde_plot</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">WS_100</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">Price</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">levels</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1e-5</span><span class="p">,</span> <span class="mf">1e-4</span><span class="p">,</span> <span class="mf">1e-3</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="s1">&#39;C0&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;SM ISO transformed&#39;</span><span class="p">)</span>
+<span class="n">kde_plot</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">WS_100</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">SM_ISO</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">levels</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1e-5</span><span class="p">,</span> <span class="mf">1e-4</span><span class="p">,</span> <span class="mf">1e-3</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="s1">&#39;C1&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;SM input&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Iso probability countours&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;SM [EUR/MW.h]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;WS_10 [m/s]&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0.5, 0, &#39;WS_10 [m/s]&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_Example_ISO_prob_17_1.png" src="../_images/notebooks_Example_ISO_prob_17_1.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="offshore.html" class="btn btn-neutral float-left" title="Offshore HPP" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="HPP_evaluation_BM.html" class="btn btn-neutral float-right" title="HPP with multiple energy markets" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, DTU Wind and Energy Systems.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

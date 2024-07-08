@@ -1,0 +1,116 @@
+-----------------------------------------------------------------
+Date: Tue May 30 16:32:29 CEST 2023
+hydesign is running example_run_hpp_sizing_single_site.py
+Sophia job is running on node: sn516
+Sophia job identifier: 1955023
+-----------------------------------------------------------------
+
+
+0 India Indian_site_good_wind
+
+
+Fixed parameters on the site
+-------------------------------
+longitude = 77.50022583
+latitude = 8.334293917
+altitude = 679.803454
+input_ts_fn extracted and stored in ./input_ts.csv
+
+
+1 India Indian_site_good_solar
+
+
+Fixed parameters on the site
+-------------------------------
+longitude = 68.54220353
+latitude = 23.54209921
+altitude = 29.88355741
+input_ts_fn extracted and stored in ./input_ts.csv
+
+
+2 India Indian_site_bad_solar_bad_wind
+
+
+Fixed parameters on the site
+-------------------------------
+longitude = 77.91687803
+latitude = 17.29231621
+altitude = 627.4246426
+input_ts_fn extracted and stored in ./input_ts.csv
+
+
+3 Europe France_good_solar
+
+
+Fixed parameters on the site
+-------------------------------
+longitude = 4.229736
+latitude = 44.422011
+altitude = 204.0
+input_ts_fn extracted and stored in ./input_ts.csv
+
+
+4 Europe France_good_wind
+
+
+Fixed parameters on the site
+-------------------------------
+longitude = -0.864258
+latitude = 48.744116
+altitude = 302.0
+input_ts_fn extracted and stored in ./input_ts.csv
+
+
+5 Europe France_bad_solar_n_wind
+
+
+Fixed parameters on the site
+-------------------------------
+longitude = 2.167969
+latitude = 47.428087
+altitude = 140.0
+input_ts_fn extracted and stored in ./input_ts.csv
+
+
+6 Europe Germany_bad_solar_n_wind
+
+
+Fixed parameters on the site
+-------------------------------
+longitude = 10.766602
+latitude = 49.310798
+altitude = 442.0
+input_ts_fn extracted and stored in ./input_ts.csv
+
+
+7 Europe Germany_good_wind
+
+
+Fixed parameters on the site
+-------------------------------
+longitude = 7.873535
+latitude = 53.287111
+altitude = 5.0
+input_ts_fn extracted and stored in ./input_ts.csv
+
+
+8 Europe Denmark_good_solar
+
+
+Fixed parameters on the site
+-------------------------------
+longitude = 11.813965
+latitude = 55.39776
+altitude = 42.0
+input_ts_fn extracted and stored in ./input_ts.csv
+
+
+9 Europe Denmark_good_wind
+
+
+Fixed parameters on the site
+-------------------------------
+longitude = 8.594398
+latitude = 56.227322
+altitude = 85.0
+input_ts_fn extracted and stored in ./input_ts.csv

@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Break-even price and power purchase agreement &mdash; hydesign 1.2.3 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script>window.MathJax = {"TeX": {"equationNumbers": {"autoNumber": "AMS", "useLabelIds": true}}, "tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            hydesign
+          </a>
+              <div class="version">
+                1.2.3
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../license_citation.html">License, Citation, and Source Code</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../license_citation.html#license">License:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../license_citation.html#citation">Citation:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../license_citation.html#source-code">Source code:</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#pre-installation">Pre-Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#simple-installation">Simple Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation.html#developer-installation">Developer Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/ChangeLog.html">Updates log</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/ChangeLog.html#hydesign-v1.3.4-(April-08,-2024)">hydesign v1.3.4 (April 08, 2024)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/ChangeLog.html#New-features">New features</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/ChangeLog.html#hydesign-v1.3.3-(April-06,-2024)">hydesign v1.3.3 (April 06, 2024)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/ChangeLog.html#id1">New features</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/ChangeLog.html#hydesign-v1.3.2-(December-22,-2023)">hydesign v1.3.2 (December 22, 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/ChangeLog.html#id2">New features</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/ChangeLog.html#hydesign-v1.3.1-(December-14,-2023)">hydesign v1.3.1 (December 14, 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/ChangeLog.html#id3">New features</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/ChangeLog.html#hydesign-v1.3.0-(November-16,-2023)">hydesign v1.3.0 (November 16, 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/ChangeLog.html#Improvements">Improvements</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/ChangeLog.html#hydesign-v1.2.0-(August-18,-2023)">hydesign v1.2.0 (August 18, 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/ChangeLog.html#improvements-1">Improvements</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/ChangeLog.html#hydesign-v1.1.0-(May-5,-2023)">hydesign v1.1.0 (May 5, 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/ChangeLog.html#New-Features-and-API-changes">New Features and API changes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/ChangeLog.html#New-models-and-functions">New models and functions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/Quickstart.html">Quickstart</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Quickstart.html#Evaluating-the-HPP-model">Evaluating the HPP model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Quickstart.html#Understanding-the-sub-models">Understanding the sub-models</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Quickstart.html#Plot-the-HPP-operation">Plot the HPP operation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Quickstart.html#Plot-battery,-wind-and-PV-degradation">Plot battery, wind and PV degradation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Quickstart.html#Compare-ideal-operation-(ems)-wit-h-actual-long-term-opertation-with-degradation">Compare ideal operation (ems) wit h actual long-term opertation with degradation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Quickstart.html#Compare-battery-degradation-results-by-changing-the-cost-of-battery-fluctuations-factor">Compare battery degradation results by changing the cost of battery fluctuations factor</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/Advanced_hpp_model.html">Advanced HPP Model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Advanced_hpp_model.html#Evaluating-the-HPP-model">Evaluating the HPP model</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/HPP_evaluation_P2X.html">HPP with P2X</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/HPP_evaluation_P2X.html#Evaluating-the-HPP-model">Evaluating the HPP model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/HPP_evaluation_P2X.html#Plot-the-HPP-operation">Plot the HPP operation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/hpp_sizing.html">Size a HPP plant based on a simplified hpp model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/hpp_sizing.html#design-variables">Design Variables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/hpp_sizing.html#possible-objective-functions">Possible objective functions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/hpp_sizing.html#optimize-using-ego">Optimize using EGO</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/more_sizing_examples.html">HyDesign sizing examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/break_even_price_and_PPA.html">Break-even price and power purchase agreement</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/break_even_price_and_PPA.html#Break-even-price-of-H2">Break-even price of H2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/break_even_price_and_PPA.html#Power-Purchase-Agreement-(PPA)">Power Purchase Agreement (PPA)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/constant_output.html">HPP for constant load</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/constant_output.html#Evaluation">Evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/constant_output.html#Sizing">Sizing</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/constant_output.html#Export-the-DOE">Export the DOE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/offshore.html">Offshore HPP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/Example_ISO_prob.html">Iso-Probabilistic Transformation for Weather-Correlated Spot Markets</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Example_ISO_prob.html#1.-Sample-a-target-distrubtion,-the-number-of-samples-can-be-different-between-input-data-and-desired-distribution">1. Sample a target distrubtion, the number of samples can be different between input data and desired distribution</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/HPP_evaluation_BM.html">HPP with multiple energy markets</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/HPP_evaluation_BM.html#Evaluating-the-HPP-model">Evaluating the HPP model</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../notebooks/Hybridize.html">Hybridize</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Hybridize.html#Evaluating-hybridizing-of-a-single-technology-power-plant">Evaluating hybridizing of a single technology power plant</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Hybridize.html#Existing-PV">Existing PV</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../notebooks/Hybridize.html#Existing-wind">Existing wind</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/battery_degradation.html">Battery degradation API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/costs.html">Costs API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/ems.html">Energy Management Optimization Model (EMS) API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/finance.html">Finance API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/hpp_assembly.html">Hybrid power plant model assembly (HPP) API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/pv.html">Photovoltaic power plant API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/weather.html">Weather API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/wind.html">Wind power plant API</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../contact_info.html">Contact Us</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">hydesign</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Break-even price and power purchase agreement</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/_build/notebooks/break_even_price_and_PPA.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="admonition note">
+<p><span class="raw-html"><a href="https://colab.research.google.com/github/DTUWindEnergy/hydesign/blob/main/docs/_build\notebooks\break_even_price_and_PPA.ipynb"><img alt="Open and run in Colab (interactive)" src="../_static/colab-badge.svg" style="vertical-align:text-bottom"></a>
+<a href="https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign/-/tree/main/docs/_build\notebooks\break_even_price_and_PPA.ipynb"><img alt="Edit on Gitlab" src="https://img.shields.io/badge/Edit%20on-Gitlab-blue?style=flat&logo=gitlab" style="vertical-align:text-bottom"></a>
+<a href="https://kaggle.com/kernels/welcome?src=https://github.com/DTUWindEnergy/hydesign/blob/main/docs/_build\notebooks\break_even_price_and_PPA.ipynb"><img alt="Open and run in Kaggle (interactive)" src="https://kaggle.com/static/images/open-in-kaggle.svg" style="vertical-align:text-bottom"></a></span></p>
+</div>
+<section id="Break-even-price-and-power-purchase-agreement">
+<h1>Break-even price and power purchase agreement<a class="headerlink" href="#Break-even-price-and-power-purchase-agreement" title="Permalink to this heading"></a></h1>
+<p>This tutorial explains how to calculate the break-even price for hydrogen production and how to set up a power purchase agreement (PPA). It covers the financial metrics and calculations necessary to ensure the economic viability of HPP projects. By the end of this tutorial, you’ll understand how to determine profitable pricing strategies and contractual agreements for your HPP. HyDesign calculates the price of electricity and/or hydrogen that would break-even i.e. result in NPV of zero. These
+results are based on the current hybrid configuration and operation. This means that the results will vary depending on which input parameters you are using, but will generally converge when the input price parameters are approaching the resulting break-even prices.</p>
+<section id="Break-even-price-of-H2">
+<h2>Break-even price of H2<a class="headerlink" href="#Break-even-price-of-H2" title="Permalink to this heading"></a></h2>
+<p>The break-even price of H2 can be obtained as following.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Detect if running in Kaggle</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;KAGGLE_KERNEL_RUN_TYPE&#39;</span><span class="p">):</span>
+    <span class="n">mypaths</span> <span class="o">=</span> <span class="o">!</span>python -c <span class="s2">&quot;import sysconfig; print(sysconfig.get_paths()[&#39;purelib&#39;])&quot;</span>
+    <span class="n">mypath</span> <span class="o">=</span> <span class="n">mypaths</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="o">!</span>pip install trash-cli
+    <span class="o">!</span>trash <span class="nv">$mypath</span>/numpy*
+    <span class="o">!</span>pip install --upgrade numpy
+    <span class="o">!</span>pip install finitediff
+    <span class="kn">import</span> <span class="nn">os</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">kill</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span> <span class="mi">9</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install hydesign if needed</span>
+<span class="kn">import</span> <span class="nn">importlib</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">importlib</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">find_spec</span><span class="p">(</span><span class="s2">&quot;hydesign&quot;</span><span class="p">):</span>
+    <span class="o">!</span>pip install git+https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign.git
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%capture</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">hydesign.assembly.hpp_assembly</span> <span class="kn">import</span> <span class="n">hpp_model</span>
+<span class="kn">from</span> <span class="nn">hydesign.assembly.hpp_assembly_P2X</span> <span class="kn">import</span> <span class="n">hpp_model_P2X</span>
+<span class="kn">from</span> <span class="nn">hydesign.examples</span> <span class="kn">import</span> <span class="n">examples_filepath</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">examples_sites</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">examples_filepath</span><span class="si">}</span><span class="s1">examples_sites.csv&#39;</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;;&#39;</span><span class="p">)</span>
+<span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;France_good_wind&#39;</span>
+<span class="n">ex_site</span> <span class="o">=</span> <span class="n">examples_sites</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">examples_sites</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">name</span><span class="p">]</span>
+<span class="n">longitude</span> <span class="o">=</span> <span class="n">ex_site</span><span class="p">[</span><span class="s1">&#39;longitude&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">latitude</span> <span class="o">=</span> <span class="n">ex_site</span><span class="p">[</span><span class="s1">&#39;latitude&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">altitude</span> <span class="o">=</span> <span class="n">ex_site</span><span class="p">[</span><span class="s1">&#39;altitude&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">input_ts_fn</span> <span class="o">=</span> <span class="n">examples_filepath</span><span class="o">+</span><span class="n">ex_site</span><span class="p">[</span><span class="s1">&#39;input_ts_fn&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">sim_pars_fn</span> <span class="o">=</span> <span class="n">examples_filepath</span><span class="o">+</span><span class="n">ex_site</span><span class="p">[</span><span class="s1">&#39;sim_pars_fn&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">H2_demand_fn</span> <span class="o">=</span> <span class="n">examples_filepath</span><span class="o">+</span><span class="n">ex_site</span><span class="p">[</span><span class="s1">&#39;H2_demand_col&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">hpp</span> <span class="o">=</span> <span class="n">hpp_model_P2X</span><span class="p">(</span>
+    <span class="n">latitude</span><span class="p">,</span>
+    <span class="n">longitude</span><span class="p">,</span>
+    <span class="n">altitude</span><span class="p">,</span>
+    <span class="n">num_batteries</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">work_dir</span> <span class="o">=</span> <span class="s1">&#39;./&#39;</span><span class="p">,</span>
+    <span class="n">sim_pars_fn</span> <span class="o">=</span> <span class="n">sim_pars_fn</span><span class="p">,</span>
+    <span class="n">input_ts_fn</span> <span class="o">=</span> <span class="n">input_ts_fn</span><span class="p">,</span>
+    <span class="n">H2_demand_fn</span><span class="o">=</span><span class="n">H2_demand_fn</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Fixed parameters on the site
+-------------------------------
+longitude = -0.864258
+latitude = 48.744116
+altitude = 302.0
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">350.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">,</span> <span class="mf">7.0</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">,</span> <span class="mf">180.0</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="mf">2500.0</span><span class="p">]</span>
+<span class="n">outs</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">hpp</span><span class="o">.</span><span class="n">print_design</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">outs</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Design:
+---------------
+clearance [m]: 10.000
+sp [W/m2]: 350.000
+p_rated [MW]: 5.000
+Nwt: 20.000
+wind_MW_per_km2 [MW/km2]: 7.000
+solar_MW [MW]: 100.000
+surface_tilt [deg]: 50.000
+surface_azimuth [deg]: 180.000
+DC_AC_ratio: 1.500
+b_P [MW]: 0.000
+b_E_h [h]: 3.000
+cost_of_battery_P_fluct_in_peak_price_ratio: 5.000
+ptg_MW [MW]: 100.000
+HSS_kg [kg]: 2500.000
+
+
+NPV_over_CAPEX: 6.151
+NPV [MEuro]: 1315.979
+IRR: 0.364
+LCOE [Euro/MWh]: 27.160
+LCOH [Euro/kg]: 0.624
+Revenue [MEuro]: 1986.319
+CAPEX [MEuro]: 213.948
+OPEX [MEuro]: 4.134
+penalty lifetime [MEuro]: 0.000
+AEP [GWh]: 538.930
+annual_Power2Grid [GWh]: 491.619
+GUF: 0.205
+annual_H2 [tons]: 13796.231
+annual_P_ptg [GWh]: 47.310
+grid [MW]: 300.000
+wind [MW]: 100.000
+solar [MW]: 100.000
+PtG [MW]: 100.000
+HSS [kg]: 2500.000
+Battery Energy [MWh]: 0.000
+Battery Power [MW]: 0.000
+Total curtailment [GWh]: 0.000
+Awpp [km2]: 14.286
+Apvp [km2]: 1.226
+Rotor diam [m]: 134.867
+Hub height [m]: 77.434
+Number of batteries used in lifetime: 0.000
+Break-even H2 price [Euro/kg]: -0.311
+Break-even PPA price [Euro/MWh]: 0.000
+Capacity factor wind [-]: 0.449
+
+</pre></div></div>
+</div>
+<p>The break-even H2 price is seen in the above table and can also be extracted directly:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Input H2 price: </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="p">[</span><span class="s2">&quot;price_H2&quot;</span><span class="p">])</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Break-even H2 price: </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="p">[</span><span class="s2">&quot;break_even_H2_price&quot;</span><span class="p">])</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Input H2 price: 5.00
+Break-even H2 price: -0.31
+</pre></div></div>
+</div>
+</section>
+<section id="Power-Purchase-Agreement-(PPA)">
+<h2>Power Purchase Agreement (PPA)<a class="headerlink" href="#Power-Purchase-Agreement-(PPA)" title="Permalink to this heading"></a></h2>
+<p>Constant price can be introduced by supplying a time series of constant prices or setting the PPA price directly when instantiating the hpp model:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">PPA</span> <span class="o">=</span> <span class="mi">40</span> <span class="c1"># Euro/MWh</span>
+<span class="n">hpp</span> <span class="o">=</span> <span class="n">hpp_model</span><span class="p">(</span>
+    <span class="n">latitude</span><span class="p">,</span>
+    <span class="n">longitude</span><span class="p">,</span>
+    <span class="n">altitude</span><span class="p">,</span>
+    <span class="n">num_batteries</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">work_dir</span> <span class="o">=</span> <span class="s1">&#39;./&#39;</span><span class="p">,</span>
+    <span class="n">sim_pars_fn</span> <span class="o">=</span> <span class="n">sim_pars_fn</span><span class="p">,</span>
+    <span class="n">input_ts_fn</span> <span class="o">=</span> <span class="n">input_ts_fn</span><span class="p">,</span>
+    <span class="n">ppa_price</span><span class="o">=</span><span class="n">PPA</span><span class="p">,)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Fixed parameters on the site
+-------------------------------
+longitude = -0.864258
+latitude = 48.744116
+altitude = 302.0
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">350.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">,</span> <span class="mf">7.0</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">,</span> <span class="mf">180.0</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">]</span>
+<span class="n">outs</span> <span class="o">=</span> <span class="n">hpp</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">hpp</span><span class="o">.</span><span class="n">print_design</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">outs</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Design:
+---------------
+clearance [m]: 10.000
+sp [W/m2]: 350.000
+p_rated [MW]: 5.000
+Nwt: 20.000
+wind_MW_per_km2 [MW/km2]: 7.000
+solar_MW [MW]: 100.000
+surface_tilt [deg]: 50.000
+surface_azimuth [deg]: 180.000
+DC_AC_ratio: 1.500
+b_P [MW]: 0.000
+b_E_h [h]: 3.000
+cost_of_battery_P_fluct_in_peak_price_ratio: 5.000
+
+
+NPV_over_CAPEX: 1.199
+NPV [MEuro]: 198.000
+IRR: 0.136
+LCOE [Euro/MWh]: 30.355
+CAPEX [MEuro]: 165.198
+OPEX [MEuro]: 2.466
+Wind CAPEX [MEuro]: 76.430
+Wind OPEX [MEuro]: 1.791
+PV CAPEX [MEuro]: 33.500
+PV OPEX [MEuro]: 0.675
+Batt CAPEX [MEuro]: 0.000
+Batt OPEX [MEuro]: 0.000
+Shared CAPEX [MEuro]: 55.268
+Shared Opex [MEuro]: 0.000
+penalty lifetime [MEuro]: 0.000
+AEP [GWh]: 467.714
+GUF: 0.178
+grid [MW]: 300.000
+wind [MW]: 100.000
+solar [MW]: 100.000
+Battery Energy [MWh]: 0.000
+Battery Power [MW]: 0.000
+Total curtailment [GWh]: 0.000
+Awpp [km2]: 14.286
+Apvp [km2]: 1.226
+Plant area [km2]: 14.286
+Rotor diam [m]: 134.867
+Hub height [m]: 77.434
+Number of batteries used in lifetime: 0.000
+Break-even PPA price [Euro/MWh]: 19.813
+Capacity factor wind [-]: 0.392
+
+</pre></div></div>
+</div>
+<p>The break-even PPA price is seen in the above table and can also be extracted directly:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Input H2 price: </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">PPA</span><span class="p">)</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Break-even H2 price: </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">hpp</span><span class="o">.</span><span class="n">prob</span><span class="p">[</span><span class="s2">&quot;break_even_PPA_price&quot;</span><span class="p">])</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Input H2 price: 40.00
+Break-even H2 price: 19.81
+</pre></div></div>
+</div>
+<p>LCOE is a measure of lifetime cost of producing power, but comes out somewhat different from the break-even price. This is because break-even price is based on NPV calculations that takes into account e.g. the corporate tax rate as well as penalties incurred from not meeting expected loads.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, DTU Wind and Energy Systems.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

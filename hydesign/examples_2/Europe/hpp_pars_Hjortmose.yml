@@ -1,0 +1,149 @@
+# --------------------------------------------------------------------------------------------
+# HPP Global
+# --------------------------------------------------------------------------------------------
+G_MW: 72.6 # Grid capacity
+year: '2012' # Single representative year
+N_life: 25
+
+# --------------------------------------------------------------------------------------------
+# Existing Wind
+# --------------------------------------------------------------------------------------------
+# For hybridiazation with existing turbines operating
+wind_turbine_cost: 640_000  # [Euro/MW] for reference turbine
+wind_civil_works_cost: 260_000  # [Euro/MW]
+wind_fixed_onm_cost: 12_600  # Wind fixed O&M cost per year [Euro/MW /year]
+wind_variable_onm_cost: 1.35 #[EUR/MWh_e] Danish Energy Agency
+existing_wpp_power_curve_xr_fn: 'power_curve_Hjortmose.nc'
+
+hh: 94
+d:  112
+p_rated: 3.3
+Nwt:  22
+Awpp:  5 # km**2
+
+#hh: 80
+#d:  140
+#p_rated: 5
+#Nwt:  20
+#Awpp:  10 # km**2
+
+d_ref: 145
+hh_ref: 100
+p_rated_ref: 5.0 #[MW] 
+
+# Degradation
+wpp_efficiency: 1
+share_WT_deg_types: 0.5
+
+wind_deg_yr: [0, 25, 25.0001, 40]
+wind_deg: [0.0, 0.25, 1,        1] #25yr * 1%/yr
+
+# --------------------------------------------------------------------------------------------
+# PV 
+# --------------------------------------------------------------------------------------------
+# From the DAEC (https://ens.dk/sites/ens.dk/files/Analyser/technology_data_catalogue_for_el_and_dh.pdf)
+#solar_PV_cost: 110_000   # [Euro/MW DC]
+#solar_hardware_installation_cost: 100_000  # [Euro/MW DC]
+#solar_inverter_cost: 20_000 #[Euro/MW]
+#solar_fixed_onm_cost: 4_500  # Solar O&M cost per year [Euro/MW] DC
+
+# From the DAEC + 25% (https://ens.dk/sites/ens.dk/files/Analyser/technology_data_catalogue_for_el_and_dh.pdf)
+solar_PV_cost: 137_500   # [Euro/MW DC]
+solar_hardware_installation_cost: 125_000  # [Euro/MW DC]
+solar_inverter_cost: 25_000 #[Euro/MW]
+solar_fixed_onm_cost: 5_625  # Solar O&M cost per year [Euro/MW] DC
+land_use_per_solar_MW: 0.01226 # Danish energy agency
+
+# From NREL, after conversion in Euro (https://www.nrel.gov/docs/fy23osti/87303.pdf)
+#solar_PV_cost: 230_000   # [Euro/MW DC]
+#solar_hardware_installation_cost: 230_000  # [Euro/MW DC]
+#solar_inverter_cost: 43_000 #[Euro/MW]
+#solar_fixed_onm_cost: 15_000  # Solar O&M cost per year [Euro/MW] DC
+#land_use_per_solar_MW: 0.01226 # Danish energy agency
+  
+#selected tracker
+tracking: 'No' # 'single_axis'  #
+
+# Degradation
+#pv_deg_yr: [0,   delta_life,  delta_life + .0001,  delta_life + lifetime]
+pv_deg: [1,  1, 0.03, 0.28, 1, 1] #0.03 intial + 25yr * 1%/yr
+
+# --------------------------------------------------------------------------------------------
+# Battery
+# --------------------------------------------------------------------------------------------
+## Initial costs
+#battery_energy_cost: 45_000  # [Euro/MWh]
+#battery_power_cost: 16_000    # Power conversion system cost [Euro/MW]
+#battery_BOP_installation_commissioning_cost: 18_000 # Electric BalanceOfPlant, instal+commission cost [Euro/MW]
+#battery_control_system_cost: 4_500  # Grid management control system cost[Euro/MW]
+#battery_energy_onm_cost: 0
+
+# Initial costs - 25%
+battery_energy_cost: 33_750  # [Euro/MWh]
+battery_power_cost: 12_000    # Power conversion system cost [Euro/MW]
+battery_BOP_installation_commissioning_cost: 13_500 # Electric BalanceOfPlant, instal+commission cost [Euro/MW]
+battery_control_system_cost: 3_375  # Grid management control system cost[Euro/MW]
+battery_energy_onm_cost: 0
+
+
+# EMS and Degradation parameters
+battery_depth_of_discharge: 0.9 # 1 - Minimum energy level in the battery
+battery_charge_efficiency: 0.98  # Charge efficiency for Lithium-ion
+battery_price_reduction_per_year: 0.10 # Battery price reduction per year
+# n_steps_in_LoH: 20 # Number of battery degradation levels for discretization of lifetime operation
+min_LoH: 0.7 # Minimum energy storage capacity in percent for the storage to be replaced
+
+# Penalty is defined as: Number of peak hours of full load expected per day.
+n_full_power_hours_expected_per_day_at_peak_price: 0 
+peak_hr_quantile: 0.9 # An hour of peak price has prices above this quantile
+
+
+# --------------------------------------------------------------------------------------------
+# Shared costs
+# --------------------------------------------------------------------------------------------
+hpp_BOS_soft_cost: 119_940       # [Euro/MW]
+hpp_grid_connection_cost: 50_000 # [Euro/MW]
+#land cost not same format in excel it's per MW
+land_cost: 300_000  #  [Euro/km**2] from Hybridize imputs 6-12k Euro/acre. 1km2 = 247.105acre
+
+# --------------------------------------------------------------------------------------------
+# Financial and Economic data
+# --------------------------------------------------------------------------------------------
+# wind_WACC: 0.06    # Markup of after tax WACC for onshore WT
+# solar_WACC: 0.06   # After tax WACC for solar PV
+# battery_WACC: 0.06 # After tax WACC for stationary storge li-ion batteries
+# ptg_WACC: 0.06      # After tax WACC for P2H plant
+hpp_WACC: 0.06
+
+tax_rate: 0.20      # Corporate tax rate
+
+# Early CAPEX payment, or phasing 
+phasing_yr: [-1,0]
+phasing_CAPEX: [0,1] # shares will be normalized to sum the CAPEX
+
+# Inflation will be linearly interpolated at integer year values
+inflation_yr: [-3,    20,    21,   50]
+inflation: [ 0.02,  0.02,  0.01, 0.01]
+
+ref_yr_inflation: 0 # inflation index is computed with respect to this year
+
+# depreciation
+depreciation_yr: [0, 30]
+depreciation: [0, 1]
+# Depreciation rate is 1/lifetime
+depre_rate: 0.04
+
+# Decommissioning costs  (still needs to be implemented)
+decommissioning_cost_w: 0 #0.05 % of the wind capital cost #140_000 # [EUR/turbine]
+decommissioning_cost_s: 0 # [EUR/MW]
+
+# --------------------------------------------------------------------------------------------
+# Weather databases
+# Not required if the user provides input_ts_fn.csv to hpp_model
+# --------------------------------------------------------------------------------------------
+era5_zarr: '/groups/reanalyses/era5/app/era5.zarr' # location of wind speed renalysis
+ratio_gwa_era5: '/groups/INP/era5/ratio_gwa2_era5.nc' # location of mean wind speed correction factor
+era5_ghi_zarr: '/groups/INP/era5/ghi.zarr' # location of GHI renalysis
+elevation_fn: '/groups/INP/era5/SRTMv3_plus_ViewFinder_coarsen.nc' # Altitude map for extracting altitude
+
+
