@@ -40,7 +40,7 @@ parameter_dict = {
         'battery_initial_degradation': 0,  
         'battery_marginal_degradation_cost': 142000, # in /MWh
         'battery_capital_cost': 142000, # in /MWh
-        'degradation_in_optimization': 1, # 1:yes 0:no
+        'degradation_in_optimization': 0, # 1:yes 0:no
         
         # bid parameters
         'max_up_bid': 50,
@@ -93,7 +93,22 @@ simulation_dict = {
         'number_of_price_scenario': 3, 
     }
 
-utils.run(
+out_keys = ['P_HPP_SM_k_opt',
+                'SM_price_cleared',
+                'BM_dw_price_cleared',
+                'BM_up_price_cleared',
+                'P_HPP_RT_ts',
+                'P_HPP_RT_refs',
+                'P_HPP_UP_bid_ts',
+                'P_HPP_DW_bid_ts',
+                's_UP_t',
+                's_DW_t',
+                'residual_imbalance',
+                'RES_RT_cur_ts',
+                'P_dis_RT_ts',
+                'P_cha_RT_ts',
+                'SoC_ts']
+res = utils.run(
         parameter_dict = parameter_dict,
         simulation_dict = simulation_dict,
         EMS = EMS,
@@ -102,6 +117,8 @@ utils.run(
         RD_model=False
        )   # run EMS with only spot market optimization
     
+for k, r in zip(out_keys, res):
+    print(k, r.shape)
 #EMS.run_SM_RD(
 #        parameter_dict = parameter_dict,
 #        simulation_dict = simulation_dict
