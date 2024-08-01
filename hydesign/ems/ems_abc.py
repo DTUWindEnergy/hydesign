@@ -17,6 +17,24 @@ class ems_abc(ABC):
     def outputs_extension():
         pass
 
+class ems_cplex_abc(ABC):
+    @abstractmethod
+    def allocate_vars(self):
+        pass
+
+    @abstractmethod
+    def inputs_to_ems_cplex_parts(self):
+        pass
+
+    @abstractmethod
+    def outputs_batch(self):
+        pass
+
+    @abstractmethod
+    def ems_cplex_outputs(self):
+        pass
+
+
 class ems_cplex_parts_abc(ABC):
     @abstractmethod
     def _variables(self):

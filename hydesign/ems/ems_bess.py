@@ -1,5 +1,6 @@
 import pandas as pd
-from .ems_abc import ems_abc, ems_cplex_parts_abc
+import numpy as np
+from .ems_abc import ems_abc, ems_cplex_abc, ems_cplex_parts_abc
 from .ems_utils import expand_to_lifetime
 
 class ems_bess_abc(ems_abc):
@@ -69,6 +70,10 @@ class ems_bess_long_term_operation(ems_abc):
 
     def add_inputs(self, component):
         component.add_input(
+            'SoH',
+            desc="Battery state of health at discretization levels",
+            shape=[component.life_h])
+        component.add_input(
             'b_P',
             desc="Battery power capacity",
             units='MW')
@@ -104,6 +109,7 @@ class ems_bess_long_term_operation(ems_abc):
             shape=[component.life_h + 1])
 
     def added_ems_WSB_args(self, ems_WSB_args, inputs):
+        SoH = inputs['SoH']
         b_E = inputs['b_E']
         battery_depth_of_discharge = inputs['battery_depth_of_discharge']
         battery_charge_efficiency = inputs['battery_charge_efficiency']
@@ -111,6 +117,7 @@ class ems_bess_long_term_operation(ems_abc):
         b_E_SOC_t = inputs['b_E_SOC_t']
 
         added_ems_WSB_args = dict(
+                    batt_degradation=SoH,
                     b_t=b_t,
                     b_E_SOC_t=b_E_SOC_t,
                     b_E=b_E[0],
@@ -126,6 +133,40 @@ class ems_bess_long_term_operation(ems_abc):
         outputs['b_t_with_deg'] = outputs_ems_WSB['b_t_sat']
         outputs['b_E_SOC_t_with_deg'] = outputs_ems_WSB['b_E_SOC_t_sat']
 
+        return outputs
+
+class ems_cplex_bess(ems_cplex_abc):
+    def allocate_vars(self, allocated_vars, length_ts):
+        added_allocated_vars = dict(
+            P_charge_discharge_ts = np.zeros(length_ts),
+            E_SOC_ts = np.zeros(length_ts + 1)
+        )
+        allocated_vars.update(added_allocated_vars)
+        return allocated_vars
+
+    def inputs_to_ems_cplex_parts(self, inputs, batch, outputs):
+        added_outputs = dict(
+            b_P=inputs['b_P'],
+            battery_depth_of_discharge=inputs['battery_depth_of_discharge'],
+            battery_charge_efficiency=inputs['battery_charge_efficiency'],
+            cost_of_battery_P_fluct_in_peak_price_ratio=inputs['cost_of_battery_P_fluct_in_peak_price_ratio'],  # [0, 0.8]. For higher values might cause errors
+            b_E=inputs['b_E'].iloc[batch]
+        )
+        outputs.update(added_outputs)
+        return outputs
+
+    def outputs_batch(self, outputs_ems_cplex_parts, batch, allocated_vars):
+        allocated_vars['P_charge_discharge_ts'][batch] = outputs_ems_cplex_parts['P_charge_discharge_ts']
+        allocated_vars['E_SOC_ts'][batch] = outputs_ems_cplex_parts['E_SOC_ts'][:-1]
+        return allocated_vars
+
+    def ems_cplex_outputs(self, outputs, allocated_vars):
+        allocated_vars['E_SOC_ts'][-1] = allocated_vars['E_SOC_ts'][0]
+        added_outputs = {
+            'b_t': allocated_vars['P_charge_discharge_ts'],
+            'b_E_SOC_t': allocated_vars['E_SOC_ts']
+        }
+        outputs.update(added_outputs)
         return outputs
 
 class ems_cplex_parts_bess(ems_cplex_parts_abc):

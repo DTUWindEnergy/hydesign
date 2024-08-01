@@ -5,10 +5,10 @@ import openmdao.api as om
 from docplex.mp.model import Model
 import openmdao.api as om
 
-from .ems_wind import ems_wind_abc, ems_wind_long_term_operation, ems_cplex_parts_wind
-from .ems_solar import ems_solar_abc, ems_solar_long_term_operation, ems_cplex_parts_solar
-from .ems_bess import ems_bess_abc, ems_bess_long_term_operation, ems_cplex_parts_bess
-from .ems_base import ems_base_abc, ems_base_long_term_operation, ems_cplex_parts_base_pre, ems_cplex_parts_base_post
+from .ems_wind import ems_wind_abc, ems_wind_long_term_operation, ems_cplex_wind, ems_cplex_parts_wind
+from .ems_solar import ems_solar_abc, ems_solar_long_term_operation, ems_cplex_solar, ems_cplex_parts_solar
+from .ems_bess import ems_bess_abc, ems_bess_long_term_operation, ems_cplex_bess, ems_cplex_parts_bess
+from .ems_base import ems_base_abc, ems_base_long_term_operation, ems_cplex_base, ems_cplex_parts_base_pre, ems_cplex_parts_base_post
 from .ems_utils import expand_to_lifetime, split_in_batch
 
 class ems(om.ExplicitComponent):
@@ -96,7 +96,7 @@ class ems(om.ExplicitComponent):
             class_name = getattr(self, f"ems_{technology_type}_abc_instance")
             ems_WSB_args = class_name.added_ems_WSB_args(ems_WSB_args, WSPr_df, inputs)
 
-        outputs_ems_WSB = ems_WSB(**ems_WSB_args)
+        outputs_ems_WSB = ems_WSB(ems_WSB_args)
 
         for technology_type in self.technology_types:
             class_name = getattr(self, f"ems_{technology_type}_abc_instance")
@@ -199,23 +199,43 @@ class ems_long_term_operation(om.ExplicitComponent):
 # ------------
 
 def ems_cplex(
-    wind_ts = pd.Series(),
-    solar_ts = pd.Series(),
-    price_ts = pd.Series(),
-    b_P=0,
-    b_E = pd.Series(),
-    G_MW=0,
-    battery_depth_of_discharge=0,
-    battery_charge_efficiency=0,
-    peak_hr_quantile = 0.9,
-    cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
-    n_full_power_hours_expected_per_day_at_peak_price = 3,
-    batch_size = 2*24,
-    technology_types = ['wind', 'solar', 'bess'],
+    inputs,
+    # wind_ts = pd.Series(),
+    # solar_ts = pd.Series(),
+    # price_ts = pd.Series(),
+    # b_P=0,
+    # b_E = pd.Series(),
+    # G_MW=0,
+    # battery_depth_of_discharge=0,
+    # battery_charge_efficiency=0,
+    # peak_hr_quantile = 0.9,
+    # cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
+    # n_full_power_hours_expected_per_day_at_peak_price = 3,
+    # batch_size = 2*24,
+    # technology_types = ['wind', 'solar', 'bess'],
     **kwargs
 ):
+    technology_types = ['base'] #+ ['wind', 'solar', 'bess']
+    ems_cplex_map = {
+        'base': ems_cplex_base,
+        'wind': ems_cplex_wind,
+        'solar': ems_cplex_solar,
+        'bess': ems_cplex_bess
+    }
+
+    technology_types = ['base', 'wind', 'solar', 'bess']
+
+    # Create a dictionary to store the instances
+    ems_cplex_instances = {}
+
+    # Loop through the technology types and create instances
+    for tech_type in technology_types:
+        if tech_type in ems_cplex_map:
+            ems_cplex_instances[tech_type] = ems_cplex_map[tech_type]()
 
     # split in batches, ussually a week
+    wind_ts = inputs['wind_ts']
+    batch_size = inputs.get('batch_size', 2*24)
     batches_all = split_in_batch(list(range(len(wind_ts))), batch_size)
     # Make sure the last batch is not smaller than the others
     # instead append it to the previous last one
@@ -223,51 +243,28 @@ def ems_cplex(
     batches[-1] = batches_all[-2]+batches_all[-1]
 
     # allocate vars
-    P_HPP_ts = np.zeros(len(wind_ts))
-    P_curtailment_ts = np.zeros(len(wind_ts))
-    P_charge_discharge_ts = np.zeros(len(wind_ts))
-    E_SOC_ts = np.zeros(len(wind_ts)+1)
-    penalty_ts = np.zeros(len(wind_ts))
+    length_ts = len(wind_ts)
+    allocated_vars = {}
+
+    for tech_type in technology_types:
+        allocated_vars = ems_cplex_instances[tech_type].allocate_vars(allocated_vars, length_ts)
 
     for ib, batch in enumerate(batches):
-        wind_ts_sel = wind_ts.iloc[batch]
-        solar_ts_sel = solar_ts.iloc[batch]
-        price_ts_sel = price_ts.iloc[batch]
-        b_E_sel = b_E.iloc[batch]
+        input_dict_to_ems_cplex_parts = {}
+        for tech_type in technology_types:
+            input_dict_to_ems_cplex_parts = ems_cplex_instances[tech_type].inputs_to_ems_cplex_parts(inputs, batch, input_dict_to_ems_cplex_parts)
 
         #print(f'batch {ib+1} out of {len(batches)}')
-        outputs_ems_cplex_parts = ems_cplex_parts(
-            wind_ts = wind_ts_sel,
-            solar_ts = solar_ts_sel,
-            price_ts = price_ts_sel,
-            b_P = b_P,
-            b_E = b_E_sel,
-            G_MW = G_MW,
-            battery_depth_of_discharge = battery_depth_of_discharge,
-            charge_efficiency = battery_charge_efficiency,
-            peak_hr_quantile = peak_hr_quantile,
-            cost_of_battery_P_fluct_in_peak_price_ratio = cost_of_battery_P_fluct_in_peak_price_ratio,
-            n_full_power_hours_expected_per_day_at_peak_price = n_full_power_hours_expected_per_day_at_peak_price,
-            technology_types=technology_types
-        )
+        outputs_ems_cplex_parts = ems_cplex_parts(**input_dict_to_ems_cplex_parts)
 
-        P_HPP_ts[batch] = outputs_ems_cplex_parts['P_HPP_ts']
-        P_curtailment_ts[batch] = outputs_ems_cplex_parts['P_curtailment_ts']
-        P_charge_discharge_ts[batch] = outputs_ems_cplex_parts['P_charge_discharge_ts']
-        E_SOC_ts[batch] = outputs_ems_cplex_parts['E_SOC_ts'][:-1]
-        penalty_ts[batch] = outputs_ems_cplex_parts['penalty_ts']
+        for tech_type in technology_types:
+            allocated_vars = ems_cplex_instances[tech_type].outputs_batch(outputs_ems_cplex_parts, batch, allocated_vars)
 
-    E_SOC_ts[-1] = E_SOC_ts[0]
+    outputs_ems_cplex = {}
+    for tech_type in technology_types:
+        outputs_ems_cplex = ems_cplex_instances[tech_type].ems_cplex_outputs(outputs_ems_cplex, allocated_vars)
 
-    outputs = {
-        'hpp_t': P_HPP_ts,
-        'hpp_curt_t': P_curtailment_ts,
-        'b_t': P_charge_discharge_ts,
-        'b_E_SOC_t': E_SOC_ts,
-        'penalty_t': penalty_ts,
-    }
-
-    return outputs
+    return outputs_ems_cplex
 
 def ems_cplex_parts(
     wind_ts,
@@ -277,7 +274,7 @@ def ems_cplex_parts(
     b_E,
     G_MW,
     battery_depth_of_discharge,
-    charge_efficiency,
+    battery_charge_efficiency,
     peak_hr_quantile = 0.9,
     cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
     n_full_power_hours_expected_per_day_at_peak_price = 3,
@@ -294,7 +291,7 @@ def ems_cplex_parts(
     b_E : battery energy capacity time series
     G_MW : grid connection
     battery_depth_of_discharge : battery depth of discharge
-    charge_efficiency : battery charge efficiency
+    battery_charge_efficiency : battery charge efficiency
     peak_hr_quantile : quantile of price time series to define peak price hours
     cost_of_battery_P_fluct_in_peak_price_ratio : cost of battery power fluctuations computed as a peak price ratio
     n_full_power_hours_expected_per_day_at_peak_price : Penalty occurs if number of full power hours expected per day at peak price are not reached
@@ -340,9 +337,10 @@ def ems_cplex_parts(
     vars.update(vars_added)
 
 
-    ems_cplex_parts_map ={'wind': ems_cplex_parts_wind,
-              'solar': ems_cplex_parts_solar,
-              'bess': ems_cplex_parts_bess,
+    ems_cplex_parts_map ={
+        'wind': ems_cplex_parts_wind,
+        'solar': ems_cplex_parts_solar,
+        'bess': ems_cplex_parts_bess,
     }
 
     technology_types = ['wind', 'solar', 'bess']
@@ -351,7 +349,7 @@ def ems_cplex_parts(
         model_new = ems_name(
             mdl, time, SOCtime, G_MW, b_P, b_E, wind_ts, solar_ts,
             cost_of_battery_P_fluct_in_peak_price_ratio, price_ts_to_max,
-            charge_efficiency, battery_depth_of_discharge, peak_hours_index,
+            battery_charge_efficiency, battery_depth_of_discharge, peak_hours_index,
                          e_peak_period_expected, price_peak, price_ts, vars
         )
         mdl = model_new.get_updated_model()

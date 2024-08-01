@@ -1,5 +1,6 @@
 import pandas as pd
-from .ems_abc import ems_abc, ems_cplex_parts_abc
+import numpy as np
+from .ems_abc import ems_abc, ems_cplex_abc, ems_cplex_parts_abc
 from .ems_utils import expand_to_lifetime
 
 class ems_solar_abc(ems_abc):
@@ -66,6 +67,21 @@ class ems_solar_long_term_operation(ems_abc):
         return ems_WSB_args
 
     def outputs_extension(self, component, inputs, outputs, outputs_ems_WSB):
+        return outputs
+
+class ems_cplex_solar(ems_cplex_abc):
+    def allocate_vars(self, allocated_vars, length_ts):
+        return allocated_vars
+
+    def inputs_to_ems_cplex_parts(self, inputs, batch, outputs):
+        added_outputs=dict(solar_ts=inputs['solar_ts'].iloc[batch])
+        outputs.update(added_outputs)
+        return outputs
+
+    def outputs_batch(self, outputs_ems_cplex_parts, batch, allocated_vars):
+        return allocated_vars
+
+    def ems_cplex_outputs(self, outputs, allocated_vars):
         return outputs
 
 class ems_cplex_parts_solar(ems_cplex_parts_abc):

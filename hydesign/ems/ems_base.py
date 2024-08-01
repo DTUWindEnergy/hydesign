@@ -1,5 +1,6 @@
 import pandas as pd
-from .ems_abc import ems_abc, ems_cplex_parts_abc
+import numpy as np
+from .ems_abc import ems_abc, ems_cplex_abc, ems_cplex_parts_abc
 
 from .ems_utils import expand_to_lifetime
 
@@ -55,7 +56,8 @@ class ems_base_abc(ems_abc):
             'price_ts': WSPr_df.price_t,
             'G_MW': G_MW[0],
             'peak_hr_quantile': peak_hr_quantile,
-            'n_full_power_hours_expected_per_day_at_peak_price': n_full_power_hours_expected_per_day_at_peak_price
+            'n_full_power_hours_expected_per_day_at_peak_price': n_full_power_hours_expected_per_day_at_peak_price,
+            'technology_types': ['base', 'wind', 'solar', 'bess'],
             }
 
         ems_WSB_args.update(added_ems_WSB_args)
@@ -82,10 +84,6 @@ class ems_base_abc(ems_abc):
 class ems_base_long_term_operation(ems_abc):
 
     def add_inputs(self, component):
-        component.add_input(
-            'SoH',
-            desc="Battery state of health at discretization levels",
-            shape=[component.life_h])
         component.add_input(
             'price_t_ext',
             desc="Electricity price time series",
@@ -137,7 +135,6 @@ class ems_base_long_term_operation(ems_abc):
         )
 
     def added_ems_WSB_args(self, ems_WSB_args, inputs):
-        SoH = inputs['SoH']
         price_t_ext = inputs['price_t_ext']
         G_MW = inputs['G_MW']
         hpp_curt_t = inputs['hpp_curt_t']
@@ -145,13 +142,11 @@ class ems_base_long_term_operation(ems_abc):
         n_full_power_hours_expected_per_day_at_peak_price = inputs['n_full_power_hours_expected_per_day_at_peak_price'][0]
 
         added_ems_WSB_args = dict(
-                    batt_degradation=SoH,
                     hpp_curt_t=hpp_curt_t,
                     G_MW=G_MW[0],
                     price_ts=price_t_ext,
                     peak_hr_quantile=peak_hr_quantile,
                     n_full_power_hours_expected_per_day_at_peak_price=n_full_power_hours_expected_per_day_at_peak_price, )
-
 
         ems_WSB_args.update(added_ems_WSB_args)
         return ems_WSB_args
@@ -163,6 +158,45 @@ class ems_base_long_term_operation(ems_abc):
         outputs['total_curtailment_with_deg'] = outputs_ems_WSB['P_curt_deg'].sum()
         outputs['total_curtailment'] = inputs['hpp_curt_t'].sum()
 
+        return outputs
+
+class ems_cplex_base(ems_cplex_abc):
+    def allocate_vars(self, allocated_vars, length_ts):
+        added_allocated_vars = dict(
+            P_HPP_ts = np.zeros(length_ts),
+            P_curtailment_ts = np.zeros(length_ts),
+            penalty_ts = np.zeros(length_ts)
+        )
+        allocated_vars.update(added_allocated_vars)
+        return allocated_vars
+
+    def inputs_to_ems_cplex_parts(self, inputs, batch, outputs):
+        added_outputs = dict(
+            price_ts=inputs['price_ts'].iloc[batch],
+            G_MW=inputs['G_MW'],
+            peak_hr_quantile=inputs['peak_hr_quantile'],
+            cost_of_battery_P_fluct_in_peak_price_ratio=inputs['cost_of_battery_P_fluct_in_peak_price_ratio'],  # [0, 0.8]. For higher values might cause errors
+            n_full_power_hours_expected_per_day_at_peak_price=inputs['n_full_power_hours_expected_per_day_at_peak_price'],
+            technology_types=inputs['technology_types'],
+        )
+
+        outputs.update(added_outputs)
+
+        return outputs
+
+    def outputs_batch(self, outputs_ems_cplex_parts, batch, allocated_vars):
+        allocated_vars['P_HPP_ts'][batch] = outputs_ems_cplex_parts['P_HPP_ts']
+        allocated_vars['P_curtailment_ts'][batch] = outputs_ems_cplex_parts['P_curtailment_ts']
+        allocated_vars['penalty_ts'][batch] = outputs_ems_cplex_parts['penalty_ts']
+        return allocated_vars
+
+    def ems_cplex_outputs(self, outputs, allocated_vars):
+        added_outputs = {
+            'hpp_t': allocated_vars['P_HPP_ts'],
+            'hpp_curt_t': allocated_vars['P_curtailment_ts'],
+            'penalty_t': allocated_vars['penalty_ts'],
+        }
+        outputs.update(added_outputs)
         return outputs
 
 class ems_cplex_parts_base_pre(ems_cplex_parts_abc):
