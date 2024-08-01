@@ -1,49 +1,49 @@
-,Design 1
-longitude,8.594398
-latitude,56.227322
-altitude,85.0
-clearance [m],50.0
-sp [W/m2],300.0
-p_rated [MW],10.0
-Nwt,40.0
-wind_MW_per_km2 [MW/km2],10.0
-solar_MW [MW],0.0
-surface_tilt [deg],45.0
-surface_azimuth [deg],180.0
-DC_AC_ratio,1.5
-b_P [MW],40.0
-b_E_h [h],4.0
-cost_of_battery_P_fluct_in_peak_price_ratio,5.0
-PTG [MW],250.0
-HSS [kg],5000.0
-NPV_over_CAPEX,-650.7708141516664
-NPV [MEuro],-397231.44349391735
-IRR,0.0
-LCOE [Euro/MWh],33.73586739133007
-LCOH [Euro/MWh],8.233433115931657
-Revenue,-490216.23658689024
-CAPEX [MEuro],610.4014421908907
-OPEX [MEuro],11.435225107460662
-penalty lifetime [MEuro],491796.44206417305
-AEP [GWh],1320.6520809125684
-Power to grid,709.958802255846
-GUF,0.5025312332239605
-annual_H2,6975.4222236904425
-annual_P_ptg,610.6932786567226
-annual_P_ptg_H2,0.0
-grid [MW],300.0
-wind [MW],400.0
-solar [MW],0.0
-ptg_MW,250.0
-HSS_kg,5000.0
-Battery Energy [MWh],160.0
-Battery Power [MW],40.0
-Total curtailment [GWh],143.42083649509738
-Awpp [km2],40.0
-Apvp [km2],0.0
-Rotor diam [m],206.0129077457011
-Hub height [m],153.00645387285056
-Number of batteries used in lifetime,1.0
-Break-even H2 price [Euro/kg],2821.4976207923023
-Break-even PPA price [Euro/MWh],27712.299844090587
-Capacity factor wind [-],0.3791234667305639
+;Design 1
+longitude;8.594398
+latitude;56.227322
+altitude;85.0
+clearance [m];50.0
+sp [W/m2];300.0
+p_rated [MW];10.0
+Nwt;40.0
+wind_MW_per_km2 [MW/km2];10.0
+solar_MW [MW];0.0
+surface_tilt [deg];45.0
+surface_azimuth [deg];180.0
+DC_AC_ratio;1.5
+b_P [MW];40.0
+b_E_h [h];4.0
+cost_of_battery_P_fluct_in_peak_price_ratio;5.0
+PTG [MW];250.0
+HSS [kg];5000.0
+NPV_over_CAPEX;0.2725206066649639
+NPV [MEuro];189.5412001682855
+IRR;0.0883208571423626
+LCOE [Euro/MWh];35.78308794530801
+LCOH [Euro/MWh];13.25321670255229
+Revenue;1432.3812197414625
+CAPEX [MEuro];695.5114421908908
+OPEX [MEuro];12.957964542695784
+penalty lifetime [MEuro];0.0
+AEP [GWh];1321.0627670873682
+Power to grid;711.4872565940218
+GUF;0.5026875065020427
+annual_H2;5605.554053944003
+annual_P_ptg;609.5755104933462
+annual_P_ptg_H2;0.0
+grid [MW];300.0
+wind [MW];400.0
+solar [MW];0.0
+ptg_MW;250.0
+HSS_kg;5000.0
+Battery Energy [MWh];160.0
+Battery Power [MW];40.0
+Total curtailment [GWh];144.0557970819935
+Awpp [km2];40.0
+Apvp [km2];0.0
+Rotor diam [m];206.0129077457011
+Hub height [m];153.00645387285056
+Number of batteries used in lifetime;1.0
+Break-even H2 price [Euro/kg];3.1300221156002985
+Break-even PPA price [Euro/MWh];26.402744773876982
+Capacity factor wind [-];0.3791234667314965

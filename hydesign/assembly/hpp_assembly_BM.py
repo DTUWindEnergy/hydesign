@@ -2,6 +2,7 @@
 import glob
 import os
 import time
+import ast
 
 # basic libraries
 import numpy as np
@@ -30,27 +31,8 @@ class hpp_model:
 
     def __init__(
         self,
-        latitude,
-        longitude,
-        altitude=None,
-        sim_pars_fn=None,
-        work_dir = './',
-        max_num_batteries_allowed = 3,
-        factor_battery_cost = 1,
-        ems_type='cplex', # Select the solver for ems: CPLEX or ORtools
-        weeks_per_season_per_year = None,
-        seed=0, # For selecting random weeks pe season to reduce the computational time
-        input_ts_fn = None, # If None then it computes the weather
-        input_HA_ts_fn = None,
-        price_up_ts_fn = None,
-        price_dwn_ts_fn = None, 
-        price_col = None,
-        price_fn = None, # If input_ts_fn is given it should include Price column.
-        genWT_fn = lut_filepath+'genWT_v3.nc',
-        genWake_fn = lut_filepath+'genWake_v3.nc',
+        excel_data,
         verbose = True,
-        name = '',
-        ppa_price=None,
         **kwargs
         ):
         """Initialization of the hybrid power plant evaluator
@@ -78,15 +60,52 @@ class hpp_model:
         genWT_fn : Wind turbine power curve look-up tables
         genWake_fn : Wind turbine wake look-up tables
         """
+        excel_data_main = excel_data['dashboard']
+
+        # Reset the header to the 6th row (index 5) and reassign the DataFrame
+        excel_data_main.columns = excel_data_main.iloc[5]
+        excel_data_main = excel_data_main[6:].reset_index(drop=True)
+
+        # Drop rows where 'Parameter' is NaN
+        excel_data_main.dropna(subset=['Parameter'], inplace=True)
+
+        # Extract 'Parameter' and 'Value' columns as a dictionary
+        sim_pars = dict(zip(excel_data_main['Parameter'], excel_data_main['Value']))
+
+        # Convert specific sim_pars to np.array using ast.literal_eval
+        for key in ['wind_deg', 'wind_deg_yr', 'pv_deg', 'pv_deg_yr', 'inflation', 'inflation_yr', 'phasing_yr', 'phasing_CAPEX', 'depreciation_yr',
+                    'depreciation']:
+            if key in sim_pars:
+                sim_pars[key] = np.array(ast.literal_eval(sim_pars[key]))
+
+        # Overwrite parameters with values from kwargs if provided
+        for key in sim_pars.keys():
+            if key in kwargs:
+                sim_pars[key] = kwargs[key]
+
+        # Extract sim_pars from the dictionary
+        latitude = sim_pars.get('latitude')
+        longitude = float(sim_pars.get('longitude'))
+        altitude = sim_pars.get('altitude')
+        work_dir = sim_pars.get('work_dir', './')
+        max_num_batteries_allowed = sim_pars.get('max_num_batteries_allowed', 3)
+        factor_battery_cost = sim_pars.get('factor_battery_cost', 1)
+        ems_type = sim_pars.get('ems_type', 'cplex')
+        weeks_per_season_per_year = sim_pars.get('weeks_per_season_per_year')
+        seed = sim_pars.get('seed', 0)
+        genWT_fn = sim_pars.get('genWT_fn', lut_filepath + './genWT_v3.nc')
+        genWake_fn = sim_pars.get('genWake_fn', lut_filepath + './genWake_v3.nc')
+        verbose = verbose
+        name = sim_pars.get('name', '')
+        ppa_price = sim_pars.get('ppa_price', 0)
+        ems_type = sim_pars.get('ems_type', 'cplex')
+        price_col = sim_pars.get('price_col')
+
         work_dir = mkdir(work_dir)
-        
-        # Extract simulation parameters
-        try:
-            with open(sim_pars_fn) as file:
-                sim_pars = yaml.load(file, Loader=yaml.FullLoader)
-        except:
-            raise(f'sim_pars_fn="{sim_pars_fn}" can not be read')
-        
+
+        # Extract additional data from separate sheets if available
+        input_ts_data = excel_data.get('input_ts_DA')
+
         if altitude == None:
             
             elevation_fn = sim_pars['elevation_fn'] # Altitude map for extracting altitude
@@ -131,7 +150,7 @@ class hpp_model:
             share_WT_deg_types = 0.5
         
         # Extract weather timeseries
-        if input_ts_fn == None:
+        if input_ts_data.empty:
             
             # Weather database
             era5_zarr = sim_pars['era5_zarr'] # location of wind speed renalysis
@@ -169,9 +188,11 @@ class hpp_model:
             print(f'\ninput_ts_fn extracted and stored in {input_ts_fn}')
             weather.to_csv(input_ts_fn)
             N_time = len(weather)
-            
-        else: # User provided weather timeseries
-            weather = pd.read_csv(input_ts_fn, index_col=0, parse_dates=True)
+
+        else:  # User provided weather timeseries
+            weather = excel_data['input_ts_DA']
+            weather.set_index(input_ts_data.columns[0], inplace=True)
+            weather.index = pd.to_datetime(weather.index)
             N_time = len(weather)
 
         # Check for complete years in the input_ts
@@ -180,32 +201,59 @@ class hpp_model:
         else:
             N_sel = N_time - np.mod(N_time,365)
             weather = weather.iloc[:N_sel]
-            
-            input_ts_fn = f'{work_dir}input_ts_modified.csv'
+
             print(f'\ninput_ts_fn length is not a complete number of years (hyDesign handles years as 365 days).')
-            print(f'The file has been modified and stored in {input_ts_fn}')
-            weather.to_csv(input_ts_fn)
+            print(f'The data has been modified')
             N_time = len(weather)
 
         # Weather database for HA
-        if input_HA_ts_fn == None:
-            print('No HA input')
-        else:
-            weather_HA = pd.read_csv(input_HA_ts_fn, index_col=0, parse_dates=True)
+        try:
+            input_ts_HA_data = excel_data['input_ts_HA']
+            weather_HA = input_ts_HA_data
+            weather_HA.set_index(input_ts_HA_data.columns[0], inplace=True)
+            weather_HA.index = pd.to_datetime(weather_HA.index)
+            # Check for complete years in the input_ts: Hydesign works with years of 365 days
+            N_time_HA = len(weather_HA)
+            if np.mod(N_time_HA, 365) / 24 == 0:
+                pass
+            else:
+                N_sel_HA = N_time_HA - np.mod(N_time_HA, 365)
+                weather_HA = weather_HA.iloc[:N_sel_HA]
             SO_imbalance = weather_HA['SO_power_imbalance']
+        except:
+            print('No HA input')
+
         with xr.open_dataset(genWT_fn) as ds: 
             # number of points in the power curves
             N_ws = len(ds.ws.values)
         
         # BM prices database
-        if price_up_ts_fn == None:
+        try:
+            price_up_reg = excel_data['up_reg_price'][price_col]
+            # Check for complete years in the input_ts: Hydesign works with years of 365 days
+            N_time_up = len(price_up_reg)
+            if np.mod(N_time_up, 365) / 24 == 0:
+                pass
+            else:
+                N_sel_up = N_time_up - np.mod(N_time_up, 365)
+                price_up_reg = price_up_reg.iloc[:N_sel_up]
+        except:
             print('No BM prices')
-        else:
-            price_up_reg = pd.read_csv(price_up_ts_fn, index_col=0, parse_dates=True)[price_col]
-        if price_dwn_ts_fn == None:
-            print('No BM price')
-        else:
-            price_dwn_reg = pd.read_csv(price_dwn_ts_fn, index_col=0, parse_dates=True)[price_col]
+
+        try:
+            price_down_reg = excel_data['down_reg_price'][price_col]
+            # Check for complete years in the input_ts: Hydesign works with years of 365 days
+            N_time_down = len(price_down_reg)
+            if np.mod(N_time_down, 365) / 24 == 0:
+                pass
+            else:
+                N_sel_down = N_time_down - np.mod(N_time_down, 365)
+                price_down_reg = price_down_reg.iloc[:N_sel_down]
+        except:
+            print('No BM prices')
+
+
+        #price_dwn_reg = pd.read_csv(price_dwn_ts_fn, index_col=0, parse_dates=True)[price_col]
 
         # Assign PPA to the full input_ts
         if ppa_price is None:
@@ -221,9 +269,6 @@ class hpp_model:
                 weeks_per_season_per_year=weeks_per_season_per_year,
             )
             N_time = len(weather)
-            input_ts_fn = f'{work_dir}input_ts_sel.csv'
-            print(f'\n\nSelected input time series based on {weeks_per_season_per_year} weeks per season are stored in {input_ts_fn}')
-            weather.to_csv(input_ts_fn)
 
         # extract number of ws in the look-up tables
         with xr.open_dataset(genWT_fn) as ds: 
@@ -235,7 +280,7 @@ class hpp_model:
         model.add_subsystem(
             'abl', 
             ABL(
-                weather_fn=input_ts_fn, 
+                weather=weather,
                 N_time=N_time),
             promotes_inputs=['hh']
             )
@@ -274,7 +319,7 @@ class hpp_model:
         model.add_subsystem(
             'abl_HA', 
             ABL(
-                weather_fn=input_HA_ts_fn, 
+                weather=weather_HA,
                 N_time=N_time),
             promotes_inputs=['hh']
             )
@@ -313,7 +358,7 @@ class hpp_model:
         model.add_subsystem(
             'pvp', 
             pvp(
-                weather_fn = input_ts_fn, 
+                weather = weather,
                 N_time = N_time,
                 latitude = latitude,
                 longitude = longitude,
@@ -356,7 +401,7 @@ class hpp_model:
         model.add_subsystem(
             'battery_degradation', 
             battery_degradation(
-                weather_fn = input_ts_fn, # for extracting temperature
+                weather = weather, # for extracting temperature
                 num_batteries = max_num_batteries_allowed,
                 life_h = life_h,
                 weeks_per_season_per_year = weeks_per_season_per_year,
@@ -368,7 +413,7 @@ class hpp_model:
         model.add_subsystem(
             'battery_loss_in_capacity_due_to_temp', 
             battery_loss_in_capacity_due_to_temp(
-                weather_fn = input_ts_fn, # for extracting temperature
+                weather = weather, # for extracting temperature
                 life_h = life_h,
                 weeks_per_season_per_year = weeks_per_season_per_year,
             ),
@@ -414,8 +459,8 @@ class hpp_model:
                 # 'peak_hr_quantile',
                 # 'n_full_power_hours_expected_per_day_at_peak_price'
                 ],
-            # promotes_outputs=[
-            #     'total_curtailment']
+            promotes_outputs=[
+                'total_curtailment_deg']
             )
         
         model.add_subsystem(
@@ -604,7 +649,7 @@ class hpp_model:
         # Additional parameters
         prob.set_val('price_t', price)
         prob.set_val('price_up_reg_t', price_up_reg)
-        prob.set_val('price_dwn_reg_t', price_dwn_reg)
+        prob.set_val('price_dwn_reg_t', price_down_reg)
         prob.set_val('SO_imbalance_t', SO_imbalance)
         prob.set_val('G_MW', sim_pars['G_MW'])
         #prob.set_val('pv_deg_per_year', sim_pars['pv_deg_per_year'])
@@ -626,7 +671,7 @@ class hpp_model:
         self.sim_pars = sim_pars
         self.prob = prob
         self.max_num_batteries_allowed = max_num_batteries_allowed
-        self.input_ts_fn = input_ts_fn
+        #self.input_ts_data = input_ts_data
         self.altitude = altitude
     
         self.list_out_vars = [
@@ -789,7 +834,7 @@ class hpp_model:
             solar_MW,
             b_E,
             b_P,
-            prob['total_curtailment']/1e3, #[GWh]
+            prob['total_curtailment_deg']/1e3, #[GWh]
             Awpp,
             prob.get_val('shared_cost.Apvp'),
             max( Awpp , prob.get_val('shared_cost.Apvp') ),

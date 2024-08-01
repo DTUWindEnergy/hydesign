@@ -1,7 +1,7 @@
 # --------------------------------------------------------------------------------------------
 # HPP Global
 # --------------------------------------------------------------------------------------------
-G_MW: 0 # Grid capacity
+G_MW: 300 # Grid capacity
 year: '2012' # Single representative year
 N_life: 25
 
@@ -42,10 +42,10 @@ pv_deg: [0, 0.125] #0.0 intial + 25yr * 0.5%/yr
 # --------------------------------------------------------------------------------------------
 # Battery
 # --------------------------------------------------------------------------------------------
-battery_energy_cost: 90_000  # [Euro/MWh]
-battery_power_cost: 32_000    # Power conversion system cost [Euro/MW]
-battery_BOP_installation_commissioning_cost: 36_000 # Electric BalanceOfPlant, instal+commission cost [Euro/MW]
-battery_control_system_cost: 9_000  # Grid management control system cost[Euro/MW]
+# battery_energy_cost: 90_000  # [Euro/MWh]
+# battery_power_cost: 32_000    # Power conversion system cost [Euro/MW]
+# battery_BOP_installation_commissioning_cost: 36_000 # Electric BalanceOfPlant, instal+commission cost [Euro/MW]
+# battery_control_system_cost: 9_000  # Grid management control system cost[Euro/MW]
 battery_energy_onm_cost: 0 
 
 #battery_energy_cost: 45_000  # [Euro/MWh]
@@ -54,10 +54,17 @@ battery_energy_onm_cost: 0
 #battery_control_system_cost: 4_500  # Grid management control system cost[Euro/MW]
 #battery_energy_onm_cost: 0 
 
+# reference DEA catalogue
+battery_energy_cost: 62_000  # [Euro/MWh]
+battery_power_cost: 16_000    # Power conversion system cost [Euro/MW]
+battery_BOP_installation_commissioning_cost: 36_000 # Electric BalanceOfPlant, instal+commission cost [Euro/MW]
+battery_control_system_cost: 9_000  # Grid management control system cost[Euro/MW]
+battery_energy_onm_cost: 0 
+
 # EMS and Degradation parameters
 battery_depth_of_discharge: 0.9 # 1 - Minimum energy level in the battery
-battery_charge_efficiency: 0.98  # Charge efficiency for Lithium-ion
-battery_price_reduction_per_year: 0.1 # Battery price reduction per year
+battery_charge_efficiency: 0.985  # Charge efficiency for Lithium-ion
+battery_price_reduction_per_year: 0.05 # Battery price reduction per year
 #n_steps_in_LoH: 20 # Number of battery degradation levels for discretization of lifetime operation
 min_LoH: 0.7 # Minimum energy storage capacity in percent for the storage to be replaced
 
@@ -76,12 +83,12 @@ price_H2: 5 #[Euro/kg]
 storage_eff: 0.9 #Compressor efficiency for hydrogen storage
 ptg_deg: 0.99 #Electrolyzer degradation over lifetime
 hhv: 39.3 #[kWh/kg]
-water_consumption : 9.4 #l/kg
-electrolyzer_capex_cost : 480_000  #[EUR/MW] This value is for PEM electrolyzers
+water_consumption : 9 #l/kg
+electrolyzer_capex_cost : 800_000  #[EUR/MW] This value is for PEM electrolyzers
 # For Alkaline electrolyzers CAPEX can be considered as 70% of PEM
-electrolyzer_opex_cost : 9600  #It is 2% of electrolyzer_capex_cost #[EUR/MW]
+electrolyzer_opex_cost : 16_000  #It is 2% of electrolyzer_capex_cost #[EUR/MW]
 electrolyzer_power_electronics_cost : 0  #[EUR/MW] included in the capex_cost but can be considered seperately also
-water_cost : 4 #[EUR/m3]
+water_cost : 3.14 #[EUR/m3]
 water_treatment_cost : 2  #[EUR/m3]
 H2_storage_capex_cost: 300 #[EUR/kg] https://www.hydrogen.energy.gov/pdfs/review22/st235_houchins_2022_p.pdf
 H2_storage_opex_cost: 3 #[EUR/kg] 1% of CAPEX 
@@ -89,7 +96,7 @@ H2_transportation_cost: 5 #[EUR/kg/km] transportation can be through pipelines o
 # https://joint-research-centre.ec.europa.eu/system/files/2021-06/jrc124206_assessment_of_hydrogen_delivery_options.pdf
 H2_transportation_distance: 0 #[km]
 penalty_factor_H2: 0 #[Eur/kg] This is the penalty price for not meeting the demand of hydrogen in an hour, for infinite H2 offtake this value becomes ZERO
-electrolyzer_eff_curve_name: 'PEM electrolyzer simple'
+electrolyzer_eff_curve_name: 'PEM electrolyzer H2 production'
 # min_power_standby: 0 # minimum percentage of rated electrolyzer power required to operate in standby mode
 # ramp_up_limit: 50 # ramp-up limit of electrolyzer in MW/h
 # ramp_down_limit: 50 # ramp-down limit of electrolyzer in MW/h
@@ -101,7 +108,7 @@ electrolyzer_eff_curve_name: 'PEM electrolyzer simple'
 # Shared costs
 # --------------------------------------------------------------------------------------------
 hpp_BOS_soft_cost: 100_000       # [Euro/MW]
-hpp_grid_connection_cost: 240_000 # [Euro/MW]
+hpp_grid_connection_cost: 240_000 # [Euro/MW] from DEA
 #land cost not same format in excel it's per MW
 land_cost: 0  #  [Euro/km**2] from Hybridize imputs 6-12k Euro/acre. 1km2 = 247.105acre
 
@@ -109,11 +116,11 @@ land_cost: 0  #  [Euro/km**2] from Hybridize imputs 6-12k Euro/acre. 1km2 = 247.
 # Financial and Economic data
 # --------------------------------------------------------------------------------------------
 #discount_factor: 0.06
-wind_WACC: 0.052    # Markup of after tax WACC for offshore WT
+wind_WACC: 0.07    # Markup of after tax WACC for offshore WT
 solar_WACC: 0.048   # After tax WACC for solar PV
 battery_WACC: 0.08 # After tax WACC for stationary storge li-ion batteries
 tax_rate: 0.22      # Corporate tax rate
-ptg_WACC: 0.07      # After tax WACC for P2H plant
+ptg_WACC: 0.08      # After tax WACC for P2H plant
 
 # Early CAPEX payment, or phasing 
 phasing_yr: [-1,0]

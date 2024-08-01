@@ -37,9 +37,9 @@ class ABL(om.ExplicitComponent):
     """
 
 
-    def __init__(self, weather_fn, N_time):
+    def __init__(self, weather, N_time):
         super().__init__()
-        self.weather_fn = weather_fn
+        self.weather = weather
         self.N_time = N_time
 
     def setup(self):
@@ -56,8 +56,8 @@ class ABL(om.ExplicitComponent):
 
     def precompute(self, hh):
 
-        weather = pd.read_csv(self.weather_fn, index_col=0, parse_dates=True)
-        ds_interpolated = interpolate_WS_loglog(weather, hh=hh)
+        # weather = pd.read_csv(self.weather_fn, index_col=0, parse_dates=True)
+        ds_interpolated = interpolate_WS_loglog(self.weather, hh=hh)
         return ds_interpolated
 
     def compute(self, inputs, outputs):

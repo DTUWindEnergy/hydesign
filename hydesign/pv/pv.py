@@ -21,7 +21,7 @@ class pvp(om.ExplicitComponent):
     """PV power plant model : It computes the solar power output during the lifetime of the plant using solar plant AC capacity, DC/AC ratio, location coordinates and PV module angles"""
 
     def __init__(self,
-                 weather_fn,
+                 weather,
                  N_time,
                  latitude,
                  longitude,
@@ -32,7 +32,7 @@ class pvp(om.ExplicitComponent):
 
         Parameters
         ----------
-        weather_fn : Weather timeseries
+        weather : Weather timeseries
         N_time : Length of the representative data
         latitude : Latitude at chosen location
         longitude : Longitude at chosen location
@@ -41,7 +41,7 @@ class pvp(om.ExplicitComponent):
 
         """   
         super().__init__()
-        self.weather_fn = weather_fn
+        self.weather = weather
         self.N_time = N_time
         self.tracking = tracking
 
@@ -51,10 +51,7 @@ class pvp(om.ExplicitComponent):
             altitude=altitude,
             name='Plant')
 
-        weather = pd.read_csv(
-            weather_fn, 
-            index_col=0,
-            parse_dates=True)
+        #weather = pd.read_csv(weather, index_col=0, parse_dates=True)
 
         weather['temp_air'] = weather['temp_air_1'] - 273.15  # Celcium
         weather['wind_speed'] = weather['WS_1']

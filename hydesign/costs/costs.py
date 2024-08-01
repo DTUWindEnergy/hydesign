@@ -263,6 +263,7 @@ class battery_cost(om.ExplicitComponent):
                  battery_BOP_installation_commissioning_cost,
                  battery_control_system_cost,
                  battery_energy_onm_cost,
+                 battery_price_reduction_per_year,
                  N_life = 25,
                  life_h = 25*365*24):
         """Initialization of the battery cost model
@@ -286,6 +287,7 @@ class battery_cost(om.ExplicitComponent):
         self.battery_BOP_installation_commissioning_cost = battery_BOP_installation_commissioning_cost
         self.battery_control_system_cost = battery_control_system_cost
         self.battery_energy_onm_cost = battery_energy_onm_cost
+        self.battery_price_reduction_per_year = battery_price_reduction_per_year
         self.N_life = N_life
         self.life_h = life_h
 
@@ -342,12 +344,13 @@ class battery_cost(om.ExplicitComponent):
         battery_BOP_installation_commissioning_cost = self.battery_BOP_installation_commissioning_cost
         battery_control_system_cost = self.battery_control_system_cost
         battery_energy_onm_cost = self.battery_energy_onm_cost
+        battery_price_reduction_per_year = self.battery_price_reduction_per_year
         
 
         ii_battery_change = np.where( (SoH>0.99) & ( np.append(1, np.diff(SoH)) > 0) )[0]
         year_new_battery = np.unique(np.floor(age[ii_battery_change]))
         
-        battery_price_reduction_per_year = 0.1
+
         factor = 1.0 - battery_price_reduction_per_year
         N_beq = np.sum([factor**iy for iy in year_new_battery])
 

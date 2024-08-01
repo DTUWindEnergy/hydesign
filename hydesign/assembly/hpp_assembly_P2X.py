@@ -1,4 +1,5 @@
 import os
+import ast
 import numpy as np
 import pandas as pd
 import openmdao.api as om
@@ -19,22 +20,8 @@ class hpp_model_P2X:
 
     def __init__(
         self,
-        latitude,
-        longitude,
-        altitude=None,
-        sim_pars_fn=None,
-        work_dir = './',
-        max_num_batteries_allowed = 3,
-        factor_battery_cost = 1,
-        ems_type='cplex',
-        input_ts_fn = None, # If None then it computes the weather
-        price_fn = None, # If input_ts_fn is given it should include Price column.
-        H2_demand_fn = None, # If input_ts_fn is given it should include H2_demand column.
-        genWT_fn = lut_filepath+'genWT_v3.nc',
-        genWake_fn = lut_filepath+'genWake_v3.nc',
+        excel_data,
         verbose = True,
-        name = '',
-        ppa_price=None,
         **kwargs
 
         ):
@@ -58,14 +45,49 @@ class hpp_model_P2X:
         genWT_fn : Wind turbine power curve look-up tables
         genWake_fn : Wind turbine wake look-up tables
         """
+        excel_data_main = excel_data['dashboard']
+
+        # Reset the header to the 6th row (index 5) and reassign the DataFrame
+        excel_data_main.columns = excel_data_main.iloc[5]
+        excel_data_main = excel_data_main[6:].reset_index(drop=True)
+
+        # Drop rows where 'Parameter' is NaN
+        excel_data_main.dropna(subset=['Parameter'], inplace=True)
+
+        # Extract 'Parameter' and 'Value' columns as a dictionary
+        sim_pars = dict(zip(excel_data_main['Parameter'], excel_data_main['Value']))
+
+        # Convert specific sim_pars to np.array using ast.literal_eval
+        for key in ['wind_deg', 'wind_deg_yr', 'pv_deg', 'pv_deg_yr', 'inflation', 'inflation_yr', 'phasing_yr', 'phasing_CAPEX', 'depreciation_yr',
+                    'depreciation']:
+            if key in sim_pars:
+                sim_pars[key] = np.array(ast.literal_eval(sim_pars[key]))
+
+        # Overwrite parameters with values from kwargs if provided
+        for key in sim_pars.keys():
+            if key in kwargs:
+                sim_pars[key] = kwargs[key]
+
+        # Extract sim_pars from the dictionary
+        latitude = sim_pars.get('latitude')
+        longitude = float(sim_pars.get('longitude'))
+        altitude = sim_pars.get('altitude')
+        work_dir = sim_pars.get('work_dir', './')
+        max_num_batteries_allowed = sim_pars.get('max_num_batteries_allowed', 3)
+        factor_battery_cost = sim_pars.get('factor_battery_cost', 1)
+        weeks_per_season_per_year = sim_pars.get('weeks_per_season_per_year', 0)
+        seed = sim_pars.get('seed', 0)
+        genWT_fn = sim_pars.get('genWT_fn', lut_filepath + './genWT_v3.nc')
+        genWake_fn = sim_pars.get('genWake_fn', lut_filepath + './genWake_v3.nc')
+        verbose = verbose
+        name = sim_pars.get('name', '')
+        ppa_price = sim_pars.get('ppa_price', None)
+        ems_type = sim_pars.get('ems_type', 'cplex')
+
         work_dir = mkdir(work_dir)
-        
-        # Extract simulation parameters
-        try:
-            with open(sim_pars_fn) as file:
-                sim_pars = yaml.load(file, Loader=yaml.FullLoader)
-        except:
-            raise(f'sim_pars_fn="{sim_pars_fn}" can not be read')
+
+        # Extract additional data from separate sheets if available
+        input_ts_data = excel_data.get('input_ts_DA')
         
         if altitude == None:
             
@@ -97,7 +119,7 @@ class hpp_model_P2X:
         # land_use_per_solar_MW = sim_pars['land_use_per_solar_MW']
         
         # Extract weather timeseries
-        if input_ts_fn == None:
+        if input_ts_data.empty:
             
             # Weather database
             era5_zarr = sim_pars['era5_zarr'] # location of wind speed renalysis
@@ -129,14 +151,13 @@ class hpp_model_P2X:
             else:
                 N_sel = N_time - np.mod(N_time,365)
                 weather = weather.iloc[:N_sel]
-            
-            input_ts_fn = f'{work_dir}input_ts{name}.csv'
-            print(f'\ninput_ts_fn extracted and stored in {input_ts_fn}')
-            weather.to_csv(input_ts_fn)
+
             N_time = len(weather)
 
         else: # User provided weather timeseries
-            weather = pd.read_csv(input_ts_fn, index_col=0, parse_dates=True)
+            weather = excel_data['input_ts_DA']
+            weather.set_index(input_ts_data.columns[0], inplace=True)
+            weather.index = pd.to_datetime(weather.index)
             N_time = len(weather)
 
         if ppa_price is None:
@@ -150,22 +171,26 @@ class hpp_model_P2X:
         else:
             N_sel = N_time - np.mod(N_time,365)
             weather = weather.iloc[:N_sel]
-            
-            input_ts_fn = f'{work_dir}input_ts_modified.csv'
-            print(f'\ninput_ts_fn length is not a complete number of years (hyDesign handles years as 365 days).')
-            print(f'The file has been modified and stored in {input_ts_fn}')
-            weather.to_csv(input_ts_fn)
+
+            print(f'\ninput_ts_data length is not a complete number of years (hyDesign handles years as 365 days).')
+            print('The data has been modified')
             N_time = len(weather)
 
-        H2_demand_data = pd.read_csv(H2_demand_fn, index_col=0, parse_dates=True).loc[weather.index,:]
-        electrolyzer_eff_fn = os.path.join(os.path.dirname(sim_pars_fn), 'Electrolyzer_efficiency_curves.csv')
-        df = pd.read_csv(electrolyzer_eff_fn)
+        H2_demand_data = excel_data['H2_demand']
+        H2_demand_data.set_index(H2_demand_data.columns[0], inplace=True)
+        H2_demand_data.index = pd.to_datetime(H2_demand_data.index)
+        H2_demand_data = H2_demand_data.loc[weather.index, :]
+        #H2_demand_data.index = pd.to_datetime(H2_demand_data.index)
+        N_time_H2 = len(H2_demand_data)
+
+        df = excel_data['electrolyzer_efficiency_curves']
+        df.set_index(df.columns[0], inplace=True)
+        df.index = pd.to_datetime(df.index)
         electrolyzer_eff_curve_name = sim_pars['electrolyzer_eff_curve_name']
         col_no = df.columns.get_loc(electrolyzer_eff_curve_name)
         my_df = df.iloc[:,col_no:col_no+2].dropna()
         eff_curve = my_df[1:].values.astype(float)
 
-        
         with xr.open_dataset(genWT_fn) as ds: 
             # number of points in the power curves
             N_ws = len(ds.ws.values)
@@ -175,7 +200,7 @@ class hpp_model_P2X:
         model.add_subsystem(
             'abl', 
             ABL(
-                weather_fn=input_ts_fn, 
+                weather=weather,
                 N_time=N_time),
             promotes_inputs=['hh']
             )
@@ -213,7 +238,7 @@ class hpp_model_P2X:
         model.add_subsystem(
             'pvp', 
             pvp(
-                weather_fn = input_ts_fn, 
+                weather = weather,
                 N_time = N_time,
                 latitude = latitude,
                 longitude = longitude,
@@ -253,7 +278,7 @@ class hpp_model_P2X:
                 'hhv',
                 'm_H2_demand_t',
                 'penalty_factor_H2',
-                # 'min_power_standby',
+                'min_power_standby',
                 # 'ramp_up_limit',
                 # 'ramp_down_limit',
                 ],
@@ -401,7 +426,7 @@ class hpp_model_P2X:
                               'LCOH',
                               'Revenue',
                               'mean_AEP',
-                              'mean_Power2Grid',
+                            #   'mean_Power2Grid',
                               'annual_H2',
                               'annual_P_ptg',
                               # 'annual_P_ptg_H2',
@@ -503,6 +528,7 @@ class hpp_model_P2X:
         prob.set_val('tax_rate', sim_pars['tax_rate'])
         prob.set_val('land_use_per_solar_MW', sim_pars['land_use_per_solar_MW'])
         prob.set_val('hhv', sim_pars['hhv'])
+        prob.set_val('min_power_standby', sim_pars['min_power_standby'])
         prob.set_val('ptg_deg', sim_pars['ptg_deg'])
         prob.set_val('price_H2', sim_pars['price_H2'])
         prob.set_val('penalty_factor_H2', sim_pars['penalty_factor_H2'])
@@ -511,7 +537,7 @@ class hpp_model_P2X:
         self.sim_pars = sim_pars
         self.prob = prob
         self.max_num_batteries_allowed = max_num_batteries_allowed
-        self.input_ts_fn = input_ts_fn
+        #self.input_ts_fn = input_ts_fn
         self.altitude = altitude
 
         self.list_out_vars = [
@@ -525,7 +551,7 @@ class hpp_model_P2X:
             'OPEX [MEuro]',
             'penalty lifetime [MEuro]',
             'AEP [GWh]',
-            'annual_Power2Grid [GWh]',
+            # 'annual_Power2Grid [GWh]',
             'GUF',
             'annual_H2 [tons]',
             'annual_P_ptg [GWh]',
@@ -609,8 +635,7 @@ class hpp_model_P2X:
         prob['CAPEX'] : Total capital expenditure costs of the HPP
         prob['OPEX'] : Operational and maintenance costs of the HPP
         prob['penalty_lifetime'] : Lifetime penalty
-        prob['AEP']: Annual energy production
-        prob['mean_Power2Grid']: Power to grid
+        prob['AEP']: Annual energy production injected to the grid
         prob['mean_AEP']/(self.sim_pars['G_MW']*365*24) : Grid utilization factor
         prob['annual_H2']: Annual H2 production
         prob['annual_P_ptg']: Annual power converted to hydrogen
@@ -683,7 +708,7 @@ class hpp_model_P2X:
             prob['OPEX']/1e6,
             prob['penalty_lifetime']/1e6,
             prob['mean_AEP']/1e3, #[GWh]
-            prob['mean_Power2Grid']/1e3, #GWh
+            # prob['mean_Power2Grid']/1e3, #GWh
             # Grid Utilization factor
             prob['mean_AEP']/(self.sim_pars['G_MW']*365*24),
             prob['annual_H2']/1e3, # in tons
@@ -748,7 +773,7 @@ class hpp_model_P2X:
                                             'OPEX [MEuro]',
                                             'penalty lifetime [MEuro]',
                                             'AEP [GWh]',
-                                            'Power to grid',
+                                            # 'Power to grid',
                                             'GUF',
                                             'annual_H2',
                                             'annual_P_ptg',

@@ -36,7 +36,7 @@ class battery_degradation(om.ExplicitComponent):
 
     def __init__(
         self, 
-        weather_fn,
+        weather,
         num_batteries = 1,
         life_h = 25*365*24,
         weeks_per_season_per_year = None,
@@ -46,14 +46,14 @@ class battery_degradation(om.ExplicitComponent):
         super().__init__()
         self.life_h = life_h
         self.num_batteries = num_batteries
-        self.weather_fn = weather_fn
+        self.weather = weather
         self.battery_deg = battery_deg
         self.battery_rf_matrix = None
 
-        weather = pd.read_csv(
-            weather_fn, 
-            index_col=0,
-            parse_dates=True)
+        # weather = pd.read_csv(
+        #     weather,
+        #     index_col=0,
+        #     parse_dates=True)
 
         air_temp_K_t = expand_to_lifetime(
             weather.temp_air_1.values, 
@@ -137,7 +137,7 @@ class battery_loss_in_capacity_due_to_temp(om.ExplicitComponent):
 
     def __init__(
         self, 
-        weather_fn,
+        weather,
         num_batteries = 1,
         life_h = 25*365*24,
         weeks_per_season_per_year = None,
@@ -147,13 +147,13 @@ class battery_loss_in_capacity_due_to_temp(om.ExplicitComponent):
         super().__init__()
         self.life_h = life_h
         self.num_batteries = num_batteries
-        self.weather_fn = weather_fn
+        self.weather = weather
         self.battery_deg = battery_deg
 
-        weather = pd.read_csv(
-            weather_fn, 
-            index_col=0,
-            parse_dates=True)
+        # weather = pd.read_csv(
+        #     weather_fn,
+        #     index_col=0,
+        #     parse_dates=True)
 
         air_temp_C_t = expand_to_lifetime(
             (weather.temp_air_1 - 273.15).values, 

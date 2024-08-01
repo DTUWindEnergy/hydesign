@@ -825,7 +825,7 @@ def ems_cplex_parts_P2X_bidirectional(
 
     m_H2_storage_ts = np.zeros_like(m_H2_ts)
     for t in range(len(m_H2_ts)):
-        if m_H2_ts[t] - m_H2_demand_ts[t] >= 0:
+        if m_H2_ts[t] - m_H2_demand_ts.iloc[t] >= 0:
             m_H2_storage_ts[t] = m_H2_ts[t] - m_H2_demand_ts[t]
         else:
             m_H2_storage_ts[t] = -LoS_H2_ts[t]

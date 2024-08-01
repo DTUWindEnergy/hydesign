@@ -95,6 +95,9 @@ penalty_factor_H2: 0.5 #[Eur/kg] This is the penalty price for not meeting the d
 electrolyzer_eff_curve_name: 'PEM electrolyzer simple'
 # The storage size can be kept as zero when there is no storage
 # For infinite hydrogen offtake keep the demand very high in 'H2_demand.csv' file
+min_power_standby: 0.0 # ref value 0.02 for standard operation mode (and make sure to include battery if this in included). minimum percentage of rated electrolyzer power required to operate in standby mode, set it to '0' to not include standby operation mode (ref: 10.1016/j.ijhydene.2019.05.092)
+ramp_up_limit: 50 # ramp-up limit of electrolyzer in MW/h
+ramp_down_limit: 50 # ramp-down limit of electrolyzer in MW/h
 
 # --------------------------------------------------------------------------------------------
 # Shared costs
@@ -125,6 +128,10 @@ ref_yr_inflation: 0 # inflation index is computed with respect to this year
 # depreciation
 depreciation_yr: [0, 25]
 depreciation: [0, 1]
+
+# Inputs for Balancing markets operations
+bi_directional_status: 0 # status of bi-directional flow from grid, 0 for No and 1 for Yes
+penalty_BM: 2000 # Euro/MWh Penalty for not meeting the scheduled DA power - reference - Nord Pool
 
 # --------------------------------------------------------------------------------------------
 # Weather databases

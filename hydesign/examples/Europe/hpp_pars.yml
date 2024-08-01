@@ -48,16 +48,23 @@ pv_deg: [0.03, 0.03, 0.28] #0.03 intial + 25yr * 1%/yr
 #battery_control_system_cost: 9_000  # Grid management control system cost[Euro/MW]
 #battery_energy_onm_cost: 0 
 
-battery_energy_cost: 45_000  # [Euro/MWh]
+# battery_energy_cost: 45_000  # [Euro/MWh]
+# battery_power_cost: 16_000    # Power conversion system cost [Euro/MW]
+# battery_BOP_installation_commissioning_cost: 18_000 # Electric BalanceOfPlant, instal+commission cost [Euro/MW]
+# battery_control_system_cost: 4_500  # Grid management control system cost[Euro/MW]
+# battery_energy_onm_cost: 0 
+
+# Reference is DEA catalogue
+battery_energy_cost: 62_000 #[Euro/MWh]
 battery_power_cost: 16_000    # Power conversion system cost [Euro/MW]
-battery_BOP_installation_commissioning_cost: 18_000 # Electric BalanceOfPlant, instal+commission cost [Euro/MW]
-battery_control_system_cost: 4_500  # Grid management control system cost[Euro/MW]
-battery_energy_onm_cost: 0 
+battery_BOP_installation_commissioning_cost: 80_000 # Electric BalanceOfPlant, instal+commission cost [Euro/MW]
+battery_control_system_cost: 2250  # Grid management control system cost[Euro/MW]
+battery_energy_onm_cost: 0 # [Euro/MWh]
 
 # EMS and Degradation parameters
 battery_depth_of_discharge: 0.9 # 1 - Minimum energy level in the battery
-battery_charge_efficiency: 0.98  # Charge efficiency for Lithium-ion
-battery_price_reduction_per_year: 0.10 # Battery price reduction per year
+battery_charge_efficiency: 0.985  # Charge efficiency for Lithium-ion
+battery_price_reduction_per_year: 0.05 # Battery price reduction per year
 # n_steps_in_LoH: 20 # Number of battery degradation levels for discretization of lifetime operation
 min_LoH: 0.7 # Minimum energy storage capacity in percent for the storage to be replaced
 
@@ -70,16 +77,14 @@ peak_hr_quantile: 0.9 # An hour of peak price has prices above this quantile
 
 # --------------------------------------------------------------------------------------------
 # P2H parameters
-# efficiency curve parameters are mentioned in EMS component (https://doi.org/10.3390/en13030612)
 # --------------------------------------------------------------------------------------------
 price_H2: 5 #[Euro/kg]
 storage_eff: 0.9 #efficiency for hydrogen storage
 ptg_deg: 0.99 # Annual electrolyzer degradation (% per year)
 hhv: 39.3 #[kWh/kg]
 water_consumption : 9.4 #l/kg
-electrolyzer_capex_cost : 480_000  #[EUR/MW] This value is for PEM electrolyzers
-# For Alkaline electrolyzers CAPEX can be considered as 70% of PEM
-electrolyzer_opex_cost : 9600  #It is 2% of electrolyzer_capex_cost #[EUR/MW]
+electrolyzer_capex_cost : 800_000  #[EUR/MW] This value is for PEM electrolyzers
+electrolyzer_opex_cost : 16_000  #It is 2% of electrolyzer_capex_cost #[EUR/MW]
 electrolyzer_power_electronics_cost : 0  #[EUR/MW] included in the capex_cost but can be considered seperately also
 water_cost : 4 #[EUR/m3]
 water_treatment_cost : 2  #[EUR/m3]
@@ -89,11 +94,11 @@ H2_transportation_cost: 5 #[EUR/kg/km] transportation can be through pipelines o
 # https://joint-research-centre.ec.europa.eu/system/files/2021-06/jrc124206_assessment_of_hydrogen_delivery_options.pdf
 H2_transportation_distance: 0 #[km]
 penalty_factor_H2: 0 #[Eur/kg] This is the penalty price for not meeting the demand of hydrogen in an hour, for infinite H2 offtake this value becomes ZERO
-electrolyzer_eff_curve_name: 'PEM electrolyzer simple'
-# electrolyzer_eff_curve_name: 'Alkaline electrolyzer H2 production'
+electrolyzer_eff_curve_name: 'PEM electrolyzer H2 production' # Efficiency curve for PEM electrolyzer -  (https://doi.org/10.1016/j.ijhydene.2016.12.145)
+# electrolyzer_eff_curve_name: 'Alkaline electrolyzer H2 production' # Efficiency curve for ALkaline electrolyzer - (10.1109/PowerTech55446.2023.10202860)
 # The storage size can be kept as zero when there is no storage
 # For infinite hydrogen offtake keep the demand very high in 'H2_demand.csv' file
-min_power_standby: 0.10 # minimum percentage of rated electrolyzer power required to operate in standby mode
+min_power_standby: 0.0 # ref value 0.02 for standard operation mode (and make sure to include battery if this in included). minimum percentage of rated electrolyzer power required to operate in standby mode, set it to '0' to not include standby operation mode (ref: 10.1016/j.ijhydene.2019.05.092)
 ramp_up_limit: 50 # ramp-up limit of electrolyzer in MW/h
 ramp_down_limit: 50 # ramp-down limit of electrolyzer in MW/h
 # --------------------------------------------------------------------------------------------
@@ -105,13 +110,13 @@ hpp_grid_connection_cost: 50_000 # [Euro/MW]
 land_cost: 300_000  #  [Euro/km**2] from Hybridize imputs 6-12k Euro/acre. 1km2 = 247.105acre
 
 # --------------------------------------------------------------------------------------------
-# Financial and Economic data
+# Financial and Economic data (ATB NREL)
 # --------------------------------------------------------------------------------------------
-wind_WACC: 0.052    # Markup of after tax WACC for onshore WT
-solar_WACC: 0.048   # After tax WACC for solar PV
-battery_WACC: 0.080 # After tax WACC for stationary storge li-ion batteries
+wind_WACC: 0.06    # Markup of after tax WACC for onshore WT
+solar_WACC: 0.06   # After tax WACC for solar PV
+battery_WACC: 0.06 # After tax WACC for stationary storge li-ion batteries
 tax_rate: 0.22      # Corporate tax rate
-ptg_WACC: 0.07      # After tax WACC for P2H plant
+ptg_WACC: 0.08      # After tax WACC for P2H plant
 
 # Early CAPEX payment, or phasing 
 phasing_yr: [-1,0]
@@ -126,6 +131,9 @@ ref_yr_inflation: 0 # inflation index is computed with respect to this year
 depreciation_yr: [0, 25]
 depreciation: [0, 1]
 
+# Inputs for Balancing markets operations
+bi_directional_status: 0 # status of bi-directional flow from grid, 0 for No and 1 for Yes
+penalty_BM: 2000 # Euro/MWh Penalty for not meeting the scheduled DA power - reference - Nord Pool
 
 # --------------------------------------------------------------------------------------------
 # Weather databases
