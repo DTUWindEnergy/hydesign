@@ -85,26 +85,12 @@ class ems_cplex_solar(ems_cplex_abc):
         return outputs
 
 class ems_cplex_parts_solar(ems_cplex_parts_abc):
-    def __init__(self, mdl, time, SOCtime, G_MW, b_P, b_E, wind_ts, solar_ts,
-                 cost_of_battery_P_fluct_in_peak_price_ratio, price_ts_to_max,
-                 charge_efficiency, battery_depth_of_discharge, peak_hours_index,
-                 e_peak_period_expected, price_peak, price_ts, vars):
+    def __init__(self, mdl, inputs, extra_inputs={}):
         self.mdl = mdl
-        self.time = time
-        self.SOCtime = SOCtime
-        self.G_MW = G_MW
-        self.b_P = b_P
-        self.b_E = b_E
-        self.wind_ts = wind_ts
-        self.solar_ts = solar_ts
-        self.cost_of_battery_P_fluct_in_peak_price_ratio = cost_of_battery_P_fluct_in_peak_price_ratio
-        self.price_ts_to_max = price_ts_to_max
-        self.charge_efficiency = charge_efficiency
-        self.battery_depth_of_discharge = battery_depth_of_discharge
-        self.peak_hours_index = peak_hours_index
-        self.e_peak_period_expected = e_peak_period_expected
-        self.price_peak = price_peak
-        self.price_ts = price_ts
+        self.inputs = inputs
+        self.extra_inputs = extra_inputs
+        self.solar_ts = inputs['solar_ts']
+        self.time = extra_inputs['time']
 
         self._variables()
         self._constraints()
@@ -124,19 +110,8 @@ class ems_cplex_parts_solar(ems_cplex_parts_abc):
             self.mdl.remove_constraint(constraint)
             self.mdl.add_constraint(constraint.lhs == constraint.rhs + self.solar_ts[t], f'power_balance_{t}')
 
-        # for i in self.peak_hours_index:
-        #     # Update specific constraints
-        #     constraint = self.mdl.get_constraint_by_name(f'e_penalty_{i}')
-        #     self.mdl.remove_constraint(constraint)
-        #     self.mdl.add_constraint(constraint.lhs == constraint.rhs - self.mdl.sum(self.solar_ts[self.time[i]]), f'e_penalty_{t}')
-        # # Piecewise function for "only positive" function
-        # f1 = self.mdl.piecewise(0, [(0,0)], 1)
-        # constraint = self.mdl.get_constraint_by_name('penalty')
-        # self.mdl.remove_constraint(constraint)
-        # self.mdl.add_constraint( self.penalty == self.price_peak*f1(self.e_penalty), 'penalty' )
-
     def _objective_function(self):
         pass
 
-    def get_added_variables(self):
-        return {}
+    def outputs_cplex_parts(self, sol, outputs):
+        return outputs

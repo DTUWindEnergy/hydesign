@@ -170,41 +170,33 @@ class ems_cplex_bess(ems_cplex_abc):
         return outputs
 
 class ems_cplex_parts_bess(ems_cplex_parts_abc):
-    def __init__(self, mdl, time, SOCtime, G_MW, b_P, b_E, wind_ts, solar_ts,
-                 cost_of_battery_P_fluct_in_peak_price_ratio, price_ts_to_max,
-                 charge_efficiency, battery_depth_of_discharge, peak_hours_index,
-                 e_peak_period_expected, price_peak, price_ts, vars):
+    def __init__(self, mdl, inputs, extra_inputs={}):
         self.mdl = mdl
-        self.time = time
-        self.SOCtime = SOCtime
-        self.G_MW = G_MW
-        self.b_P = b_P
-        self.b_E = b_E
-        self.wind_ts = wind_ts
-        self.solar_ts = solar_ts
-        self.cost_of_battery_P_fluct_in_peak_price_ratio = cost_of_battery_P_fluct_in_peak_price_ratio
-        self.price_ts_to_max = price_ts_to_max
-        self.charge_efficiency = charge_efficiency
-        self.battery_depth_of_discharge = battery_depth_of_discharge
-        self.price_ts = price_ts
-        self.peak_hours_index = peak_hours_index
-        self.e_peak_period_expected = e_peak_period_expected
-        self.price_peak = price_peak
-        self.price_ts = price_ts
+        self.inputs = inputs
+        self.extra_inputs = extra_inputs
+        self.b_P=inputs.get('b_P')
+        self.b_E=inputs.get('b_E')
+        self.battery_depth_of_discharge=inputs.get('battery_depth_of_discharge')
+        self.battery_charge_efficiency=inputs.get('battery_charge_efficiency')
+        self.cost_of_battery_P_fluct_in_peak_price_ratio = inputs.get('cost_of_battery_P_fluct_in_peak_price_ratio', 0.5) #[0, 0.8]. For higher values might cause errors
+        self.time = extra_inputs['time']
+        self.SOCtime = extra_inputs['SOCtime']
+        self.price_peak = extra_inputs['price_peak']
+        self.price_ts_to_max = extra_inputs['price_ts_to_max']
 
         self._variables()
         self._constraints()
         self._objective_function()
 
     def _variables(self):
-        self.P_charge_discharge = self.mdl.continuous_var_dict(self.time, lb=-self.b_P / self.charge_efficiency, ub=self.b_P * self.charge_efficiency, name='Battery_power')
+        self.P_charge_discharge = self.mdl.continuous_var_dict(self.time, lb=-self.b_P / self.battery_charge_efficiency, ub=self.b_P * self.battery_charge_efficiency, name='Battery_power')
         self.E_SOC_t = self.mdl.continuous_var_dict(self.SOCtime, lb=0, name='Energy_level')
 
     def _constraints(self):
         self.mdl.add_constraint(self.E_SOC_t[self.SOCtime[0]] == 0.5 * self.b_E[self.time[0]])
         self.mdl.add_constraint(self.E_SOC_t[self.SOCtime[-1]] == 0.5 * self.b_E[self.time[0]])
 
-        f2 = self.mdl.piecewise(self.charge_efficiency, [(0, 0)], 1 / self.charge_efficiency)
+        f2 = self.mdl.piecewise(self.battery_charge_efficiency, [(0, 0)], 1 / self.battery_charge_efficiency)
 
         # Iterate over each time step
         for t in self.time:
@@ -215,8 +207,8 @@ class ems_cplex_parts_bess(ems_cplex_parts_abc):
             self.mdl.add_constraint(self.E_SOC_t[tt] == self.E_SOC_t[t] - f2(self.P_charge_discharge[t]) * dt, f'E_SOC_tt_{tt}') # charge/dischrage equation
             self.mdl.add_constraint(self.E_SOC_t[t] >= (1 - self.battery_depth_of_discharge) * self.b_E[t], f'E_SOC_{t}') # Constraining battery energy level to minimum battery level
             self.mdl.add_constraint(self.E_SOC_t[t] <= self.b_E[t], f'E_SOC_lt_b_E{t}') # Constraining battery energy level to maximum battery level (lt: less than)
-            self.mdl.add_constraint(self.P_charge_discharge[t] <= self.b_P * self.charge_efficiency, f'P_charge_discharge_lt_b_P_{t}') # Battery charge/discharge within its power rating
-            self.mdl.add_constraint(self.P_charge_discharge[t] >= -self.b_P / self.charge_efficiency, f'P_charge_discharge_gt_neg_b_P_{t}') # gt_neg: greater than negative of
+            self.mdl.add_constraint(self.P_charge_discharge[t] <= self.b_P * self.battery_charge_efficiency, f'P_charge_discharge_lt_b_P_{t}') # Battery charge/discharge within its power rating
+            self.mdl.add_constraint(self.P_charge_discharge[t] >= -self.b_P / self.battery_charge_efficiency, f'P_charge_discharge_gt_neg_b_P_{t}') # gt_neg: greater than negative of
 
             # Update specific constraints
             constraint = self.mdl.get_constraint_by_name(f'power_balance_{t}')
@@ -241,7 +233,26 @@ class ems_cplex_parts_bess(ems_cplex_parts_abc):
         self.mdl.remove_objective()
         self.mdl.maximize(new_objective) # This line actually overwrites the objective function (no need to remove it).
 
+    def outputs_cplex_parts(self, sol, outputs):
+        N_t = self.extra_inputs['N_t']
+        time = self.extra_inputs['time']
+        SOCtime = self.extra_inputs['SOCtime']
+
+        P_charge_discharge_ts_df = pd.DataFrame.from_dict(
+            sol.get_value_dict(self.P_charge_discharge), orient='index').loc[:, 0]
+
+        E_SOC_ts_df = pd.DataFrame.from_dict(
+            sol.get_value_dict(self.E_SOC_t), orient='index').loc[:, 0]
+
+        # Cplex sometimes returns missing values :O
+        P_charge_discharge_ts = P_charge_discharge_ts_df.reindex(time, fill_value=0).values
+        E_SOC_ts = E_SOC_ts_df.reindex(SOCtime, fill_value=0).values
 
 
-    def get_added_variables(self):
-        return {'P_charge_discharge': self.P_charge_discharge, 'E_SOC_t': self.E_SOC_t}
+        added_outputs = {
+            'P_charge_discharge_ts': P_charge_discharge_ts,
+            'E_SOC_ts': E_SOC_ts
+        }
+        outputs.update(added_outputs)
+
+        return outputs

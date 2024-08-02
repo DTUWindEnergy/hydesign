@@ -57,7 +57,7 @@ class ems_base_abc(ems_abc):
             'G_MW': G_MW[0],
             'peak_hr_quantile': peak_hr_quantile,
             'n_full_power_hours_expected_per_day_at_peak_price': n_full_power_hours_expected_per_day_at_peak_price,
-            'technology_types': ['base', 'wind', 'solar', 'bess'],
+            'technology_types': ['wind', 'solar', 'bess'],
             }
 
         ems_WSB_args.update(added_ems_WSB_args)
@@ -200,16 +200,12 @@ class ems_cplex_base(ems_cplex_abc):
         return outputs
 
 class ems_cplex_parts_base_pre(ems_cplex_parts_abc):
-    def __init__(self, mdl, time, SOCtime, G_MW, peak_hours_index,
-                 e_peak_period_expected, price_peak, price_ts):
+    def __init__(self, mdl, inputs, extra_inputs={}):
         self.mdl = mdl
-        self.time = time
-        self.SOCtime = SOCtime
-        self.G_MW = G_MW
-        self.peak_hours_index = peak_hours_index
-        self.e_peak_period_expected = e_peak_period_expected
-        self.price_peak = price_peak
-        self.price_ts = price_ts
+        self.inputs = inputs
+        self.extra_inputs = extra_inputs
+        self.G_MW = inputs['G_MW']
+        self.time = extra_inputs['time']
 
         self._variables()
         self._constraints()
@@ -240,21 +236,46 @@ class ems_cplex_parts_base_pre(ems_cplex_parts_abc):
     def _objective_function(self):
         pass
 
+    def outputs_cplex_parts(self, sol, outputs):
+        N_t = self.extra_inputs['N_t']
+        time = self.extra_inputs['time']
+        SOCtime = self.extra_inputs['SOCtime']
+
+        P_HPP_ts_df = pd.DataFrame.from_dict(
+            sol.get_value_dict(self.P_HPP_t), orient='index').loc[:, 0]
+
+        P_curtailment_ts_df = pd.DataFrame.from_dict(
+            sol.get_value_dict(self.P_curtailment_t), orient='index').loc[:, 0]
+
+        # make a time series like P_HPP with a constant penalty
+        penalty = sol.get_value(self.penalty)
+        penalty_ts = np.ones(N_t) * (penalty/ N_t)
+
+        # Cplex sometimes returns missing values :O
+        P_HPP_ts = P_HPP_ts_df.reindex(time, fill_value=0).values
+        P_curtailment_ts = P_curtailment_ts_df.reindex(time, fill_value=0).values
+
+        added_outputs = {'P_HPP_ts': P_HPP_ts,
+                         'P_curtailment_ts': P_curtailment_ts,
+                         'penalty_ts': penalty_ts
+                         }
+        outputs.update(added_outputs)
+
+        return outputs
+
     def get_added_variables(self):
         return {'P_HPP_t': self.P_HPP_t, 'P_curtailment_t': self.P_curtailment_t, 'penalty': self.penalty, 'e_penalty': self.e_penalty}
 
-
 class ems_cplex_parts_base_post(ems_cplex_parts_abc):
-    def __init__(self, mdl, time, SOCtime, G_MW, peak_hours_index,
-                 e_peak_period_expected, price_peak, price_ts, vars):
+    def __init__(self, mdl, inputs, extra_inputs={}):
+        self.inputs = inputs
+        self.extra_inputs = extra_inputs
         self.mdl = mdl
-        self.time = time
-        self.SOCtime = SOCtime
-        self.G_MW = G_MW
-        self.peak_hours_index = peak_hours_index
-        self.e_peak_period_expected = e_peak_period_expected
-        self.price_peak = price_peak
-        self.price_ts = price_ts
+        self.price_ts = inputs['price_ts']
+        self.time = extra_inputs['time']
+        self.e_peak_period_expected = extra_inputs['e_peak_period_expected']
+        self.peak_hours_index = extra_inputs['peak_hours_index']
+        self.price_peak = extra_inputs['price_peak']
 
         self._variables()
         self._constraints()
@@ -298,6 +319,14 @@ class ems_cplex_parts_base_post(ems_cplex_parts_abc):
         # Update the objective function
         self.mdl.remove_objective()
         self.mdl.maximize(new_objective)
+
+    def outputs_cplex_parts(self, sol, outputs):
+        # if len(P_HPP_ts_df) < len(wind_ts):
+        #     # print('recomputing p_hpp')
+        #     P_HPP_ts = wind_ts.values + solar_ts.values + \
+        #                - P_curtailment_ts + P_charge_discharge_ts
+
+        return outputs
 
     def get_added_variables(self):
         return {}

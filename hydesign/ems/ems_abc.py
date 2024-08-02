@@ -53,8 +53,9 @@ class ems_cplex_parts_abc(ABC):
         pass
 
     @abstractmethod
-    def get_added_variables(self):
+    def outputs_cplex_parts(self):
         pass
 
     def get_updated_model(self):
         return self.mdl
+

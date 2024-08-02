@@ -44,7 +44,6 @@ class ems(om.ExplicitComponent):
     penalty_t : Penalty for not reaching expected energy productin at peak hours
     
     """
-
     def __init__(self,
         N_time,
         life_h = 25*365*24, 
@@ -58,7 +57,8 @@ class ems(om.ExplicitComponent):
         self.life_h = int(life_h)
         self.available_ems_types = {
             'cplex': ems_cplex}
-        self.technology_types = ['base'] + ['wind', 'solar', 'bess']
+        self.technology_types = ['wind', 'solar', 'bess']
+        self.technology_types_and_base = ['base'] + self.technology_types
         class_map = {
             'base': ems_base_abc,
             'wind': ems_wind_abc,
@@ -66,12 +66,12 @@ class ems(om.ExplicitComponent):
             'bess': ems_bess_abc
         }
 
-        for techonogy_type in self.technology_types:
+        for techonogy_type in self.technology_types_and_base:
             setattr(self, f"ems_{techonogy_type}_abc_instance", class_map[techonogy_type]())
 
     def setup(self):
-        for technology_type in self.technology_types:
-            class_name = getattr(self, f"ems_{technology_type}_abc_instance")
+        for tech_type in self.technology_types_and_base:
+            class_name = getattr(self, f"ems_{tech_type}_abc_instance")
             class_name.add_inputs(self)
             class_name.add_outputs(self)
 
@@ -92,16 +92,15 @@ class ems(om.ExplicitComponent):
                 freq='1h'))
 
         ems_WSB_args = {}
-        for technology_type in self.technology_types:
-            class_name = getattr(self, f"ems_{technology_type}_abc_instance")
+        for tech_type in self.technology_types_and_base:
+            class_name = getattr(self, f"ems_{tech_type}_abc_instance")
             ems_WSB_args = class_name.added_ems_WSB_args(ems_WSB_args, WSPr_df, inputs)
 
         outputs_ems_WSB = ems_WSB(ems_WSB_args)
 
-        for technology_type in self.technology_types:
-            class_name = getattr(self, f"ems_{technology_type}_abc_instance")
+        for tech_type in self.technology_types_and_base:
+            class_name = getattr(self, f"ems_{tech_type}_abc_instance")
             outputs = class_name.outputs_extension(component=self, inputs=inputs, outputs=outputs, outputs_ems_WSB=outputs_ems_WSB)
-
 
 class ems_long_term_operation(om.ExplicitComponent):
     """Long term operation EMS. Predicts the operation of the plant throughout the entire lifetime, taking into account the battery
@@ -166,11 +165,10 @@ class ems_long_term_operation(om.ExplicitComponent):
 
     def setup(self):
 
-        for technology_type in self.technology_types:
-            class_name = getattr(self, f"ems_{technology_type}_long_term_operation_instance")
+        for tech_type in self.technology_types:
+            class_name = getattr(self, f"ems_{tech_type}_long_term_operation_instance")
             class_name.add_inputs(self)
             class_name.add_outputs(self)
-
 
     def compute(self, inputs, outputs):
 
@@ -182,40 +180,21 @@ class ems_long_term_operation(om.ExplicitComponent):
             raise Warning("This class should only be used for energy_penalty")
 
         ems_WSB_args = {}
-        for technology_type in self.technology_types:
-            class_name = getattr(self, f"ems_{technology_type}_long_term_operation_instance")
+        for tech_type in self.technology_types:
+            class_name = getattr(self, f"ems_{tech_type}_long_term_operation_instance")
             ems_WSB_args = class_name.added_ems_WSB_args(ems_WSB_args, inputs)
 
-        #outputs_ems_WSB = ems_WSB(**ems_WSB_args)
+        outputs_ems_longterm = ems_longterm(ems_WSB_args)
 
-        outputs_ems_longterm = ems_longterm(**ems_WSB_args)
-
-        for technology_type in self.technology_types:
-            class_name = getattr(self, f"ems_{technology_type}_long_term_operation_instance")
+        for tech_type in self.technology_types:
+            class_name = getattr(self, f"ems_{tech_type}_long_term_operation_instance")
             outputs = class_name.outputs_extension(component=self, inputs=inputs, outputs=outputs, outputs_ems_WSB=outputs_ems_longterm)
 
 # ------------
 # ems_cplex
 # ------------
 
-def ems_cplex(
-    inputs,
-    # wind_ts = pd.Series(),
-    # solar_ts = pd.Series(),
-    # price_ts = pd.Series(),
-    # b_P=0,
-    # b_E = pd.Series(),
-    # G_MW=0,
-    # battery_depth_of_discharge=0,
-    # battery_charge_efficiency=0,
-    # peak_hr_quantile = 0.9,
-    # cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
-    # n_full_power_hours_expected_per_day_at_peak_price = 3,
-    # batch_size = 2*24,
-    # technology_types = ['wind', 'solar', 'bess'],
-    **kwargs
-):
-    technology_types = ['base'] #+ ['wind', 'solar', 'bess']
+def ems_cplex(inputs):
     ems_cplex_map = {
         'base': ems_cplex_base,
         'wind': ems_cplex_wind,
@@ -223,13 +202,14 @@ def ems_cplex(
         'bess': ems_cplex_bess
     }
 
-    technology_types = ['base', 'wind', 'solar', 'bess']
+    technology_types = inputs['technology_types']
+    technology_types_and_base = ['base'] + technology_types
 
     # Create a dictionary to store the instances
     ems_cplex_instances = {}
 
     # Loop through the technology types and create instances
-    for tech_type in technology_types:
+    for tech_type in technology_types_and_base:
         if tech_type in ems_cplex_map:
             ems_cplex_instances[tech_type] = ems_cplex_map[tech_type]()
 
@@ -246,40 +226,27 @@ def ems_cplex(
     length_ts = len(wind_ts)
     allocated_vars = {}
 
-    for tech_type in technology_types:
+    for tech_type in technology_types_and_base:
         allocated_vars = ems_cplex_instances[tech_type].allocate_vars(allocated_vars, length_ts)
 
     for ib, batch in enumerate(batches):
-        input_dict_to_ems_cplex_parts = {}
-        for tech_type in technology_types:
-            input_dict_to_ems_cplex_parts = ems_cplex_instances[tech_type].inputs_to_ems_cplex_parts(inputs, batch, input_dict_to_ems_cplex_parts)
+        ems_cplex_parts_inputs = {}
+        for tech_type in technology_types_and_base:
+            ems_cplex_parts_inputs = ems_cplex_instances[tech_type].inputs_to_ems_cplex_parts(inputs, batch, ems_cplex_parts_inputs)
 
         #print(f'batch {ib+1} out of {len(batches)}')
-        outputs_ems_cplex_parts = ems_cplex_parts(**input_dict_to_ems_cplex_parts)
+        outputs_ems_cplex_parts = ems_cplex_parts(ems_cplex_parts_inputs)
 
-        for tech_type in technology_types:
+        for tech_type in technology_types_and_base:
             allocated_vars = ems_cplex_instances[tech_type].outputs_batch(outputs_ems_cplex_parts, batch, allocated_vars)
 
     outputs_ems_cplex = {}
-    for tech_type in technology_types:
+    for tech_type in technology_types_and_base:
         outputs_ems_cplex = ems_cplex_instances[tech_type].ems_cplex_outputs(outputs_ems_cplex, allocated_vars)
 
     return outputs_ems_cplex
 
-def ems_cplex_parts(
-    wind_ts,
-    solar_ts,
-    price_ts,
-    b_P,
-    b_E,
-    G_MW,
-    battery_depth_of_discharge,
-    battery_charge_efficiency,
-    peak_hr_quantile = 0.9,
-    cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
-    n_full_power_hours_expected_per_day_at_peak_price = 3,
-    technology_types = ['wind', 'solar', 'bess'],
-):
+def ems_cplex_parts(inputs):
     """EMS solver implemented in cplex
 
     Parameters
@@ -306,121 +273,71 @@ def ems_cplex_parts(
     """
     ###############################################
     # SETUP
-    # Penalties
-    N_t = len(price_ts.index)
-    N_days = N_t/24
-    e_peak_day_expected = n_full_power_hours_expected_per_day_at_peak_price*G_MW
-    e_peak_period_expected = e_peak_day_expected*N_days
-    price_peak = np.quantile(price_ts.values, peak_hr_quantile)
-    peak_hours_index = np.where(price_ts>=price_peak)[0]
-
-    price_ts_to_max = price_peak - price_ts
-    price_ts_to_max.loc[price_ts_to_max<0] = 0
-    price_ts_to_max.iloc[:-1] = 0.5*price_ts_to_max.iloc[:-1].values + 0.5*price_ts_to_max.iloc[1:].values
-
     mdl = Model(name='EMS')
     mdl.context.cplex_parameters.threads = 1
 
     # CPLEX parameter pg 87 Emphasize feasibility over optimality
     mdl.context.cplex_parameters.emphasis.mip = 1
 
+    price_ts=inputs.get('price_ts')
+    G_MW=inputs.get('G_MW')
+    peak_hr_quantile = inputs.get('peak_hr_quantile', 0.9)
+    n_full_power_hours_expected_per_day_at_peak_price = inputs.get('n_full_power_hours_expected_per_day_at_peak_price', 3)
+    technology_types = inputs.get('technology_types', ['wind', 'solar', 'bess'])
+
+    N_t = len(price_ts.index)
+    N_days = N_t / 24
+    e_peak_day_expected = n_full_power_hours_expected_per_day_at_peak_price * G_MW
+    e_peak_period_expected = e_peak_day_expected * N_days
+    price_peak = np.quantile(price_ts.values, peak_hr_quantile)
+    peak_hours_index = np.where(price_ts >= price_peak)[0]
+    price_ts_to_max = price_peak - price_ts
+    price_ts_to_max.loc[price_ts_to_max < 0] = 0
+    price_ts_to_max.iloc[:-1] = 0.5 * price_ts_to_max.iloc[:-1].values + 0.5 * price_ts_to_max.iloc[1:].values
     time = price_ts.index
     # time set with an additional time slot for the last soc
     SOCtime = time.append(pd.Index([time[-1] + pd.Timedelta('1hour')]))
+    extra_inputs=dict(
+        N_t=N_t,
+        N_days=N_days,
+        e_peak_day_expected=e_peak_day_expected,
+        e_peak_period_expected=e_peak_period_expected,
+        price_peak=price_peak,
+        peak_hours_index=peak_hours_index,
+        price_ts_to_max=price_ts_to_max,
+        time=time,
+        SOCtime=SOCtime
+    )
 
     # base model
-    vars = {}
-    model_new = ems_cplex_parts_base_pre(mdl, time, SOCtime, G_MW, peak_hours_index,
-                         e_peak_period_expected, price_peak, price_ts)
-    mdl = model_new.get_updated_model()
-    vars_added = model_new.get_added_variables()
-    vars.update(vars_added)
-
-
     ems_cplex_parts_map ={
+        'base_pre': ems_cplex_parts_base_pre,
         'wind': ems_cplex_parts_wind,
         'solar': ems_cplex_parts_solar,
         'bess': ems_cplex_parts_bess,
+        'base_post': ems_cplex_parts_base_post
     }
 
-    technology_types = ['wind', 'solar', 'bess']
-    for items in technology_types:
-        ems_name = ems_cplex_parts_map[items]
-        model_new = ems_name(
-            mdl, time, SOCtime, G_MW, b_P, b_E, wind_ts, solar_ts,
-            cost_of_battery_P_fluct_in_peak_price_ratio, price_ts_to_max,
-            battery_charge_efficiency, battery_depth_of_discharge, peak_hours_index,
-                         e_peak_period_expected, price_peak, price_ts, vars
-        )
-        mdl = model_new.get_updated_model()
-        vars_added = model_new.get_added_variables()
-        vars.update(vars_added)
-
-    model_new = ems_cplex_parts_base_post(mdl, time, SOCtime, G_MW, peak_hours_index,
-                         e_peak_period_expected, price_peak, price_ts, vars)
-    mdl = model_new.get_updated_model()
+    technology_types_and_base = ['base_pre'] + technology_types + ['base_post']
+    ems_cplex_parts_instances = {}
+    for tech_type in technology_types_and_base :
+        ems_cplex_parts_instances[tech_type] = ems_cplex_parts_map[tech_type](mdl, inputs, extra_inputs)
+        mdl = ems_cplex_parts_instances[tech_type].get_updated_model()
 
     # Solving the problem
     sol = mdl.solve(
         log_output=False)
         #log_output=True)
 
-    P_HPP_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(vars['P_HPP_t']), orient='index').loc[:,0]
-
-    P_curtailment_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(vars['P_curtailment_t']), orient='index').loc[:,0]
-
-    P_charge_discharge_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(vars['P_charge_discharge']), orient='index').loc[:,0]
-
-    E_SOC_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(vars['E_SOC_t']), orient='index').loc[:,0]
-
-    #make a time series like P_HPP with a constant penalty
-    penalty = sol.get_value(vars['penalty'])
-    penalty_ts = np.ones(N_t) * (penalty/N_t)
+    outputs = {}
+    for tech_type in ['base_pre'] + technology_types + ['base_post']:
+        outputs = ems_cplex_parts_instances[tech_type].outputs_cplex_parts(sol, outputs)
 
     mdl.end()
 
-    # Cplex sometimes returns missing values :O
-    P_HPP_ts = P_HPP_ts_df.reindex(time,fill_value=0).values
-    P_curtailment_ts = P_curtailment_ts_df.reindex(time,fill_value=0).values
-    P_charge_discharge_ts = P_charge_discharge_ts_df.reindex(time,fill_value=0).values
-    E_SOC_ts = E_SOC_ts_df.reindex(SOCtime,fill_value=0).values
-
-    if len(P_HPP_ts_df) < len(wind_ts):
-        #print('recomputing p_hpp')
-        P_HPP_ts = wind_ts.values + solar_ts.values +\
-            - P_curtailment_ts + P_charge_discharge_ts
-
-    outputs = {'P_HPP_ts': P_HPP_ts,
-               'P_curtailment_ts': P_curtailment_ts,
-               'P_charge_discharge_ts': P_charge_discharge_ts,
-               'E_SOC_ts': E_SOC_ts,
-               'penalty_ts': penalty_ts
-    }
-
     return outputs
 
-
-def operation_solar_batt_deg(
-    wind_t_deg,
-    solar_t_deg,
-    batt_degradation,
-    wind_t,
-    solar_t,
-    hpp_curt_t,
-    b_t,
-    b_E_SOC_t,
-    G_MW,
-    b_E,
-    battery_depth_of_discharge,
-    battery_charge_efficiency,
-    price_ts,
-    b_E_SOC_0 = None,
-    peak_hr_quantile = 0.9,
-    n_full_power_hours_expected_per_day_at_peak_price = 3,):
+def operation_solar_batt_deg(inputs):
 
     """EMS operation for degraded PV and battery based on an existing EMS.
 
@@ -452,6 +369,23 @@ def operation_solar_batt_deg(
     b_E_SOC_t_sat : Battery energy SOC time series
     penalty_ts : penalty for not reaching expected energy production at peak hours
     """
+    wind_t_deg=inputs.get('wind_t_deg')
+    solar_t_deg=inputs.get('solar_t_deg')
+    batt_degradation=inputs.get('batt_degradation')
+    wind_t=inputs.get('wind_t')
+    solar_t=inputs.get('solar_t')
+    hpp_curt_t=inputs.get('hpp_curt_t')
+    b_t=inputs.get('b_t')
+    b_E_SOC_t=inputs.get('b_E_SOC_t')
+    G_MW=inputs.get('G_MW')
+    b_E=inputs.get('b_E')
+    battery_depth_of_discharge=inputs.get('battery_depth_of_discharge')
+    battery_charge_efficiency=inputs.get('battery_charge_efficiency')
+    price_ts=inputs.get('price_ts')
+    b_E_SOC_0 = inputs.get('b_E_SOC_0', None)
+    peak_hr_quantile = inputs.get('peak_hr_quantile', 0.9)
+    n_full_power_hours_expected_per_day_at_peak_price = inputs.get('n_full_power_hours_expected_per_day_at_peak_price', 3)
+
     B_p = np.max(np.abs(b_t))
 
     # wind_solar_t = solar_t + wind_t
@@ -500,7 +434,7 @@ def operation_solar_batt_deg(
         b_E_SOC_t_sat[i+1] = np.clip(
             b_E_SOC_t_sat[i+1],
             (1-battery_depth_of_discharge) * b_E * batt_degradation[i],
-            b_E * batt_degradation[i]  )
+            b_E * batt_degradation[i])
 
     # Recompute the battery power
     b_t_sat = b_t.copy()
