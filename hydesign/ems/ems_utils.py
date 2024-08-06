@@ -1,4 +1,6 @@
 import numpy as np
+from docplex.mp.model import Model
+
 def expand_to_lifetime(x, life_h = 25*365*24, weeks_per_season_per_year=None):
     """
     Expands (by repeating) a given variable to match an expected lifetime length.
@@ -46,3 +48,37 @@ def split_in_batch(array, N):
         batch += [array[counter * N:end]]
         counter += 1
     return batch
+
+
+def print_cplex_model_details(mdl: Model):
+    # Print model name
+    print(f"Model name: {mdl.name}")
+
+    # Print number of variables
+    num_vars = mdl.number_of_variables
+    print(f"Number of variables: {num_vars}")
+
+    # Print number of constraints
+    num_constraints = mdl.number_of_constraints
+    print(f"Number of constraints: {num_constraints}")
+
+    # Print objective function
+    objective = mdl.objective_expr
+    sense = "Minimize" if mdl.is_minimized() else "Maximize"
+    print(f"Objective function: {sense} {objective}")
+
+    # Print variables details
+    print("\nVariables:")
+    for var in mdl.iter_variables():
+        print(f"  - {var}: {var.lb} <= {var} <= {var.ub}")
+
+    # Print constraints details
+    print("\nConstraints:")
+    for cst in mdl.iter_constraints():
+        print(f"  - {cst.name}: ") # {cst.lhs} {cst.sense} {cst.rhs}
+
+    # Print model parameters
+    print("\nParameters:")
+    for param in mdl.parameters:
+        print(f"  - {param.name}: {param.value}")
+

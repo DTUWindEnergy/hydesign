@@ -8,8 +8,8 @@ import openmdao.api as om
 from .ems_wind import ems_wind_abc, ems_wind_long_term_operation, ems_cplex_wind, ems_cplex_parts_wind
 from .ems_solar import ems_solar_abc, ems_solar_long_term_operation, ems_cplex_solar, ems_cplex_parts_solar
 from .ems_bess import ems_bess_abc, ems_bess_long_term_operation, ems_cplex_bess, ems_cplex_parts_bess
-from .ems_base import ems_base_abc, ems_base_long_term_operation, ems_cplex_base, ems_cplex_parts_base_pre, ems_cplex_parts_base_post
-from .ems_utils import expand_to_lifetime, split_in_batch
+from .ems_base import ems_base_abc, ems_base_long_term_operation, ems_cplex_base, ems_cplex_parts_base_pre, ems_cplex_parts_base_post, ems_degredation_base
+from .ems_utils import expand_to_lifetime, split_in_batch, print_cplex_model_details
 
 class ems(om.ExplicitComponent):
     """Energy management optimization model
@@ -49,6 +49,7 @@ class ems(om.ExplicitComponent):
         life_h = 25*365*24, 
         weeks_per_season_per_year = None,
         ems_type='cplex',
+        technology_types=['wind', 'solar', 'bess']
         ):
         super().__init__()
         self.weeks_per_season_per_year = weeks_per_season_per_year
@@ -57,7 +58,8 @@ class ems(om.ExplicitComponent):
         self.life_h = int(life_h)
         self.available_ems_types = {
             'cplex': ems_cplex}
-        self.technology_types = ['wind', 'solar', 'bess']
+        self.technology_types = technology_types
+        # set default order of the technologies
         self.technology_types_and_base = ['base'] + self.technology_types
         class_map = {
             'base': ems_base_abc,
@@ -96,10 +98,12 @@ class ems(om.ExplicitComponent):
             class_name = getattr(self, f"ems_{tech_type}_abc_instance")
             ems_WSB_args = class_name.added_ems_WSB_args(ems_WSB_args, WSPr_df, inputs)
 
+        # short term ems evaluation
         outputs_ems_WSB = ems_WSB(ems_WSB_args)
 
         for tech_type in self.technology_types_and_base:
             class_name = getattr(self, f"ems_{tech_type}_abc_instance")
+            # extention of the outputs to the project lifetime
             outputs = class_name.outputs_extension(component=self, inputs=inputs, outputs=outputs, outputs_ems_WSB=outputs_ems_WSB)
 
 class ems_long_term_operation(om.ExplicitComponent):
@@ -215,7 +219,8 @@ def ems_cplex(inputs):
 
     # split in batches, ussually a week
     wind_ts = inputs['wind_ts']
-    batch_size = inputs.get('batch_size', 2*24)
+    batch_size_default = 2*24 # should depend on technology_types
+    batch_size = inputs.get('batch_size', batch_size_default)
     batches_all = split_in_batch(list(range(len(wind_ts))), batch_size)
     # Make sure the last batch is not smaller than the others
     # instead append it to the previous last one
@@ -324,6 +329,9 @@ def ems_cplex_parts(inputs):
         ems_cplex_parts_instances[tech_type] = ems_cplex_parts_map[tech_type](mdl, inputs, extra_inputs)
         mdl = ems_cplex_parts_instances[tech_type].get_updated_model()
 
+    # print mdl details
+    #print_cplex_model_details(mdl)
+
     # Solving the problem
     sol = mdl.solve(
         log_output=False)
@@ -338,260 +346,302 @@ def ems_cplex_parts(inputs):
     return outputs
 
 def operation_solar_batt_deg(inputs):
+    """EMS operation for degraded PV and battery based on an existing EMS."""
 
-    """EMS operation for degraded PV and battery based on an existing EMS.
+    # instantial the class
+    ems_degredation_instance = ems_degredation_base(inputs)
 
-    Parameters
-    ----------
-    wind_t_deg: Wind time series including degradation
-    solar_t_deg: PV time series including degradation
-    batt_degradation: Battery degradation as health factor [0=dead,1=new]
-    wind_t: WPP power time series
-    solar_t: PVP power time series
-    hpp_curt_t: HPP curtailment time series results form an EMS planed without degradation
-    b_t: HPP battery power (charge/discharge) time series results form an EMS planed without degradation
-    b_E_SOC_t: HPP battery state of charge (SoC) time series results form an EMS planed without degradation
-    b_E_SOC_0: Initial charge status of the actual operation
-    price_ts : price time series
-    G_MW : grid connection
-    b_E : battery energy capacity time series
-    battery_depth_of_discharge : battery depth of discharge
-    battery_charge_efficiency : battery charge efficiency
-    peak_hr_quantile : quantile of price time series to define peak price hours
-    cost_of_battery_P_fluct_in_peak_price_ratio : cost of battery power fluctuations computed as a peak price ratio
-    n_full_power_hours_expected_per_day_at_peak_price : Penalty occurs if number of full power hours expected per day at peak price are not reached
+    # wind + solar after degredation
+    wind_solar_t_deg = ems_degredation_instance.compute_wind_solar_deg()
+    G_MW = inputs.get('G_MW')
 
-    Returns
-    -------
-    Hpp_deg : HPP power time series
-    P_curt_deg : HPP curtailed power time series
-    b_t_sat : Battery charge/discharge power time series
-    b_E_SOC_t_sat : Battery energy SOC time series
-    penalty_ts : penalty for not reaching expected energy production at peak hours
-    """
-    wind_t_deg=inputs.get('wind_t_deg')
-    solar_t_deg=inputs.get('solar_t_deg')
-    batt_degradation=inputs.get('batt_degradation')
-    wind_t=inputs.get('wind_t')
-    solar_t=inputs.get('solar_t')
-    hpp_curt_t=inputs.get('hpp_curt_t')
-    b_t=inputs.get('b_t')
-    b_E_SOC_t=inputs.get('b_E_SOC_t')
-    G_MW=inputs.get('G_MW')
-    b_E=inputs.get('b_E')
-    battery_depth_of_discharge=inputs.get('battery_depth_of_discharge')
-    battery_charge_efficiency=inputs.get('battery_charge_efficiency')
-    price_ts=inputs.get('price_ts')
-    b_E_SOC_0 = inputs.get('b_E_SOC_0', None)
-    peak_hr_quantile = inputs.get('peak_hr_quantile', 0.9)
-    n_full_power_hours_expected_per_day_at_peak_price = inputs.get('n_full_power_hours_expected_per_day_at_peak_price', 3)
+    # addjust battery power based on the available power
+    b_t_less_sol = ems_degredation_instance.adjust_battery_power(wind_solar_t_deg)
 
-    B_p = np.max(np.abs(b_t))
+    # battery state of charge
+    b_E_SOC_t_sat = ems_degredation_instance.initialize_soc()
+    b_E_SOC_t_sat = ems_degredation_instance.update_soc(b_t_less_sol, b_E_SOC_t_sat)
 
-    # wind_solar_t = solar_t + wind_t
-    wind_solar_t_deg = solar_t_deg + wind_t_deg
-    # P_deg_t_sat_loss = (solar_t - solar_t_deg) + (wind_t - wind_t_deg)
+    # update battery power
+    b_t_sat = ems_degredation_instance.recompute_battery_power(b_E_SOC_t_sat)
 
-    # P_loss =  np.maximum( 0 , P_deg_t_sat_loss  - hpp_curt_t)
-    b_t_less_sol = b_t.copy()
-    dt = 1
+    # compute Hpp and P_curt after degredation
+    Hpp_deg = np.minimum(wind_solar_t_deg + b_t_sat, G_MW)
+    P_curt_deg = np.maximum(wind_solar_t_deg + b_t_sat - G_MW, 0)
 
-    # Reduction in power to battery due to reduction of solar
-    for i in range(len(b_t)):
-        if b_t[i] < 0:
-            # Try to keep the ratio of b_t[i] / wind_solar_t[i]  SoC to the maximum
-            # b_t_less_sol[i] = ( b_t[i] / wind_solar_t[i] ) * ( wind_solar_t_deg[i] )
+    # compuate penalty time series with degraded valud of HPP power
+    penalty_ts = ems_degredation_instance.compute_penalty(Hpp_deg)
 
-            # Hajar's method
-            #b_t_less_sol[i] = np.minimum(b_t[i] + P_loss[i],0)
-
-            # Try to follow SoC to the maximum
-            if -b_t[i] > wind_solar_t_deg[i]:
-                b_t_less_sol[i] = -wind_solar_t_deg[i]
-
-            b_t_less_sol[i] = np.clip(
-                b_t_less_sol[i],
-                -B_p,
-                B_p)
-
-    # Initialize the SoC
-    b_E_SOC_t_sat = b_E_SOC_t.copy()
-    if b_E_SOC_0 == None:
-        try:
-            b_E_SOC_t_sat[0]= b_E_SOC_t[0]
-        except:
-            raise('len(b_E_SOC_t):', len(b_E_SOC_t))
-    else:
-        b_E_SOC_t_sat[0]= b_E_SOC_0
-
-    # Update the SoC
-    for i in range(len(b_t_less_sol)):
-        if b_t_less_sol[i] < 0: # charging
-            b_E_SOC_t_sat[i+1] = b_E_SOC_t_sat[i] - b_t_less_sol[i] * dt * battery_charge_efficiency
-        if b_t_less_sol[i] >= 0: # discharging
-            b_E_SOC_t_sat[i+1] = b_E_SOC_t_sat[i] - b_t_less_sol[i] * dt / battery_charge_efficiency
-
-        b_E_SOC_t_sat[i+1] = np.clip(
-            b_E_SOC_t_sat[i+1],
-            (1-battery_depth_of_discharge) * b_E * batt_degradation[i],
-            b_E * batt_degradation[i])
-
-    # Recompute the battery power
-    b_t_sat = b_t.copy()
-    for i in range(len(b_t_sat)):
-        if b_t[i] < 0:
-            b_t_sat[i] = ( ( b_E_SOC_t_sat[i] - b_E_SOC_t_sat[i+1] ) / battery_charge_efficiency ) / dt
-        elif b_t[i] >= 0:
-            b_t_sat[i] = ( (b_E_SOC_t_sat[i] - b_E_SOC_t_sat[i+1] )  * battery_charge_efficiency ) / dt
-
-    Hpp_deg = np.minimum( wind_t_deg + solar_t_deg + b_t_sat, G_MW)
-    P_curt_deg = np.maximum( wind_t_deg + solar_t_deg + b_t_sat - G_MW, 0)
-
-    # Compute penalty per week
-    H_df = pd.DataFrame(
-        np.copy(Hpp_deg),
-        columns=['hpp_t_with_deg'],
-        index=pd.date_range(
-        start='01-01-1991 00:00',
-        periods=len(Hpp_deg),
-        freq='1h')
-    )
-    H_df['price_t_ext'] = price_ts
-    price_peak = np.quantile(H_df['price_t_ext'],peak_hr_quantile)
-    H_df['peak'] = H_df['price_t_ext']>=price_peak
-    H_df.loc[~H_df['peak'],'hpp_t_with_deg']=0
-
-    N_days = 7
-    H_df_week = H_df.resample(f'{N_days}d').sum()
-
-    e_peak_day_expected = n_full_power_hours_expected_per_day_at_peak_price*G_MW
-    e_peak_period_expected = e_peak_day_expected*N_days
-
-    H_df_week['e_peak_period_expected'] = e_peak_period_expected
-    H_df_week['e_penalty'] = H_df_week['e_peak_period_expected'] - H_df_week['hpp_t_with_deg']
-    H_df_week['penalty'] = price_peak*np.maximum(0, H_df_week['e_penalty'])
-
-    penalty_df = H_df_week['penalty'].reindex_like(H_df).fillna(0.0)
-    penalty_ts = penalty_df.values.flatten()
-
-    outputs ={'Hpp_deg': Hpp_deg,
-              'P_curt_deg': P_curt_deg,
-              'b_t_sat': b_t_sat,
-              'b_E_SOC_t_sat': b_E_SOC_t_sat,
-              'penalty_ts': penalty_ts}
+    # collect outputs
+    outputs = {
+        'Hpp_deg': Hpp_deg,
+        'P_curt_deg': P_curt_deg,
+        'b_t_sat': b_t_sat,
+        'b_E_SOC_t_sat': b_E_SOC_t_sat,
+        'penalty_ts': penalty_ts
+    }
 
     return outputs
 
-def operation_rule_base_no_penalty(
-    wind_t_deg,
-    solar_t_deg,
-    batt_degradation,
-    wind_t,
-    solar_t,
-    hpp_curt_t,
-    b_t,
-    b_E_SOC_t,
-    G_MW,
-    b_E,
-    battery_depth_of_discharge,
-    battery_charge_efficiency,
-    b_E_SOC_0 = None,
-    load_min = 3,
-    load_min_penalty_factor = 1e6,
-    change_BES_charging = 'only_for_less_power',
-    ):
+# def operation_solar_batt_deg(inputs):
+#
+#     """EMS operation for degraded PV and battery based on an existing EMS.
+#
+#     Parameters
+#     ----------
+#     wind_t_deg: Wind time series including degradation
+#     solar_t_deg: PV time series including degradation
+#     batt_degradation: Battery degradation as health factor [0=dead,1=new]
+#     wind_t: WPP power time series
+#     solar_t: PVP power time series
+#     hpp_curt_t: HPP curtailment time series results form an EMS planed without degradation
+#     b_t: HPP battery power (charge/discharge) time series results form an EMS planed without degradation
+#     b_E_SOC_t: HPP battery state of charge (SoC) time series results form an EMS planed without degradation
+#     b_E_SOC_0: Initial charge status of the actual operation
+#     price_ts : price time series
+#     G_MW : grid connection
+#     b_E : battery energy capacity time series
+#     battery_depth_of_discharge : battery depth of discharge
+#     battery_charge_efficiency : battery charge efficiency
+#     peak_hr_quantile : quantile of price time series to define peak price hours
+#     cost_of_battery_P_fluct_in_peak_price_ratio : cost of battery power fluctuations computed as a peak price ratio
+#     n_full_power_hours_expected_per_day_at_peak_price : Penalty occurs if number of full power hours expected per day at peak price are not reached
+#
+#     Returns
+#     -------
+#     Hpp_deg : HPP power time series
+#     P_curt_deg : HPP curtailed power time series
+#     b_t_sat : Battery charge/discharge power time series
+#     b_E_SOC_t_sat : Battery energy SOC time series
+#     penalty_ts : penalty for not reaching expected energy production at peak hours
+#     """
+#     wind_t_deg=inputs.get('wind_t_deg')
+#     solar_t_deg=inputs.get('solar_t_deg')
+#     batt_degradation=inputs.get('batt_degradation')
+#     wind_t=inputs.get('wind_t')
+#     solar_t=inputs.get('solar_t')
+#     hpp_curt_t=inputs.get('hpp_curt_t')
+#     b_t=inputs.get('b_t')
+#     b_E_SOC_t=inputs.get('b_E_SOC_t')
+#     G_MW=inputs.get('G_MW')
+#     b_E=inputs.get('b_E')
+#     battery_depth_of_discharge=inputs.get('battery_depth_of_discharge')
+#     battery_charge_efficiency=inputs.get('battery_charge_efficiency')
+#     price_ts=inputs.get('price_ts')
+#     b_E_SOC_0 = inputs.get('b_E_SOC_0', None)
+#     peak_hr_quantile = inputs.get('peak_hr_quantile', 0.9)
+#     n_full_power_hours_expected_per_day_at_peak_price = inputs.get('n_full_power_hours_expected_per_day_at_peak_price', 3)
+#
+#     B_p = np.max(np.abs(b_t))
+#
+#     # wind_solar_t = solar_t + wind_t
+#     wind_solar_t_deg = solar_t_deg + wind_t_deg
+#     # P_deg_t_sat_loss = (solar_t - solar_t_deg) + (wind_t - wind_t_deg)
+#
+#     # P_loss =  np.maximum( 0 , P_deg_t_sat_loss  - hpp_curt_t)
+#     b_t_less_sol = b_t.copy()
+#     dt = 1
+#
+#     # Reduction in power to battery due to reduction of solar
+#     for i in range(len(b_t)):
+#         if b_t[i] < 0:
+#             # Try to keep the ratio of b_t[i] / wind_solar_t[i]  SoC to the maximum
+#             # b_t_less_sol[i] = ( b_t[i] / wind_solar_t[i] ) * ( wind_solar_t_deg[i] )
+#
+#             # Hajar's method
+#             #b_t_less_sol[i] = np.minimum(b_t[i] + P_loss[i],0)
+#
+#             # Try to follow SoC to the maximum
+#             if -b_t[i] > wind_solar_t_deg[i]:
+#                 b_t_less_sol[i] = -wind_solar_t_deg[i]
+#
+#             b_t_less_sol[i] = np.clip(
+#                 b_t_less_sol[i],
+#                 -B_p,
+#                 B_p)
+#
+#     # Initialize the SoC
+#     b_E_SOC_t_sat = b_E_SOC_t.copy()
+#     if b_E_SOC_0 == None:
+#         try:
+#             b_E_SOC_t_sat[0]= b_E_SOC_t[0]
+#         except:
+#             raise('len(b_E_SOC_t):', len(b_E_SOC_t))
+#     else:
+#         b_E_SOC_t_sat[0]= b_E_SOC_0
+#
+#     # Update the SoC
+#     for i in range(len(b_t_less_sol)):
+#         if b_t_less_sol[i] < 0: # charging
+#             b_E_SOC_t_sat[i+1] = b_E_SOC_t_sat[i] - b_t_less_sol[i] * dt * battery_charge_efficiency
+#         if b_t_less_sol[i] >= 0: # discharging
+#             b_E_SOC_t_sat[i+1] = b_E_SOC_t_sat[i] - b_t_less_sol[i] * dt / battery_charge_efficiency
+#
+#         b_E_SOC_t_sat[i+1] = np.clip(
+#             b_E_SOC_t_sat[i+1],
+#             (1-battery_depth_of_discharge) * b_E * batt_degradation[i],
+#             b_E * batt_degradation[i])
+#
+#     # Recompute the battery power
+#     b_t_sat = b_t.copy()
+#     for i in range(len(b_t_sat)):
+#         if b_t[i] < 0:
+#             b_t_sat[i] = ( ( b_E_SOC_t_sat[i] - b_E_SOC_t_sat[i+1] ) / battery_charge_efficiency ) / dt
+#         elif b_t[i] >= 0:
+#             b_t_sat[i] = ( (b_E_SOC_t_sat[i] - b_E_SOC_t_sat[i+1] )  * battery_charge_efficiency ) / dt
+#
+#     Hpp_deg = np.minimum( wind_t_deg + solar_t_deg + b_t_sat, G_MW)
+#     P_curt_deg = np.maximum( wind_t_deg + solar_t_deg + b_t_sat - G_MW, 0)
+#
+#     # Compute penalty per week
+#     H_df = pd.DataFrame(
+#         np.copy(Hpp_deg),
+#         columns=['hpp_t_with_deg'],
+#         index=pd.date_range(
+#         start='01-01-1991 00:00',
+#         periods=len(Hpp_deg),
+#         freq='1h')
+#     )
+#     H_df['price_t_ext'] = price_ts
+#     price_peak = np.quantile(H_df['price_t_ext'],peak_hr_quantile)
+#     H_df['peak'] = H_df['price_t_ext']>=price_peak
+#     H_df.loc[~H_df['peak'],'hpp_t_with_deg']=0
+#
+#     N_days = 7
+#     H_df_week = H_df.resample(f'{N_days}d').sum()
+#
+#     e_peak_day_expected = n_full_power_hours_expected_per_day_at_peak_price*G_MW
+#     e_peak_period_expected = e_peak_day_expected*N_days
+#
+#     H_df_week['e_peak_period_expected'] = e_peak_period_expected
+#     H_df_week['e_penalty'] = H_df_week['e_peak_period_expected'] - H_df_week['hpp_t_with_deg']
+#     H_df_week['penalty'] = price_peak*np.maximum(0, H_df_week['e_penalty'])
+#
+#     penalty_df = H_df_week['penalty'].reindex_like(H_df).fillna(0.0)
+#     penalty_ts = penalty_df.values.flatten()
+#
+#     outputs ={'Hpp_deg': Hpp_deg,
+#               'P_curt_deg': P_curt_deg,
+#               'b_t_sat': b_t_sat,
+#               'b_E_SOC_t_sat': b_E_SOC_t_sat,
+#               'penalty_ts': penalty_ts}
+#
+#     return outputs
+#
 
-    """EMS operation for degraded PV and battery based on an existing EMS.
+#######################################
+#######################################
 
-    Parameters
-    ----------
-    wind_t_deg: Wind time series including degradation
-    solar_t_deg: PV time series including degradation
-    batt_degradation: Battery degradation as health factor [0=dead,1=new]
-    b_t: HPP battery power (charge/discharge) time series results form an EMS planed without degradation
-    b_E_SOC_t: HPP battery state of charge (SoC) time series results form an EMS planed without degradation
-    G_MW : grid connection
-    b_E : battery energy capacity time series
-    battery_depth_of_discharge : battery depth of discharge
-    battery_charge_efficiency : battery charge efficiency
-    b_E_SOC_0: Initial charge status of the actual operation
-    load_min: minimum electrical load to meet [MW]
-    load_min_penalty_factor: penalty factor to scale the penalty when not meeting required load
-
-    Returns
-    -------
-    Hpp_deg : HPP power time series
-    P_curt_deg : HPP curtailed power time series
-    b_t_sat : Battery charge/discharge power time series
-    b_E_SOC_t_sat : Battery energy SOC time series
-    penalty_ts : penalty for not reaching minimum electrical load constraint
-    """
-
-    B_p = np.max(np.abs(b_t))
-
-    wind_solar_t = solar_t + wind_t
-    wind_solar_t_deg = solar_t_deg + wind_t_deg
-
-    P_deg_t_sat_loss = (solar_t - solar_t_deg) + (wind_t - wind_t_deg)
-    P_loss =  np.maximum( 0 , P_deg_t_sat_loss  - hpp_curt_t)
-
-    b_t_less_sol = b_t.copy()
-    dt = 1
-
-    # Reduction in power to battery due to reduction of solar
-    for i in range(len(b_t)):
-        if b_t[i] < 0:
-            if change_BES_charging == 'proportional':
-                if wind_solar_t[i] != 0:
-                    # Try to keep the ratio of b_t[i] / wind_solar_t[i]  SoC to the maximum
-                    b_t_less_sol[i] = ( b_t[i] / wind_solar_t[i] ) * ( wind_solar_t_deg[i] )
-
-            elif change_BES_charging == 'only_for_less_power':
-                if -b_t[i] > P_loss[i]:
-                    b_t_less_sol[i] = b_t_less_sol[i] + P_loss[i]
-
-            elif change_BES_charging == 'always':
-                # Try to follow SoC to the maximum
-                if -b_t[i] > wind_solar_t_deg[i]:
-                    b_t_less_sol[i] = -wind_solar_t_deg[i]
-
-            b_t_less_sol[i] = np.clip(
-                b_t_less_sol[i],
-                -B_p,
-                B_p)
-
-    # Initialize the SoC
-    b_E_SOC_t_sat = b_E_SOC_t.copy()
-    if b_E_SOC_0 == None:
-        try:
-            b_E_SOC_t_sat[0]= b_E_SOC_t[0]
-        except:
-            raise('len(b_E_SOC_t):', len(b_E_SOC_t))
-    else:
-        b_E_SOC_t_sat[0]= b_E_SOC_0
-
-    # Update the SoC
-    for i in range(len(b_t_less_sol)):
-        if b_t_less_sol[i] < 0: # charging
-            b_E_SOC_t_sat[i+1] = b_E_SOC_t_sat[i] - b_t_less_sol[i] * dt * battery_charge_efficiency
-        if b_t_less_sol[i] >= 0: # discharging
-            b_E_SOC_t_sat[i+1] = b_E_SOC_t_sat[i] - b_t_less_sol[i] * dt / battery_charge_efficiency
-
-        b_E_SOC_t_sat[i+1] = np.clip(
-            b_E_SOC_t_sat[i+1],
-            (1-battery_depth_of_discharge) * b_E * batt_degradation[i],
-            b_E * batt_degradation[i]  )
-
-    # Recompute the battery power
-    b_t_sat = b_t.copy()
-    for i in range(len(b_t_sat)):
-        if b_t[i] < 0:
-            b_t_sat[i] = ( ( b_E_SOC_t_sat[i] - b_E_SOC_t_sat[i+1] ) / battery_charge_efficiency ) / dt
-        elif b_t[i] >= 0:
-            b_t_sat[i] = ( (b_E_SOC_t_sat[i] - b_E_SOC_t_sat[i+1] )  * battery_charge_efficiency ) / dt
-
-    Hpp_deg = np.minimum( wind_t_deg + solar_t_deg + b_t_sat, G_MW)
-    P_curt_deg = np.maximum( wind_t_deg + solar_t_deg + b_t_sat - G_MW, 0)
-
-
-    return Hpp_deg, P_curt_deg, b_t_sat, b_E_SOC_t_sat
+# def operation_rule_base_no_penalty(
+#     wind_t_deg,
+#     solar_t_deg,
+#     batt_degradation,
+#     wind_t,
+#     solar_t,
+#     hpp_curt_t,
+#     b_t,
+#     b_E_SOC_t,
+#     G_MW,
+#     b_E,
+#     battery_depth_of_discharge,
+#     battery_charge_efficiency,
+#     b_E_SOC_0 = None,
+#     load_min = 3,
+#     load_min_penalty_factor = 1e6,
+#     change_BES_charging = 'only_for_less_power',
+#     ):
+#
+#     """EMS operation for degraded PV and battery based on an existing EMS.
+#
+#     Parameters
+#     ----------
+#     wind_t_deg: Wind time series including degradation
+#     solar_t_deg: PV time series including degradation
+#     batt_degradation: Battery degradation as health factor [0=dead,1=new]
+#     b_t: HPP battery power (charge/discharge) time series results form an EMS planed without degradation
+#     b_E_SOC_t: HPP battery state of charge (SoC) time series results form an EMS planed without degradation
+#     G_MW : grid connection
+#     b_E : battery energy capacity time series
+#     battery_depth_of_discharge : battery depth of discharge
+#     battery_charge_efficiency : battery charge efficiency
+#     b_E_SOC_0: Initial charge status of the actual operation
+#     load_min: minimum electrical load to meet [MW]
+#     load_min_penalty_factor: penalty factor to scale the penalty when not meeting required load
+#
+#     Returns
+#     -------
+#     Hpp_deg : HPP power time series
+#     P_curt_deg : HPP curtailed power time series
+#     b_t_sat : Battery charge/discharge power time series
+#     b_E_SOC_t_sat : Battery energy SOC time series
+#     penalty_ts : penalty for not reaching minimum electrical load constraint
+#     """
+#
+#     B_p = np.max(np.abs(b_t))
+#
+#     wind_solar_t = solar_t + wind_t
+#     wind_solar_t_deg = solar_t_deg + wind_t_deg
+#
+#     P_deg_t_sat_loss = (solar_t - solar_t_deg) + (wind_t - wind_t_deg)
+#     P_loss =  np.maximum( 0 , P_deg_t_sat_loss  - hpp_curt_t)
+#
+#     b_t_less_sol = b_t.copy()
+#     dt = 1
+#
+#     # Reduction in power to battery due to reduction of solar
+#     for i in range(len(b_t)):
+#         if b_t[i] < 0:
+#             if change_BES_charging == 'proportional':
+#                 if wind_solar_t[i] != 0:
+#                     # Try to keep the ratio of b_t[i] / wind_solar_t[i]  SoC to the maximum
+#                     b_t_less_sol[i] = ( b_t[i] / wind_solar_t[i] ) * ( wind_solar_t_deg[i] )
+#
+#             elif change_BES_charging == 'only_for_less_power':
+#                 if -b_t[i] > P_loss[i]:
+#                     b_t_less_sol[i] = b_t_less_sol[i] + P_loss[i]
+#
+#             elif change_BES_charging == 'always':
+#                 # Try to follow SoC to the maximum
+#                 if -b_t[i] > wind_solar_t_deg[i]:
+#                     b_t_less_sol[i] = -wind_solar_t_deg[i]
+#
+#             b_t_less_sol[i] = np.clip(
+#                 b_t_less_sol[i],
+#                 -B_p,
+#                 B_p)
+#
+#     # Initialize the SoC
+#     b_E_SOC_t_sat = b_E_SOC_t.copy()
+#     if b_E_SOC_0 == None:
+#         try:
+#             b_E_SOC_t_sat[0]= b_E_SOC_t[0]
+#         except:
+#             raise('len(b_E_SOC_t):', len(b_E_SOC_t))
+#     else:
+#         b_E_SOC_t_sat[0]= b_E_SOC_0
+#
+#     # Update the SoC
+#     for i in range(len(b_t_less_sol)):
+#         if b_t_less_sol[i] < 0: # charging
+#             b_E_SOC_t_sat[i+1] = b_E_SOC_t_sat[i] - b_t_less_sol[i] * dt * battery_charge_efficiency
+#         if b_t_less_sol[i] >= 0: # discharging
+#             b_E_SOC_t_sat[i+1] = b_E_SOC_t_sat[i] - b_t_less_sol[i] * dt / battery_charge_efficiency
+#
+#         b_E_SOC_t_sat[i+1] = np.clip(
+#             b_E_SOC_t_sat[i+1],
+#             (1-battery_depth_of_discharge) * b_E * batt_degradation[i],
+#             b_E * batt_degradation[i]  )
+#
+#     # Recompute the battery power
+#     b_t_sat = b_t.copy()
+#     for i in range(len(b_t_sat)):
+#         if b_t[i] < 0:
+#             b_t_sat[i] = ( ( b_E_SOC_t_sat[i] - b_E_SOC_t_sat[i+1] ) / battery_charge_efficiency ) / dt
+#         elif b_t[i] >= 0:
+#             b_t_sat[i] = ( (b_E_SOC_t_sat[i] - b_E_SOC_t_sat[i+1] )  * battery_charge_efficiency ) / dt
+#
+#     Hpp_deg = np.minimum( wind_t_deg + solar_t_deg + b_t_sat, G_MW)
+#     P_curt_deg = np.maximum( wind_t_deg + solar_t_deg + b_t_sat - G_MW, 0)
+#
+#
+#     return Hpp_deg, P_curt_deg, b_t_sat, b_E_SOC_t_sat

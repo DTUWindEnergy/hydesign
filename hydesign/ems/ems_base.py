@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from .ems_abc import ems_abc, ems_cplex_abc, ems_cplex_parts_abc
+from .ems_abc import ems_abc, ems_cplex_abc, ems_cplex_parts_abc, ems_degredation_abc
 
 from .ems_utils import expand_to_lifetime
 
@@ -330,3 +330,99 @@ class ems_cplex_parts_base_post(ems_cplex_parts_abc):
 
     def get_added_variables(self):
         return {}
+
+
+class ems_degredation_base(ems_degredation_abc):
+
+    def __init__(self, inputs):
+        self.inputs = inputs
+
+    def compute_wind_solar_deg(self):
+        """Compute the combined degraded wind and solar power."""
+        wind_t_deg = self.inputs.get('wind_t_deg')
+        solar_t_deg = self.inputs.get('solar_t_deg')
+        return wind_t_deg + solar_t_deg
+
+    def initialize_soc(self):
+        """Initialize the state of charge (SoC)."""
+        b_E_SOC_t = self.inputs.get('b_E_SOC_t')
+        b_E_SOC_0 = self.inputs.get('b_E_SOC_0', None)
+        b_E_SOC_t_sat = b_E_SOC_t.copy()
+        if b_E_SOC_0 is None:
+            b_E_SOC_t_sat[0] = b_E_SOC_t[0]
+        else:
+            b_E_SOC_t_sat[0] = b_E_SOC_0
+        return b_E_SOC_t_sat
+
+    def adjust_battery_power(self, wind_solar_t_deg):
+        """Adjust battery power for solar degradation."""
+        b_t = self.inputs.get('b_t')
+        B_p = np.max(np.abs(b_t))
+
+        b_t_less_sol = b_t.copy()
+        for i in range(len(b_t)):
+            if b_t[i] < 0:  # Charging
+                if -b_t[i] > wind_solar_t_deg[i]:
+                    b_t_less_sol[i] = -wind_solar_t_deg[i]
+                b_t_less_sol[i] = np.clip(b_t_less_sol[i], -B_p, B_p)
+        return b_t_less_sol
+
+    def update_soc(self, b_t_less_sol, b_E_SOC_t_sat):
+        """Update the state of charge (SoC) based on adjusted battery power."""
+        battery_charge_efficiency = self.inputs.get('battery_charge_efficiency')
+        battery_depth_of_discharge = self.inputs.get('battery_depth_of_discharge')
+        b_E = self.inputs.get('b_E')
+        batt_degradation = self.inputs.get('batt_degradation')
+
+        dt = 1  # Assuming time step is 1 hour
+        for i in range(len(b_t_less_sol)):
+            if b_t_less_sol[i] < 0:  # Charging
+                b_E_SOC_t_sat[i + 1] = b_E_SOC_t_sat[i] - b_t_less_sol[i] * dt * battery_charge_efficiency
+            else:  # Discharging
+                b_E_SOC_t_sat[i + 1] = b_E_SOC_t_sat[i] - b_t_less_sol[i] * dt / battery_charge_efficiency
+            b_E_SOC_t_sat[i + 1] = np.clip(b_E_SOC_t_sat[i + 1],
+                                           (1 - battery_depth_of_discharge) * b_E * batt_degradation[i],
+                                           b_E * batt_degradation[i])
+        return b_E_SOC_t_sat
+
+    def recompute_battery_power(self, b_E_SOC_t_sat):
+        """Recompute the battery power based on updated SoC."""
+        b_t = self.inputs.get('b_t')
+        battery_charge_efficiency = self.inputs.get('battery_charge_efficiency')
+
+        b_t_sat = b_t.copy()
+        dt = 1  # Assuming time step is 1 hour
+        for i in range(len(b_t_sat)):
+            if b_t[i] < 0:  # Charging
+                b_t_sat[i] = ((b_E_SOC_t_sat[i] - b_E_SOC_t_sat[i + 1]) / battery_charge_efficiency) / dt
+            else:  # Discharging
+                b_t_sat[i] = ((b_E_SOC_t_sat[i] - b_E_SOC_t_sat[i + 1]) * battery_charge_efficiency) / dt
+        return b_t_sat
+
+    def compute_penalty(self, Hpp_deg):
+        """Compute penalties for not meeting expected energy production at peak hours."""
+        price_ts = self.inputs.get('price_ts')
+        peak_hr_quantile = self.inputs.get('peak_hr_quantile', 0.9)
+        n_full_power_hours_expected_per_day_at_peak_price = self.inputs.get('n_full_power_hours_expected_per_day_at_peak_price', 3)
+        G_MW = self.inputs.get('G_MW')
+
+        H_df = pd.DataFrame(
+            {'hpp_t_with_deg': Hpp_deg},
+            index=pd.date_range(start='01-01-1991 00:00', periods=len(Hpp_deg), freq='1h')
+        )
+        H_df['price_t_ext'] = price_ts
+        price_peak = np.quantile(H_df['price_t_ext'], peak_hr_quantile)
+        H_df['peak'] = H_df['price_t_ext'] >= price_peak
+        H_df.loc[~H_df['peak'], 'hpp_t_with_deg'] = 0
+
+        N_days = 7
+        H_df_week = H_df.resample(f'{N_days}d').sum()
+        e_peak_day_expected = n_full_power_hours_expected_per_day_at_peak_price * G_MW
+        e_peak_period_expected = e_peak_day_expected * N_days
+        H_df_week['e_peak_period_expected'] = e_peak_period_expected
+        H_df_week['e_penalty'] = H_df_week['e_peak_period_expected'] - H_df_week['hpp_t_with_deg']
+        H_df_week['penalty'] = price_peak * np.maximum(0, H_df_week['e_penalty'])
+
+        penalty_df = H_df_week['penalty'].reindex_like(H_df).fillna(0.0)
+        penalty_ts = penalty_df.values.flatten()
+        return penalty_ts

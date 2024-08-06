@@ -24,6 +24,7 @@ class ems_wind_abc(ems_abc):
         added_ems_WSB_args = {'wind_ts': WSPr_df.wind_t}
 
         ems_WSB_args.update(added_ems_WSB_args)
+        # make sure the variable is not overwritten
 
         return ems_WSB_args
 
