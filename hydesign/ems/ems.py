@@ -93,18 +93,18 @@ class ems(om.ExplicitComponent):
                 periods=len(inputs['wind_t']),
                 freq='1h'))
 
-        ems_WSB_args = {}
+        ems_args = {}
         for tech_type in self.technology_types_and_base:
             class_name = getattr(self, f"ems_{tech_type}_abc_instance")
-            ems_WSB_args = class_name.added_ems_WSB_args(ems_WSB_args, WSPr_df, inputs)
+            ems_args = class_name.add_ems_args(ems_args, WSPr_df, inputs)
 
         # short term ems evaluation
-        outputs_ems_WSB = ems_WSB(ems_WSB_args)
+        outputs_ems_WSB = ems_WSB(ems_args)
 
         for tech_type in self.technology_types_and_base:
             class_name = getattr(self, f"ems_{tech_type}_abc_instance")
             # extention of the outputs to the project lifetime
-            outputs = class_name.outputs_extension(component=self, inputs=inputs, outputs=outputs, outputs_ems_WSB=outputs_ems_WSB)
+            outputs = class_name.postprocessing_outputs(component=self, inputs=inputs, outputs=outputs, outputs_ems_WSB=outputs_ems_WSB)
 
 class ems_long_term_operation(om.ExplicitComponent):
     """Long term operation EMS. Predicts the operation of the plant throughout the entire lifetime, taking into account the battery
@@ -183,16 +183,16 @@ class ems_long_term_operation(om.ExplicitComponent):
         else:
             raise Warning("This class should only be used for energy_penalty")
 
-        ems_WSB_args = {}
+        ems_args = {}
         for tech_type in self.technology_types:
             class_name = getattr(self, f"ems_{tech_type}_long_term_operation_instance")
-            ems_WSB_args = class_name.added_ems_WSB_args(ems_WSB_args, inputs)
+            ems_args = class_name.add_ems_args(ems_args, inputs)
 
-        outputs_ems_longterm = ems_longterm(ems_WSB_args)
+        outputs_ems_longterm = ems_longterm(ems_args)
 
         for tech_type in self.technology_types:
             class_name = getattr(self, f"ems_{tech_type}_long_term_operation_instance")
-            outputs = class_name.outputs_extension(component=self, inputs=inputs, outputs=outputs, outputs_ems_WSB=outputs_ems_longterm)
+            outputs = class_name.postprocessing_outputs(component=self, inputs=inputs, outputs=outputs, outputs_ems_WSB=outputs_ems_longterm)
 
 # ------------
 # ems_cplex
@@ -330,7 +330,8 @@ def ems_cplex_parts(inputs):
         mdl = ems_cplex_parts_instances[tech_type].get_updated_model()
 
     # print mdl details
-    #print_cplex_model_details(mdl)
+    # print('dict_hydesign_equations =', mdl.dict_hydesign_equations)
+
 
     # Solving the problem
     sol = mdl.solve(

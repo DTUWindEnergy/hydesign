@@ -25,6 +25,9 @@ from hydesign.costs.costs import wpp_cost, pvp_cost, battery_cost, shared_cost
 from hydesign.finance.finance import finance
 from hydesign.look_up_tables import lut_filepath
 from .hpp_model_base import hpp_model_base
+from .hpp_model_wind import hpp_model_wind
+from .hpp_model_solar import hpp_model_solar
+from .hpp_model_bess import hpp_model_bess
 
 
 class hpp_model:
@@ -58,187 +61,208 @@ class hpp_model:
         genWT_fn : Wind turbine power curve look-up tables
         genWake_fn : Wind turbine wake look-up tables
         """
-        hpp_model_generic = hpp_model_base(excel_data, verbose, **kwargs)
+        excel_data_main = excel_data['dashboard']
 
-        # excel_data_main = excel_data['dashboard']
-        #
-        # # Reset the header to the 6th row (index 5) and reassign the DataFrame
-        # excel_data_main.columns = excel_data_main.iloc[5]
-        # excel_data_main = excel_data_main[6:].reset_index(drop=True)
-        #
-        # # Drop rows where 'Parameter' is NaN
-        # excel_data_main.dropna(subset=['Parameter'], inplace=True)
+        # Reset the header to the 6th row (index 5) and reassign the DataFrame
+        excel_data_main.columns = excel_data_main.iloc[5]
+        excel_data_main = excel_data_main[6:].reset_index(drop=True)
 
-        # # Extract 'Parameter' and 'Value' columns as a dictionary
-        # sim_pars = dict(zip(excel_data_main['Parameter'], excel_data_main['Value']))
-        #
-        # # Convert specific sim_pars to np.array using ast.literal_eval
-        # for key in ['wind_deg', 'wind_deg_yr', 'pv_deg', 'pv_deg_yr', 'inflation', 'inflation_yr', 'phasing_yr', 'phasing_CAPEX', 'depreciation_yr',
-        #             'depreciation', 'technology_types']:
-        #     if key in sim_pars:
-        #         sim_pars[key] = np.array(ast.literal_eval(sim_pars[key]))
-        #
-        # # Overwrite parameters with values from kwargs if provided
-        # for key in sim_pars.keys():
-        #     if key in kwargs:
-        #         sim_pars[key] = kwargs[key]
-        #
-        # # Extract sim_pars from the dictionary
-        # latitude = sim_pars.get('latitude')
-        # longitude = float(sim_pars.get('longitude'))
-        # altitude = sim_pars.get('altitude')
-        # work_dir = sim_pars.get('work_dir', './')
-        # max_num_batteries_allowed = sim_pars.get('max_num_batteries_allowed', 3)
-        # factor_battery_cost = sim_pars.get('factor_battery_cost', 1)
-        # ems_type = sim_pars.get('ems_type', 'cplex')
-        # weeks_per_season_per_year = sim_pars.get('weeks_per_season_per_year')
-        # seed = sim_pars.get('seed', 0)
-        # genWT_fn = sim_pars.get('genWT_fn', lut_filepath + './genWT_v3.nc')
-        # genWake_fn = sim_pars.get('genWake_fn', lut_filepath + './genWake_v3.nc')
-        # verbose = verbose
-        # name = sim_pars.get('name', '')
-        # ppa_price = sim_pars.get('ppa_price')
-        # ems_type = sim_pars.get('ems_type', 'cplex')
-        # technology_types = sim_pars.get('technology_types')
-        #
-        # work_dir = mkdir(work_dir)
-        #
-        # # Extract additional data from separate sheets if available
-        # input_ts_data = excel_data.get('input_ts_DA')
-        #
-        # if altitude is None:
-        #     elevation_fn = sim_pars['elevation_fn']  # Altitude map for extracting altitude
-        #     elevation_ds = xr.open_dataset(elevation_fn)
-        #     altitude = elevation_ds['elev'].interp(
-        #         latitude=latitude,
-        #         longitude=longitude,
-        #         kwargs={"fill_value": 0.0}
-        #     ).values
-        # if verbose:
-        #     print('\nFixed parameters on the site')
-        #     print('-------------------------------')
-        #     print('longitude =', longitude)
-        #     print('latitude =', latitude)
-        #     print('altitude =', altitude)
-        #
-        # # Parameters of the simulation
-        # year_start = sim_pars.get('year_start', sim_pars['year'])
-        # year_end = sim_pars.get('year_end', sim_pars['year'])
-        # N_life = sim_pars['N_life']
-        # life_h = N_life * 365 * 24
-        # G_MW = sim_pars['G_MW']
-        # battery_depth_of_discharge = sim_pars['battery_depth_of_discharge']
-        # battery_charge_efficiency = sim_pars['battery_charge_efficiency']
-        # min_LoH = sim_pars['min_LoH']
-        # wpp_efficiency = sim_pars['wpp_efficiency']
-        # land_use_per_solar_MW = sim_pars['land_use_per_solar_MW']
-        #
-        # wind_deg = sim_pars.get('wind_deg', [0, 0.25])
-        # wind_deg_yr = sim_pars.get('wind_deg_yr', [0, 25])
-        # share_WT_deg_types = sim_pars.get('share_WT_deg_types', 0.5)
-        #
-        # # Extract weather timeseries
-        # if input_ts_data.empty:
-        #     # Weather database
-        #     era5_zarr = sim_pars['era5_zarr']  # location of wind speed renalysis
-        #     ratio_gwa_era5 = sim_pars['ratio_gwa_era5']  # location of mean wind speed correction factor
-        #     era5_ghi_zarr = sim_pars['era5_ghi_zarr']  # location of GHI renalysis
-        #
-        #     weather = extract_weather_for_HPP(
-        #         longitude=longitude,
-        #         latitude=latitude,
-        #         altitude=altitude,
-        #         era5_zarr=era5_zarr,
-        #         ratio_gwa_era5=ratio_gwa_era5,
-        #         era5_ghi_zarr=era5_ghi_zarr,
-        #         year_start=year_start,
-        #         year_end=year_end
-        #     )
-        #
-        #     price_fn = sim_pars.get('price_fn')
-        #     if type(price_fn) is str:
-        #         price = pd.read_csv(price_fn, index_col=0, parse_dates=True)
-        #     else:
-        #         price = price_fn
-        #     try:
-        #         weather['Price'] = price.loc[weather.index].bfill()
-        #     except Exception as e:
-        #         raise Exception('Price timeseries does not match the weather')
-        #
-        #     # Check for complete years in the input_ts: Hydesign works with years of 365 days
-        #     N_time = len(weather)
-        #     if np.mod(N_time, 365 * 24) == 0:
-        #         pass
-        #     else:
-        #         N_sel = N_time - np.mod(N_time, 365 * 24)
-        #         weather = weather.iloc[:N_sel]
-        #
-        #     input_ts_fn = f'{work_dir}/input_ts{name}.csv'
-        #     if verbose:
-        #         print(f'\ninput_ts_fn extracted and stored in {input_ts_fn}')
-        #     #weather.to_csv(input_ts_fn, index=True)
-        #     N_time = len(weather)
-        #
-        # else:  # User provided weather timeseries
-        #     weather = excel_data['input_ts_DA']
-        #     weather.set_index(input_ts_data.columns[0], inplace=True)
-        #     weather.index = pd.to_datetime(weather.index)
-        #     N_time = len(weather)
-        #
-        # # Check for complete years in the input_ts
-        # if np.mod(N_time, 365 * 24) == 0:
-        #     pass
-        # else:
-        #     N_sel = N_time - np.mod(N_time, 365 * 24)
-        #     weather = weather.iloc[:N_sel]
-        #
-        #     if verbose:
-        #         print(f'\ninput_ts_fn length is not a complete number of years (hyDesign handles years as 365 days).')
-        #         print(f'The file has been modified accordingly')
-        #     N_time = len(weather)
-        #
-        # # Assign PPA to the full input_ts
-        # if ppa_price is None:
-        #     price = weather['Price']
-        # else:
-        #     price = ppa_price * np.ones_like(weather['Price'])
-        #
-        # # Randomly sample the weather to generate representative years
-        # if weeks_per_season_per_year is not None:
-        #     weather = select_years(
-        #         weather,
-        #         seed=seed,
-        #         weeks_per_season_per_year=weeks_per_season_per_year,
-        #     )
-        #     N_time = len(weather)
-        #     input_ts_fn = f'{work_dir}/input_ts_sel.csv'
-        #     if verbose:
-        #         print(f'\n\nSelected input time series based on {weeks_per_season_per_year} weeks per season are stored in {input_ts_fn}')
-        #
-        # # extract number of ws in the look-up tables
-        # with xr.open_dataset(genWT_fn) as ds:
-        #     # number of points in the power curves
-        #     N_ws = len(ds.ws.values)
+        # Drop rows where 'Parameter' is NaN
+        excel_data_main.dropna(subset=['Parameter'], inplace=True)
+
+        # Extract 'Parameter' and 'Value' columns as a dictionary
+        sim_pars = dict(zip(excel_data_main['Parameter'], excel_data_main['Value']))
+
+        # Convert specific sim_pars to np.array using ast.literal_eval
+        for key in ['wind_deg', 'wind_deg_yr', 'pv_deg', 'pv_deg_yr', 'inflation', 'inflation_yr', 'phasing_yr', 'phasing_CAPEX', 'depreciation_yr',
+                    'depreciation', 'technology_types']:
+            if key in sim_pars:
+                sim_pars[key] = np.array(ast.literal_eval(sim_pars[key]))
+
+        # Overwrite parameters with values from kwargs if provided
+        for key in sim_pars.keys():
+            if key in kwargs:
+                sim_pars[key] = kwargs[key]
+
+        # sort the technology_types based on the default order
+        sorted_tech_types = ['wind', 'solar', 'bess', 'p2x', 'sm', 'bm']
+        sim_pars['technology_types'] = [tech_type for tech_type in sorted_tech_types if tech_type in sim_pars['technology_types']]
+
+        # Extract sim_pars from the dictionary
+        latitude = sim_pars.get('latitude')
+        longitude = float(sim_pars.get('longitude'))
+        altitude = sim_pars.get('altitude')
+        work_dir = sim_pars.get('work_dir', './')
+        max_num_batteries_allowed = sim_pars.get('max_num_batteries_allowed', 3)
+        factor_battery_cost = sim_pars.get('factor_battery_cost', 1)
+        ems_type = sim_pars.get('ems_type', 'cplex')
+        weeks_per_season_per_year = sim_pars.get('weeks_per_season_per_year')
+        seed = sim_pars.get('seed', 0)
+        genWT_fn = sim_pars.get('genWT_fn', lut_filepath + './genWT_v3.nc')
+        genWake_fn = sim_pars.get('genWake_fn', lut_filepath + './genWake_v3.nc')
+        verbose = verbose
+        name = sim_pars.get('name', '')
+        ppa_price = sim_pars.get('ppa_price')
+        ems_type = sim_pars.get('ems_type', 'cplex')
+        technology_types = sim_pars.get('technology_types')
+
+        work_dir = mkdir(work_dir)
+
+        # Extract additional data from separate sheets if available
+        input_ts_data = excel_data.get('input_ts_DA')
+
+        if altitude is None:
+            elevation_fn = sim_pars['elevation_fn']  # Altitude map for extracting altitude
+            elevation_ds = xr.open_dataset(elevation_fn)
+            altitude = elevation_ds['elev'].interp(
+                latitude=latitude,
+                longitude=longitude,
+                kwargs={"fill_value": 0.0}
+            ).values
+        if verbose:
+            print('\nFixed parameters on the site')
+            print('-------------------------------')
+            print('longitude =', longitude)
+            print('latitude =', latitude)
+            print('altitude =', altitude)
+
+        # Parameters of the simulation
+        year_start = sim_pars.get('year_start', sim_pars['year'])
+        year_end = sim_pars.get('year_end', sim_pars['year'])
+        N_life = sim_pars['N_life']
+        life_h = N_life * 365 * 24
+        G_MW = sim_pars['G_MW']
+        battery_depth_of_discharge = sim_pars['battery_depth_of_discharge']
+        battery_charge_efficiency = sim_pars['battery_charge_efficiency']
+        min_LoH = sim_pars['min_LoH']
+        wpp_efficiency = sim_pars['wpp_efficiency']
+        land_use_per_solar_MW = sim_pars['land_use_per_solar_MW']
+
+        wind_deg = sim_pars.get('wind_deg', [0, 0.25])
+        wind_deg_yr = sim_pars.get('wind_deg_yr', [0, 25])
+        share_WT_deg_types = sim_pars.get('share_WT_deg_types', 0.5)
+
+        # Extract weather timeseries
+        if input_ts_data.empty:
+            # Weather database
+            era5_zarr = sim_pars['era5_zarr']  # location of wind speed renalysis
+            ratio_gwa_era5 = sim_pars['ratio_gwa_era5']  # location of mean wind speed correction factor
+            era5_ghi_zarr = sim_pars['era5_ghi_zarr']  # location of GHI renalysis
+
+            weather = extract_weather_for_HPP(
+                longitude=longitude,
+                latitude=latitude,
+                altitude=altitude,
+                era5_zarr=era5_zarr,
+                ratio_gwa_era5=ratio_gwa_era5,
+                era5_ghi_zarr=era5_ghi_zarr,
+                year_start=year_start,
+                year_end=year_end
+            )
+
+            price_fn = sim_pars.get('price_fn')
+            if type(price_fn) is str:
+                price = pd.read_csv(price_fn, index_col=0, parse_dates=True)
+            else:
+                price = price_fn
+            try:
+                weather['Price'] = price.loc[weather.index].bfill()
+            except Exception as e:
+                raise Exception('Price timeseries does not match the weather')
+
+            # Check for complete years in the input_ts: Hydesign works with years of 365 days
+            N_time = len(weather)
+            if np.mod(N_time, 365 * 24) == 0:
+                pass
+            else:
+                N_sel = N_time - np.mod(N_time, 365 * 24)
+                weather = weather.iloc[:N_sel]
+
+            input_ts_fn = f'{work_dir}/input_ts{name}.csv'
+            if verbose:
+                print(f'\ninput_ts_fn extracted and stored in {input_ts_fn}')
+            #weather.to_csv(input_ts_fn, index=True)
+            N_time = len(weather)
+
+        else:  # User provided weather timeseries
+            weather = excel_data['input_ts_DA']
+            weather.set_index(input_ts_data.columns[0], inplace=True)
+            weather.index = pd.to_datetime(weather.index)
+            N_time = len(weather)
+
+        # Check for complete years in the input_ts
+        if np.mod(N_time, 365 * 24) == 0:
+            pass
+        else:
+            N_sel = N_time - np.mod(N_time, 365 * 24)
+            weather = weather.iloc[:N_sel]
+
+            if verbose:
+                print(f'\ninput_ts_fn length is not a complete number of years (hyDesign handles years as 365 days).')
+                print(f'The file has been modified accordingly')
+            N_time = len(weather)
+
+        # Assign PPA to the full input_ts
+        if ppa_price is None:
+            price = weather['Price']
+        else:
+            price = ppa_price * np.ones_like(weather['Price'])
+
+        # Randomly sample the weather to generate representative years
+        if weeks_per_season_per_year is not None:
+            weather = select_years(
+                weather,
+                seed=seed,
+                weeks_per_season_per_year=weeks_per_season_per_year,
+            )
+            N_time = len(weather)
+            input_ts_fn = f'{work_dir}/input_ts_sel.csv'
+            if verbose:
+                print(f'\n\nSelected input time series based on {weeks_per_season_per_year} weeks per season are stored in {input_ts_fn}')
+
+        # extract number of ws in the look-up tables
+        with xr.open_dataset(genWT_fn) as ds:
+            # number of points in the power curves
+            N_ws = len(ds.ws.values)
+
+        # run hpp models
+        hpp_model_map = {
+            'base': hpp_model_base,
+            'wind': hpp_model_wind,
+            'solar': hpp_model_solar,
+            'bess': hpp_model_bess,
+        }
+
+        technology_types_and_base = ['base'] + ['wind', 'solar', 'bess'] #+ technology_types
+        hpp_model_instances = {}
+        for tech_type in technology_types_and_base:
+            hpp_model_instances[tech_type] = hpp_model_map[tech_type](excel_data, sim_pars, verbose, weather, N_time, genWT_fn, N_ws, genWake_fn, price, **kwargs)
 
         model = om.Group()
 
-        model = hpp_model_generic.add_subsystems(model)
+        for tech_type in technology_types_and_base:
+            model = hpp_model_instances[tech_type].add_subsystems(model)
 
-        model = hpp_model_generic.connect_subsytems(model)
+        for tech_type in technology_types_and_base:
+            model = hpp_model_instances[tech_type].connect_subsytems(model)
 
         prob = om.Problem(model, reports=None)
 
         prob.setup()
 
-        hpp_model_generic.set_prob_values(prob)
+        for tech_type in technology_types_and_base:
+            hpp_model_instances[tech_type].set_prob_values(prob)
 
-        self.sim_pars = hpp_model_generic.sim_pars
+        self.sim_pars = sim_pars
         self.prob = prob
 
         list_vars = []
         list_out_vars = []
-        self.list_vars, self.list_out_vars = hpp_model_generic.list_vars_and_outvars(list_vars, list_out_vars)
+        for tech_type in technology_types_and_base:
+            list_vars, list_out_vars = hpp_model_instances[tech_type].list_vars_and_outvars(list_vars, list_out_vars)
 
+        self.list_vars = list_vars
+        self.list_out_vars = list_out_vars
 
     def evaluate(
         self,

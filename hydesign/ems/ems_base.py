@@ -44,7 +44,7 @@ class ems_base_abc(ems_abc):
             shape=[component.life_h])
 
 
-    def added_ems_WSB_args(self, ems_WSB_args,  WSPr_df, inputs):
+    def add_ems_args(self, ems_args,  WSPr_df, inputs):
         G_MW = inputs['G_MW']
         peak_hr_quantile = inputs['peak_hr_quantile'][0]
         n_full_power_hours_expected_per_day_at_peak_price = inputs[
@@ -52,7 +52,7 @@ class ems_base_abc(ems_abc):
         WSPr_df['price_t'] = inputs['price_t']
 
 
-        added_ems_WSB_args = {
+        added_ems_args = {
             'price_ts': WSPr_df.price_t,
             'G_MW': G_MW[0],
             'peak_hr_quantile': peak_hr_quantile,
@@ -60,10 +60,10 @@ class ems_base_abc(ems_abc):
             'technology_types': ['wind', 'solar', 'bess'],
             }
 
-        ems_WSB_args.update(added_ems_WSB_args)
-        return ems_WSB_args
+        ems_args.update(added_ems_args)
+        return ems_args
 
-    def outputs_extension(self, component, inputs, outputs, outputs_ems_WSB):
+    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems_WSB):
         price_t = inputs['price_t']
         P_HPP_ts = outputs_ems_WSB['hpp_t']
         P_curtailment_ts = outputs_ems_WSB['hpp_curt_t']
@@ -134,24 +134,24 @@ class ems_base_long_term_operation(ems_abc):
             units='GW*h',
         )
 
-    def added_ems_WSB_args(self, ems_WSB_args, inputs):
+    def add_ems_args(self, ems_args, inputs):
         price_t_ext = inputs['price_t_ext']
         G_MW = inputs['G_MW']
         hpp_curt_t = inputs['hpp_curt_t']
         peak_hr_quantile = inputs['peak_hr_quantile'][0]
         n_full_power_hours_expected_per_day_at_peak_price = inputs['n_full_power_hours_expected_per_day_at_peak_price'][0]
 
-        added_ems_WSB_args = dict(
+        added_ems_args = dict(
                     hpp_curt_t=hpp_curt_t,
                     G_MW=G_MW[0],
                     price_ts=price_t_ext,
                     peak_hr_quantile=peak_hr_quantile,
                     n_full_power_hours_expected_per_day_at_peak_price=n_full_power_hours_expected_per_day_at_peak_price, )
 
-        ems_WSB_args.update(added_ems_WSB_args)
-        return ems_WSB_args
+        ems_args.update(added_ems_args)
+        return ems_args
 
-    def outputs_extension(self, component, inputs, outputs, outputs_ems_WSB):
+    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems_WSB):
         outputs['hpp_t_with_deg'] = outputs_ems_WSB['Hpp_deg']
         outputs['hpp_curt_t_with_deg'] = outputs_ems_WSB['P_curt_deg']
         outputs['penalty_t_with_deg'] = outputs_ems_WSB['penalty_ts']
@@ -207,10 +207,6 @@ class ems_cplex_parts_base_pre(ems_cplex_parts_abc):
         self.G_MW = inputs['G_MW']
         self.time = extra_inputs['time']
 
-        self._variables()
-        self._constraints()
-        self._objective_function()
-
     def _variables(self):
 
         self.P_HPP_t = self.mdl.continuous_var_dict(
@@ -224,7 +220,6 @@ class ems_cplex_parts_base_pre(ems_cplex_parts_abc):
         self.penalty = self.mdl.continuous_var(name='penalty', lb=-1e12)
         self.e_penalty = self.mdl.continuous_var(name='e_penalty', lb=-1e12)
 
-
     def _constraints(self):
         # add constraints
         for t in self.time:
@@ -232,9 +227,22 @@ class ems_cplex_parts_base_pre(ems_cplex_parts_abc):
             dt = 1
             self.mdl.add_constraint(self.P_HPP_t[t] == 0, f'power_balance_{t}')
 
-
     def _objective_function(self):
         pass
+
+    def _dict_hydesign_equations(self):
+        # initialize dict
+        self.mdl.dict_hydesign_equations = {}
+        self.mdl.dict_hydesign_equations['decision variables'] = {}
+        self.mdl.dict_hydesign_equations['objective function'] = {}
+        self.mdl.dict_hydesign_equations['constraints'] = {}
+
+        # set some of the values
+        self.mdl.dict_hydesign_equations['decision variables']['HPP power output'] = 'P_HPP_t'
+        self.mdl.dict_hydesign_equations['decision variables']['Curtailment'] = 'P_curtailment_t'
+        self.mdl.dict_hydesign_equations['objective function']['sense'] = 'maximize'
+        self.mdl.dict_hydesign_equations['objective function']['equation'] = ''
+        self.mdl.dict_hydesign_equations['constraints']['power balance'] = 'P_HPP_t[t] == '
 
     def outputs_cplex_parts(self, sol, outputs):
         N_t = self.extra_inputs['N_t']
@@ -263,9 +271,6 @@ class ems_cplex_parts_base_pre(ems_cplex_parts_abc):
 
         return outputs
 
-    def get_added_variables(self):
-        return {'P_HPP_t': self.P_HPP_t, 'P_curtailment_t': self.P_curtailment_t, 'penalty': self.penalty, 'e_penalty': self.e_penalty}
-
 class ems_cplex_parts_base_post(ems_cplex_parts_abc):
     def __init__(self, mdl, inputs, extra_inputs={}):
         self.inputs = inputs
@@ -276,10 +281,6 @@ class ems_cplex_parts_base_post(ems_cplex_parts_abc):
         self.e_peak_period_expected = extra_inputs['e_peak_period_expected']
         self.peak_hours_index = extra_inputs['peak_hours_index']
         self.price_peak = extra_inputs['price_peak']
-
-        self._variables()
-        self._constraints()
-        self._objective_function()
 
     def _variables(self):
         pass
@@ -320,6 +321,16 @@ class ems_cplex_parts_base_post(ems_cplex_parts_abc):
         self.mdl.remove_objective()
         self.mdl.maximize(new_objective)
 
+    def _dict_hydesign_equations(self):
+        self.mdl.dict_hydesign_equations['objective function']['equation'] = self.mdl.dict_hydesign_equations['objective function']['equation'] +\
+                                                                 'sum(price[t] * P_HPP[t] * Hydrogen_storage_level[t]) - penalty'
+
+        self.mdl.dict_hydesign_equations['constraints']['power balance'] = self.mdl.dict_hydesign_equations['constraints'].get('power balance', '') +\
+                                                                           '-P_Curtailment[t] '
+
+        self.mdl.dict_hydesign_equations['constraints']['e_penalty'] = 'e_penalty == e_peak_period_expected - sum(P_HPP[i] for i in peak_hours_index)'
+        self.mdl.dict_hydesign_equations['constraints']['penalty'] = 'penalty == price_peak * e_penalty'
+
     def outputs_cplex_parts(self, sol, outputs):
         # if len(P_HPP_ts_df) < len(wind_ts):
         #     # print('recomputing p_hpp')
@@ -328,8 +339,6 @@ class ems_cplex_parts_base_post(ems_cplex_parts_abc):
 
         return outputs
 
-    def get_added_variables(self):
-        return {}
 
 
 class ems_degredation_base(ems_degredation_abc):

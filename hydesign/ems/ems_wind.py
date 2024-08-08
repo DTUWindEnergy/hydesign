@@ -19,16 +19,16 @@ class ems_wind_abc(ems_abc):
             units='MW',
             shape=[component.life_h])
 
-    def added_ems_WSB_args(self, ems_WSB_args, WSPr_df, inputs):
+    def add_ems_args(self, ems_args, WSPr_df, inputs):
         WSPr_df['wind_t'] = inputs['wind_t']
-        added_ems_WSB_args = {'wind_ts': WSPr_df.wind_t}
+        added_ems_args = {'wind_ts': WSPr_df.wind_t}
 
-        ems_WSB_args.update(added_ems_WSB_args)
+        ems_args.update(added_ems_args)
         # make sure the variable is not overwritten
 
-        return ems_WSB_args
+        return ems_args
 
-    def outputs_extension(self, component, inputs, outputs, outputs_ems_WSB):
+    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems_WSB):
         # Extend (by repeating them and stacking) all variable to full lifetime
         outputs['wind_t_ext'] = expand_to_lifetime(
             inputs['wind_t'], life_h=component.life_h, weeks_per_season_per_year=component.weeks_per_season_per_year)
@@ -52,20 +52,20 @@ class ems_wind_long_term_operation(ems_abc):
     def add_outputs(self, component):
         pass
 
-    def added_ems_WSB_args(self, ems_WSB_args, inputs):
+    def add_ems_args(self, ems_args, inputs):
         wind_t_ext_deg = inputs['wind_t_ext_deg']
         wind_t_ext = inputs['wind_t_ext']
 
-        added_ems_WSB_args = dict(
+        added_ems_args = dict(
                     wind_t_deg=wind_t_ext_deg,
                     wind_t=wind_t_ext,
                     )
 
 
-        ems_WSB_args.update(added_ems_WSB_args)
-        return ems_WSB_args
+        ems_args.update(added_ems_args)
+        return ems_args
 
-    def outputs_extension(self, component, inputs, outputs, outputs_ems_WSB):
+    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems_WSB):
         return outputs
 
 class ems_cplex_wind(ems_cplex_abc):
@@ -91,10 +91,6 @@ class ems_cplex_parts_wind(ems_cplex_parts_abc):
         self.wind_ts = inputs['wind_ts']
         self.time = extra_inputs['time']
 
-        self._variables()
-        self._constraints()
-        self._objective_function()
-
     def _variables(self):
         pass
 
@@ -110,6 +106,10 @@ class ems_cplex_parts_wind(ems_cplex_parts_abc):
 
     def _objective_function(self):
         pass
+
+    def _dict_hydesign_equations(self):
+        self.mdl.dict_hydesign_equations['constraints']['power balance'] = self.mdl.dict_hydesign_equations['constraints'].get('power balance', '') +\
+                                                                           '+wind_ts[t]'
 
     def outputs_cplex_parts(self, sol, outputs):
         return outputs

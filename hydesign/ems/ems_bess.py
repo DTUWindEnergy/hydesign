@@ -34,7 +34,7 @@ class ems_bess_abc(ems_abc):
             desc="Battery energy SOC time series",
             shape=[component.life_h + 1])
 
-    def added_ems_WSB_args(self, ems_WSB_args,  WSPr_df, inputs):
+    def add_ems_args(self, ems_args,  WSPr_df, inputs):
         b_P = inputs['b_P']
         b_E = inputs['b_E']
         WSPr_df['b_E'] = inputs['b_E'][0]
@@ -43,7 +43,7 @@ class ems_bess_abc(ems_abc):
         battery_charge_efficiency = inputs['battery_charge_efficiency']
         cost_of_battery_P_fluct_in_peak_price_ratio = inputs['cost_of_battery_P_fluct_in_peak_price_ratio'][0]
 
-        added_ems_WSB_args = {
+        added_ems_args = {
             'b_P': b_P[0],
             'b_E': WSPr_df.b_E,
             'battery_depth_of_discharge': battery_depth_of_discharge[0],
@@ -51,10 +51,10 @@ class ems_bess_abc(ems_abc):
             'cost_of_battery_P_fluct_in_peak_price_ratio': cost_of_battery_P_fluct_in_peak_price_ratio
             }
 
-        ems_WSB_args.update(added_ems_WSB_args)
-        return ems_WSB_args
+        ems_args.update(added_ems_args)
+        return ems_args
 
-    def outputs_extension(self, component, inputs, outputs, outputs_ems_WSB):
+    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems_WSB):
         P_charge_discharge_ts = outputs_ems_WSB['b_t']
         E_SOC_ts = outputs_ems_WSB['b_E_SOC_t']
 
@@ -108,7 +108,7 @@ class ems_bess_long_term_operation(ems_abc):
             desc="Battery energy SOC time series",
             shape=[component.life_h + 1])
 
-    def added_ems_WSB_args(self, ems_WSB_args, inputs):
+    def add_ems_args(self, ems_args, inputs):
         SoH = inputs['SoH']
         b_E = inputs['b_E']
         battery_depth_of_discharge = inputs['battery_depth_of_discharge']
@@ -116,7 +116,7 @@ class ems_bess_long_term_operation(ems_abc):
         b_t = inputs['b_t']
         b_E_SOC_t = inputs['b_E_SOC_t']
 
-        added_ems_WSB_args = dict(
+        added_ems_args = dict(
                     batt_degradation=SoH,
                     b_t=b_t,
                     b_E_SOC_t=b_E_SOC_t,
@@ -126,10 +126,10 @@ class ems_bess_long_term_operation(ems_abc):
                     b_E_SOC_0=None,
                     )
 
-        ems_WSB_args.update(added_ems_WSB_args)
-        return ems_WSB_args
+        ems_args.update(added_ems_args)
+        return ems_args
 
-    def outputs_extension(self, component, inputs, outputs, outputs_ems_WSB):
+    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems_WSB):
         outputs['b_t_with_deg'] = outputs_ems_WSB['b_t_sat']
         outputs['b_E_SOC_t_with_deg'] = outputs_ems_WSB['b_E_SOC_t_sat']
 
@@ -184,10 +184,6 @@ class ems_cplex_parts_bess(ems_cplex_parts_abc):
         self.price_peak = extra_inputs['price_peak']
         self.price_ts_to_max = extra_inputs['price_ts_to_max']
 
-        self._variables()
-        self._constraints()
-        self._objective_function()
-
     def _variables(self):
         self.P_charge_discharge = self.mdl.continuous_var_dict(self.time, lb=-self.b_P / self.battery_charge_efficiency, ub=self.b_P * self.battery_charge_efficiency, name='Battery_power')
         self.E_SOC_t = self.mdl.continuous_var_dict(self.SOCtime, lb=0, name='Energy_level')
@@ -231,7 +227,26 @@ class ems_cplex_parts_bess(ems_cplex_parts_abc):
 
         new_objective = current_objective - additional_cost
         self.mdl.remove_objective()
-        self.mdl.maximize(new_objective) # This line actually overwrites the objective function (no need to remove it).
+        self.mdl.maximize(new_objective) # This line actually overwrites the objective function (no need to remove the objective function in the previous line).
+
+
+    def _dict_hydesign_equations(self):
+        # new variables
+        self.mdl.dict_hydesign_equations['decision variables']['Energy_level'] = 'E_SOC_t'
+        self.mdl.dict_hydesign_equations['decision variables']['Battery_power'] = 'P_charge_discharge'
+
+        # updated objective function
+        self.mdl.dict_hydesign_equations['objective function']['equation'] = self.mdl.dict_hydesign_equations['objective function']['equation'] + \
+                                                                 '-sum(Piecewise(P_charge_discharge[t + 1hour] - P_charge_discharge[t]) * cost_of_battery_P_fluct_in_peak_price_ratio * self.price_ts_to_max[t] for t in time[:-1])'
+        # updated constraints
+        self.mdl.dict_hydesign_equations['constraints']['power balance'] = self.mdl.dict_hydesign_equations['constraints'].get('power balance', '') +\
+                                                                           '+P_charge_discharge[t]'
+        # new constraints
+        self.mdl.dict_hydesign_equations['constraints']['E_SOC_t[tt]'] = 'E_SOC_t[t+1hour] == E_SOC_t[t] - Piecewise(P_charge_discharge[t]) * dt, E_SOC_tt[t+1hour])'  # charge/dischrage equation
+        self.mdl.dict_hydesign_equations['constraints']['E_SOC_t[tt]'] = 'E_SOC_t[t] >= (1 - self.battery_depth_of_discharge) * b_E[t]'
+        self.mdl.dict_hydesign_equations['constraints']['E_SOC_lt_b_E[t]'] = 'E_SOC_t[t] <= self.b_E[t]'
+        self.mdl.dict_hydesign_equations['constraints']['P_charge_discharge_lt_b_P[t]'] = 'P_charge_discharge[t] <= b_P * battery_charge_efficiency'
+        self.mdl.dict_hydesign_equations['constraints']['P_charge_discharge_gt_neg_b_P[t]'] = 'P_charge_discharge[t] >= -self.b_P / self.battery_charge_efficiency'
 
     def outputs_cplex_parts(self, sol, outputs):
         N_t = self.extra_inputs['N_t']

@@ -14,12 +14,11 @@ class ems_abc(ABC):
 
     @abstractmethod
     # add_ems_args
-    def added_ems_WSB_args():
+    def add_ems_args():
         pass
 
     @abstractmethod
-    # postprocessing_outputs
-    def outputs_extension():
+    def postprocessing_outputs():
         pass
 
 class ems_cplex_abc(ABC):
@@ -42,6 +41,10 @@ class ems_cplex_abc(ABC):
 
 class ems_cplex_parts_abc(ABC):
     @abstractmethod
+    def __init__(self):
+        pass
+
+    @abstractmethod
     def _variables(self):
         pass
 
@@ -54,10 +57,19 @@ class ems_cplex_parts_abc(ABC):
         pass
 
     @abstractmethod
+    def _dict_hydesign_equations(self):
+        pass
+
+    @abstractmethod
     def outputs_cplex_parts(self):
         pass
 
+
     def get_updated_model(self):
+        self._variables()
+        self._constraints()
+        self._objective_function()
+        self._dict_hydesign_equations()
         return self.mdl
 
 
