@@ -27,6 +27,12 @@ It is recommended to create a new environment to install hydesign if you have ot
    conda env create --file environment.yml
    conda activate hydesign
 
+It is also recommended that you install cplex first before installing HyDesign. To get the community-edition of CPLEX you can run:
+
+    ``pip install cplex``
+
+If your combination of platform and Python version is not available on PyPi you need to go through the IBM website: https://www.ibm.com/products/ilog-cplex-optimization-studio/pricing to download and install the package. Here you can also find the full license (not free) of CPLEX that can solve larger problems.
+
 
 Simple Installation
 ----------------------------
