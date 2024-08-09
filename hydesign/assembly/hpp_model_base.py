@@ -29,7 +29,7 @@ class hpp_model_base(hpp_model_abc):
         self.price = price
 
 
-    def add_subsystems(self, model):
+    def add_subsystems(self, list_subsystems):
         sim_pars = self.sim_pars
         weather = self.weather
         N_time = self.N_time
@@ -52,47 +52,37 @@ class hpp_model_base(hpp_model_abc):
         ems_type = sim_pars.get('ems_type', 'cplex')
         weeks_per_season_per_year = sim_pars.get('weeks_per_season_per_year')
 
-        model.add_subsystem(
-            'abl',
-            ABL(
-                weather=weather,
-                N_time=N_time),
-            promotes_inputs=['hh']
-        )
-        model.add_subsystem(
-            'genericWT',
-            genericWT_surrogate(
-                genWT_fn=genWT_fn,
-                N_ws=N_ws),
-            promotes_inputs=[
-                'hh',
-                'd',
-                'p_rated',
-            ])
+        abl_dict = {
+            'name': 'abl',
+            'component': ABL(weather=weather, N_time=N_time),
+            'promotes_inputs': ['hh'],
+            'promotes_outputs': []
+        }
 
-        model.add_subsystem(
-            'genericWake',
-            genericWake_surrogate(
-                genWake_fn=genWake_fn,
-                N_ws=N_ws),
-            promotes_inputs=[
-                'Nwt',
-                'Awpp',
-                'd',
-                'p_rated',
-            ])
+        genericWT_dict = {
+            'name': 'genericWT',
+            'component': genericWT_surrogate(genWT_fn=genWT_fn, N_ws=N_ws),
+            'promotes_inputs': ['hh', 'd', 'p_rated'],
+            'promotes_outputs': []
+        }
 
-        model.add_subsystem(
-            'wpp',
-            wpp(
-                N_time=N_time,
-                N_ws=N_ws,
-                wpp_efficiency=wpp_efficiency, )
-        )
+        genericWake_dict = {
+            'name': 'genericWake',
+            'component': genericWake_surrogate(genWake_fn=genWake_fn, N_ws=N_ws),
+            'promotes_inputs': ['Nwt', 'Awpp', 'd', 'p_rated'],
+            'promotes_outputs': []
+        }
 
-        model.add_subsystem(
-            'wpp_with_degradation',
-            wpp_with_degradation(
+        wpp_dict = {
+            'name': 'wpp',
+            'component': wpp(N_time=N_time, N_ws=N_ws, wpp_efficiency=wpp_efficiency),
+            'promotes_inputs': [],
+            'promotes_outputs': []
+        }
+
+        wpp_with_degradation_dict = {
+            'name': 'wpp_with_degradation',
+            'component': wpp_with_degradation(
                 N_time=N_time,
                 N_ws=N_ws,
                 wpp_efficiency=wpp_efficiency,
@@ -100,14 +90,15 @@ class hpp_model_base(hpp_model_abc):
                 wind_deg_yr=wind_deg_yr,
                 wind_deg=wind_deg,
                 share_WT_deg_types=share_WT_deg_types,
-                weeks_per_season_per_year=weeks_per_season_per_year,
+                weeks_per_season_per_year=weeks_per_season_per_year
+            ),
+            'promotes_inputs': [],
+            'promotes_outputs': []
+        }
 
-            )
-        )
-
-        model.add_subsystem(
-            'wpp_cost',
-            wpp_cost(
+        wpp_cost_dict = {
+            'name': 'wpp_cost',
+            'component': wpp_cost(
                 wind_turbine_cost=sim_pars['wind_turbine_cost'],
                 wind_civil_works_cost=sim_pars['wind_civil_works_cost'],
                 wind_fixed_onm_cost=sim_pars['wind_fixed_onm_cost'],
@@ -115,18 +106,15 @@ class hpp_model_base(hpp_model_abc):
                 d_ref=sim_pars['d_ref'],
                 hh_ref=sim_pars['hh_ref'],
                 p_rated_ref=sim_pars['p_rated_ref'],
-                N_time=N_time,
+                N_time=N_time
             ),
-            promotes_inputs=[
-                'Nwt',
-                'Awpp',
-                'hh',
-                'd',
-                'p_rated'])
+            'promotes_inputs': ['Nwt', 'Awpp', 'hh', 'd', 'p_rated'],
+            'promotes_outputs': []
+        }
 
-        model.add_subsystem(
-            'pvp',
-            pvp(
+        pvp_dict = {
+            'name': 'pvp',
+            'component': pvp(
                 weather=weather,
                 N_time=N_time,
                 latitude=latitude,
@@ -134,96 +122,92 @@ class hpp_model_base(hpp_model_abc):
                 altitude=altitude,
                 tracking=sim_pars['tracking']
             ),
-            promotes_inputs=[
-                'surface_tilt',
-                'surface_azimuth',
-                'DC_AC_ratio',
-                'solar_MW',
-                'land_use_per_solar_MW',
-            ])
-        model.add_subsystem(
-            'ems',
-            ems(
+            'promotes_inputs': ['surface_tilt', 'surface_azimuth', 'DC_AC_ratio', 'solar_MW', 'land_use_per_solar_MW'],
+            'promotes_outputs': []
+        }
+
+        ems_dict = {
+            'name': 'ems',
+            'component': ems(
                 N_time=N_time,
                 weeks_per_season_per_year=weeks_per_season_per_year,
                 life_h=life_h,
-                ems_type=ems_type),
-            promotes_inputs=[
-                'price_t',
-                'b_P',
-                'b_E',
-                'G_MW',
-                'battery_depth_of_discharge',
-                'battery_charge_efficiency',
-                'peak_hr_quantile',
+                ems_type=ems_type
+            ),
+            'promotes_inputs': [
+                'price_t', 'b_P', 'b_E', 'G_MW', 'battery_depth_of_discharge',
+                'battery_charge_efficiency', 'peak_hr_quantile',
                 'cost_of_battery_P_fluct_in_peak_price_ratio',
-                'n_full_power_hours_expected_per_day_at_peak_price',
-            ]
-        )
-        model.add_subsystem(
-            'battery_degradation',
-            battery_degradation(
-                weather=weather,  # for extracting temperature
-                num_batteries=max_num_batteries_allowed,
-                life_h=life_h,
-                weeks_per_season_per_year=weeks_per_season_per_year,
-            ),
-            promotes_inputs=[
-                'min_LoH'
-            ])
-
-        model.add_subsystem(
-            'battery_loss_in_capacity_due_to_temp',
-            battery_loss_in_capacity_due_to_temp(
-                weather=weather,  # for extracting temperature
-                life_h=life_h,
-                weeks_per_season_per_year=weeks_per_season_per_year,
-            ),
-        )
-
-
-        model.add_subsystem(
-            'pvp_with_degradation',
-            pvp_with_degradation(
-                life_h=life_h,
-                pv_deg_yr=sim_pars['pv_deg_yr'],
-                pv_deg=sim_pars['pv_deg'],
-            )
-        )
-
-        model.add_subsystem(
-            'ems_long_term_operation',
-            ems_long_term_operation(
-                N_time=N_time,
-                life_h=life_h),
-            promotes_inputs=[
-                'b_P',
-                'b_E',
-                'G_MW',
-                'battery_depth_of_discharge',
-                'battery_charge_efficiency',
-                'peak_hr_quantile',
                 'n_full_power_hours_expected_per_day_at_peak_price'
             ],
-            promotes_outputs=[
-                'total_curtailment',
-                'total_curtailment_with_deg'
-            ])
+            'promotes_outputs': []
+        }
 
+        battery_degradation_dict = {
+            'name': 'battery_degradation',
+            'component': battery_degradation(
+                weather=weather,
+                num_batteries=max_num_batteries_allowed,
+                life_h=life_h,
+                weeks_per_season_per_year=weeks_per_season_per_year
+            ),
+            'promotes_inputs': ['min_LoH'],
+            'promotes_outputs': []
+        }
 
-        model.add_subsystem(
-            'pvp_cost',
-            pvp_cost(
+        battery_loss_in_capacity_due_to_temp_dict = {
+            'name': 'battery_loss_in_capacity_due_to_temp',
+            'component': battery_loss_in_capacity_due_to_temp(
+                weather=weather,
+                life_h=life_h,
+                weeks_per_season_per_year=weeks_per_season_per_year
+            ),
+            'promotes_inputs': [],
+            'promotes_outputs': []
+        }
+
+        pvp_with_degradation_dict = {
+            'name': 'pvp_with_degradation',
+            'component': pvp_with_degradation(
+                life_h=life_h,
+                pv_deg_yr=sim_pars['pv_deg_yr'],
+                pv_deg=sim_pars['pv_deg']
+            ),
+            'promotes_inputs': [],
+            'promotes_outputs': []
+        }
+
+        ems_long_term_operation_dict = {
+            'name': 'ems_long_term_operation',
+            'component': ems_long_term_operation(
+                N_time=N_time,
+                life_h=life_h
+            ),
+            'promotes_inputs': [
+                'b_P', 'b_E', 'G_MW', 'battery_depth_of_discharge',
+                'battery_charge_efficiency', 'peak_hr_quantile',
+                'n_full_power_hours_expected_per_day_at_peak_price'
+            ],
+            'promotes_outputs': [
+                'total_curtailment', 'total_curtailment_with_deg'
+            ]
+        }
+
+        pvp_cost_dict = {
+            'name': 'pvp_cost',
+            'component': pvp_cost(
                 solar_PV_cost=sim_pars['solar_PV_cost'],
                 solar_hardware_installation_cost=sim_pars['solar_hardware_installation_cost'],
                 solar_inverter_cost=sim_pars['solar_inverter_cost'],
-                solar_fixed_onm_cost=sim_pars['solar_fixed_onm_cost'],
+                solar_fixed_onm_cost=sim_pars['solar_fixed_onm_cost']
             ),
-            promotes_inputs=['solar_MW', 'DC_AC_ratio'])
+            'promotes_inputs': ['solar_MW', 'DC_AC_ratio'],
+            'promotes_outputs': []
+        }
 
-        model.add_subsystem(
-            'battery_cost',
-            battery_cost(
+        battery_cost_dict = {
+            'name': 'battery_cost',
+            'component': battery_cost(
                 battery_energy_cost=factor_battery_cost * sim_pars['battery_energy_cost'],
                 battery_power_cost=factor_battery_cost * sim_pars['battery_power_cost'],
                 battery_BOP_installation_commissioning_cost=factor_battery_cost * sim_pars['battery_BOP_installation_commissioning_cost'],
@@ -233,57 +217,65 @@ class hpp_model_base(hpp_model_abc):
                 N_life=N_life,
                 life_h=life_h
             ),
-            promotes_inputs=[
-                'b_P',
-                'b_E',
-                'battery_price_reduction_per_year'])
+            'promotes_inputs': ['b_P', 'b_E', 'battery_price_reduction_per_year'],
+            'promotes_outputs': []
+        }
 
-        model.add_subsystem(
-            'shared_cost',
-            shared_cost(
+        shared_cost_dict = {
+            'name': 'shared_cost',
+            'component': shared_cost(
                 hpp_BOS_soft_cost=sim_pars['hpp_BOS_soft_cost'],
                 hpp_grid_connection_cost=sim_pars['hpp_grid_connection_cost'],
-                land_cost=sim_pars['land_cost'],
+                land_cost=sim_pars['land_cost']
             ),
-            promotes_inputs=[
-                'G_MW',
-                'Awpp',
-            ])
+            'promotes_inputs': ['G_MW', 'Awpp'],
+            'promotes_outputs': []
+        }
 
-        model.add_subsystem(
-            'finance',
-            finance(
+        finance_dict = {
+            'name': 'finance',
+            'component': finance(
                 N_time=N_time,
-                # Depreciation curve
                 depreciation_yr=sim_pars['depreciation_yr'],
                 depreciation=sim_pars['depreciation'],
-                # Inflation curve
                 inflation_yr=sim_pars['inflation_yr'],
                 inflation=sim_pars['inflation'],
                 ref_yr_inflation=sim_pars['ref_yr_inflation'],
-                # Early paying or CAPEX Phasing
                 phasing_yr=sim_pars['phasing_yr'],
                 phasing_CAPEX=sim_pars['phasing_CAPEX'],
-                life_h=life_h),
-            promotes_inputs=['wind_WACC',
-                             'solar_WACC',
-                             'battery_WACC',
-                             'tax_rate'
-                             ],
-            promotes_outputs=['NPV',
-                              'IRR',
-                              'NPV_over_CAPEX',
-                              'LCOE',
-                              'revenues',
-                              'mean_AEP',
-                              'penalty_lifetime',
-                              'CAPEX',
-                              'OPEX',
-                              'break_even_PPA_price',
-                              ],
-        )
+                life_h=life_h
+            ),
+            'promotes_inputs': [
+                'wind_WACC', 'solar_WACC', 'battery_WACC', 'tax_rate'
+            ],
+            'promotes_outputs': [
+                'NPV', 'IRR', 'NPV_over_CAPEX', 'LCOE', 'revenues',
+                'mean_AEP', 'penalty_lifetime', 'CAPEX', 'OPEX',
+                'break_even_PPA_price'
+            ]
+        }
 
-        return model
+        added_subsystems = {'abl_dict': abl_dict,
+                            'genericWT_dict': genericWT_dict,
+                            'genericWake_dict': genericWake_dict,
+                            'wpp_dict': wpp_dict,
+                            'pvp_dict': pvp_dict,
+                            'ems_dict': ems_dict,
+                            'battery_degradation_dict': battery_degradation_dict,
+                            'wpp_with_degradation_dict': wpp_with_degradation_dict,
+                            'pvp_with_degradation_dict': pvp_with_degradation_dict,
+                            'battery_loss_in_capacity_due_to_temp_dict': battery_loss_in_capacity_due_to_temp_dict,
+                            'ems_long_term_operation_dict': ems_long_term_operation_dict,
+                            'wpp_cost_dict': wpp_cost_dict,
+                            'pvp_cost_dict': pvp_cost_dict,
+                            'battery_cost_dict': battery_cost_dict,
+                            'shared_cost_dict': shared_cost_dict,
+                            'finance_dict': finance_dict
+                            }
+
+        list_subsystems.update(added_subsystems)
+
+        return list_subsystems
 
 
     def connect_subsytems(self, model):

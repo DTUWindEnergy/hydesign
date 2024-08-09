@@ -17,12 +17,8 @@ from scipy import stats
 import xarray as xr
 
 from hydesign.weather.weather import extract_weather_for_HPP, ABL, select_years
-from hydesign.wind.wind import genericWT_surrogate, genericWake_surrogate, wpp, wpp_with_degradation, get_rotor_area, get_rotor_d
-from hydesign.pv.pv import pvp, pvp_with_degradation
+from hydesign.wind.wind import get_rotor_area, get_rotor_d
 from hydesign.ems.ems import ems, ems_long_term_operation
-from hydesign.battery_degradation import battery_degradation, battery_loss_in_capacity_due_to_temp
-from hydesign.costs.costs import wpp_cost, pvp_cost, battery_cost, shared_cost
-from hydesign.finance.finance import finance
 from hydesign.look_up_tables import lut_filepath
 from .hpp_model_base import hpp_model_base
 from .hpp_model_wind import hpp_model_wind
@@ -240,8 +236,22 @@ class hpp_model:
 
         model = om.Group()
 
-        for tech_type in technology_types_and_base:
-            model = hpp_model_instances[tech_type].add_subsystems(model)
+        list_subsystems = {}
+        for tech_type in ['base']: # technology_types_and_base:
+            list_subsystems = hpp_model_instances[tech_type].add_subsystems(list_subsystems)
+
+        # default order of subsystems
+        list_subsystems_default = ['abl_dict', 'genericWT_dict', 'genericWake_dict', 'wpp_dict', 'pvp_dict', 'ems_dict', 'battery_degradation_dict',
+                           'wpp_with_degradation_dict',
+                           'pvp_with_degradation_dict',
+                           'battery_loss_in_capacity_due_to_temp_dict',
+                           'ems_long_term_operation_dict', 'wpp_cost_dict', 'pvp_cost_dict', 'battery_cost_dict',
+                           'shared_cost_dict', 'finance_dict']
+
+        list_subsystems_sorted = [list_subsystems[sub] for sub in list_subsystems_default if list_subsystems.get(sub, False)]
+
+        for sub in list_subsystems_sorted:
+            model.add_subsystem(sub['name'], sub['component'], promotes_inputs=sub['promotes_inputs'], promotes_outputs=sub['promotes_outputs'])
 
         for tech_type in technology_types_and_base:
             model = hpp_model_instances[tech_type].connect_subsytems(model)
