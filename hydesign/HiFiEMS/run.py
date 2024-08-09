@@ -32,7 +32,7 @@ parameter_dict = {
         'battery_power_capacity': 40,  # in MW
         'battery_minimum_SoC': 0.1,
         'battery_maximum_SoC': 0.9,
-        'battery_initial_SoC': 0.5,
+        'battery_initial_SoC': 0.1,
         'battery_hour_discharge_efficiency': 0.985,  #
         'battery_hour_charge_efficiency': 0.975,
         'battery_self_discharge_efficiency': 0,
@@ -60,7 +60,7 @@ simulation_dict = {
         'solar_as_component': 1,  # The code does not support for solar power plant
         'battery_as_component': 1,
         'start_date': '1/1/22',
-        'number_of_run_day': 3,   # 
+        'number_of_run_day': 360,   # 
         'out_dir':"./test/",
 
         'DA_wind': "DA",   #DA, Measurement
@@ -74,7 +74,7 @@ simulation_dict = {
         'BP': 1, #1:forecast value 2: perfect value
         
         # Data
-        'wind_dir': examples_filepath + "HiFiEMS_inputs/Winddata2022_15min.csv",
+        'wind_dir': examples_filepath + "HiFiEMS_inputs/Winddata2021_15min.csv",
         'solar_dir': examples_filepath + "HiFiEMS_inputs/Solardata2021_15min.csv",
         'market_dir': examples_filepath + "HiFiEMS_inputs/Market2021.csv",
         

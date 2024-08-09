@@ -139,7 +139,7 @@ def get_var_value_from_sol(x, sol):
 
 
 def SMOpt(dt, T, PbMax, EBESS, SoCmin, SoCmax, eta_dis, eta_cha, eta_leak, Emax, PreUp, PreDw, P_grid_limit, mu, ad,
-                    DA_wind_forecast, DA_solar_forecast, SM_price_forecast, SoC0, deg_indicator):
+                    DA_wind_forecast, DA_solar_forecast, SM_price_forecast, SoC0, deg_indicator, verbose=False):
     
     # Optimization modelling by CPLEX
     setT = [i for i in range(T)] 
@@ -195,7 +195,8 @@ def SMOpt(dt, T, PbMax, EBESS, SoCmin, SoCmax, eta_dis, eta_cha, eta_leak, Emax,
     SMOpt_mdl.maximize(Revenue - Deg_cost)
 
   # Solve SMOpt Model
-    SMOpt_mdl.print_information()
+    if verbose:
+        SMOpt_mdl.print_information()
     sol = SMOpt_mdl.solve()
 
     if sol:
@@ -221,12 +222,12 @@ def SMOpt(dt, T, PbMax, EBESS, SoCmin, SoCmax, eta_dis, eta_cha, eta_leak, Emax,
 
 
         z_t_opt = get_var_value_from_sol(z_t, sol) 
-        
-        print(P_HPP_SM_t_opt)
-        print(P_dis_SM_t_opt)
-        print(P_cha_SM_t_opt)
-        print(SoC_SM_t_opt)
-        print(z_t_opt)
+        if verbose:
+            print(P_HPP_SM_t_opt)
+            print(P_dis_SM_t_opt)
+            print(P_cha_SM_t_opt)
+            print(SoC_SM_t_opt)
+            print(z_t_opt)
 
 
     else:

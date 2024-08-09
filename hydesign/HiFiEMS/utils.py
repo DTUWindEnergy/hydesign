@@ -2,12 +2,12 @@ import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans
 #import time
-from datetime import datetime
+# from datetime import datetime
 import os
 from hydesign.HiFiEMS import Deg_Calculation as DegCal
 import math
 from docplex.mp.model import Model
-
+from tqdm import tqdm
 
 def ReadHistoricalData(PsMax, PwMax, T, DI_num, demension): 
     #T0 = 96
@@ -152,11 +152,28 @@ def scenario_generation(simulation_dict, SM_price_cleared, BM_dw_price_cleared, 
     return probability, BP_up_forecast, BP_dw_forecast, reg_forecast
 
 
-def Revenue_calculation(parameter_dict, DI_num, T_SI, SI_num, SIDI_num, T, DI, SI, BI, P_HPP_SM_t_opt, P_HPP_RT_ts, P_HPP_RT_refs, SM_price_cleared, BM_dw_price_cleared, BM_up_price_cleared, P_HPP_UP_bid_ts, P_HPP_DW_bid_ts, s_UP_t, s_DW_t, residual_imbalance, exten_num):    
+def Revenue_calculation(parameter_dict,
+                        P_HPP_SM_t_opt,
+                        P_HPP_RT_ts,
+                        P_HPP_RT_refs,
+                        SM_price_cleared,
+                        BM_dw_price_cleared,
+                        BM_up_price_cleared,
+                        P_HPP_UP_bid_ts,
+                        P_HPP_DW_bid_ts,
+                        s_UP_t,
+                        s_DW_t,
+                        BI=1,
+                        ):    
+    DI = parameter_dict["dispatch_interval"]
+    DI_num = int(1/DI)    
+    
+    SI = parameter_dict["settlement_interval"]
+    SI_num = int(1/SI)
+
     # Spot market revenue
     SM_price_cleared_DI = SM_price_cleared.repeat(DI_num)
     SM_revenue = (P_HPP_SM_t_opt.squeeze()*SM_price_cleared_DI*DI).sum()
-    
 
     # Regulation revenue
     BM_up_price_cleared_DI = BM_up_price_cleared.repeat(DI_num)
@@ -204,8 +221,8 @@ def get_var_value_from_sol(x, sol):
  
         
 def RTSim(dt, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCmax, Emax, eta_dis, eta_cha, eta_leak,
-                    Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_t0, start, P_activated_UP_t, P_activated_DW_t):  
-    RES_error = Wind_measurement[start] + Solar_measurement[start] - RT_wind_forecast[start] - RT_solar_forecast[start] 
+                    Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_t0, start, P_activated_UP_t, P_activated_DW_t, verbose=False):  
+    # RES_error = Wind_measurement[start] + Solar_measurement[start] - RT_wind_forecast[start] - RT_solar_forecast[start] 
 
 
     eta_cha_ha = eta_cha**(dt)
@@ -249,10 +266,11 @@ def RTSim(dt, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCmax, Emax, eta_dis, 
     RTSim_mdl.minimize(obj)
 
   # Solve BMOpt Model
-    RTSim_mdl.print_information()
     sol = RTSim_mdl.solve()
-    aa = RTSim_mdl.get_solve_details()
-    print(aa.status)
+    if verbose:
+        RTSim_mdl.print_information()
+        aa = RTSim_mdl.get_solve_details()
+        print(aa.status)
     if sol:
     #    SMOpt_mdl.print_solution()
         #imbalance_RT_to_ref = sol.get_objective_value() * dt
@@ -271,7 +289,7 @@ def RTSim(dt, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCmax, Emax, eta_dis, 
         #P_S_RT_cur_t_opt = pd.DataFrame(P_S_RT_cur_t_opt)
 
 
-        z_t_opt = sol.get_value(z_t)
+        # z_t_opt = sol.get_value(z_t)
 
     else:
         print("RTOpt has no solution")
@@ -294,8 +312,8 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
     
   
     BI = 1
-    BI_num = int(1/BI)
-    T_BI = int(24/BI)
+    # BI_num = int(1/BI)
+    # T_BI = int(24/BI)
     
     Wind_component = simulation_dict["wind_as_component"]
     Solar_component = simulation_dict["solar_as_component"]
@@ -311,10 +329,10 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
     eta_dis = parameter_dict["battery_hour_discharge_efficiency"]
     eta_cha = parameter_dict["battery_hour_charge_efficiency"]
     eta_leak = parameter_dict["battery_self_discharge_efficiency"] * BESS_component
-    PUPMax = parameter_dict["max_up_bid"] 
-    PDWMax = parameter_dict["max_dw_bid"] 
-    PUPMin = parameter_dict["min_up_bid"] 
-    PDWMin = parameter_dict["min_dw_bid"] 
+    # PUPMax = parameter_dict["max_up_bid"] 
+    # PDWMax = parameter_dict["max_dw_bid"] 
+    # PUPMin = parameter_dict["min_up_bid"] 
+    # PDWMin = parameter_dict["min_dw_bid"] 
     
     day_num = 1
     Ini_nld = parameter_dict["battery_initial_degradation"]
@@ -377,7 +395,9 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
     #worst_reg.to_csv(out_dir+'worst_reg.csv',index=False)
     #worst_wind.to_csv(out_dir+'worst_wind.csv',index=False)
     #times.to_csv(out_dir+'time.csv',index=False)
+    pbar = tqdm(total = simulation_dict["number_of_run_day"]+1)
     while day_num:
+        pbar.update(1)
         Emax = EBESS*(1-pre_nld)
         
         if EMStype == "DEMS":
@@ -766,7 +786,6 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
                         
                     E_HPP_RT_t_opt, P_HPP_RT_t_opt, P_dis_RT_t_opt, P_cha_RT_t_opt, SoC_RT_t_opt, RES_RT_cur_t_opt, P_W_RT_t_opt, P_S_RT_t_opt = RTSim(DI, PbMax, PreUp, PreDw, P_grid_limit, SoCmin, SoCmax, Emax, eta_dis, eta_cha, eta_leak,
                                     Wind_measurement, Solar_measurement, RT_wind_forecast, RT_solar_forecast, SoC0, P_HPP_RT_ref, RT_interval, P_HPP_UP_t0, P_HPP_DW_t0) 
-                    SoC0 = SoC_RT_t_opt.iloc[1,0]
                     
                     SoC_ts.append({'SoC': SoC0})
                     P_HPP_RT_ts.append({'RT': P_HPP_RT_t_opt}) 
@@ -780,6 +799,7 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
 
                     exist_imbalance = exist_imbalance + (P_HPP_RT_t_opt- P_HPP_SM_t_opt.iloc[RT_interval, 0]) * DI
                     residual_imbalance.append({'energy_imbalance': exist_imbalance})
+                    SoC0 = SoC_RT_t_opt.iloc[1,0]
 
         residual_imbalance = pd.DataFrame(residual_imbalance)
         P_HPP_RT_ts = pd.DataFrame(P_HPP_RT_ts)
@@ -790,7 +810,23 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
 
         
         
-        SM_revenue, reg_revenue, im_revenue, BM_revenue, im_special_revenue_DK1 = Revenue_calculation(parameter_dict, DI_num, T_SI, SI_num, SIDI_num, T, DI, SI, BI, P_HPP_SM_t_opt, P_HPP_RT_ts, P_HPP_RT_refs, SM_price_cleared, BM_dw_price_cleared, BM_up_price_cleared, P_HPP_UP_bid_ts, P_HPP_DW_bid_ts, s_UP_t, s_DW_t, residual_imbalance, exten_num)     
+        (SM_revenue,
+        reg_revenue,
+        im_revenue, 
+        BM_revenue,
+        im_special_revenue_DK1,
+        ) = Revenue_calculation(parameter_dict,
+                                P_HPP_SM_t_opt,
+                                P_HPP_RT_ts,
+                                P_HPP_RT_refs,
+                                SM_price_cleared,
+                                BM_dw_price_cleared,
+                                BM_up_price_cleared,
+                                P_HPP_UP_bid_ts,
+                                P_HPP_DW_bid_ts,
+                                s_UP_t,
+                                s_DW_t,
+                                )
         
 
         
@@ -876,8 +912,22 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
         if day_num > simulation_dict["number_of_run_day"]:
             print(P_grid_limit)
             break
-        
+    pbar.close()
     # return P_HPP_RT_ts, P_HPP_SM_k_opt, P_HPP_RT_refs, P_HPP_UP_bid_ts, P_HPP_DW_bid_ts, RES_RT_cur_ts, P_cha_RT_ts, P_dis_RT_ts, SoC_ts
-    return P_HPP_SM_k_opt.values.ravel(),SM_price_cleared.values,BM_dw_price_cleared.values,BM_up_price_cleared.values,P_HPP_RT_ts.values.ravel(),P_HPP_RT_refs.values.ravel(),P_HPP_UP_bid_ts.values.ravel(),P_HPP_DW_bid_ts.values.ravel(),s_UP_t,s_DW_t,residual_imbalance.values.ravel(), RES_RT_cur_ts.values.ravel(), P_dis_RT_ts.values.ravel(), P_cha_RT_ts.values.ravel(), pd.DataFrame(SoC_ts).values.ravel()
+    return (P_HPP_SM_k_opt.values.ravel(),
+            SM_price_cleared.values,
+            BM_dw_price_cleared.values,
+            BM_up_price_cleared.values,
+            P_HPP_RT_ts.values.ravel(),
+            P_HPP_RT_refs.values.ravel(),
+            P_HPP_UP_bid_ts.values.ravel(),
+            P_HPP_DW_bid_ts.values.ravel(),
+            s_UP_t,s_DW_t,
+            residual_imbalance.values.ravel(), 
+            RES_RT_cur_ts.values.ravel(), 
+            P_dis_RT_ts.values.ravel(), 
+            P_cha_RT_ts.values.ravel(), 
+            pd.DataFrame(SoC_ts).values.ravel(),
+            )
 
 
