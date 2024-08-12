@@ -330,7 +330,10 @@ def ems_cplex_parts(inputs):
         mdl = ems_cplex_parts_instances[tech_type].get_updated_model()
 
     # print mdl details
-    # print('dict_hydesign_equations =', mdl.dict_hydesign_equations)
+    print('dict_hydesign_equations =', mdl.dict_hydesign_equations)
+    print('decision variables =', mdl.dict_hydesign_equations['decision variables'])
+    print('objective function =', mdl.dict_hydesign_equations['objective function'])
+    print('constraints =', mdl.dict_hydesign_equations['constraints'])
 
 
     # Solving the problem
