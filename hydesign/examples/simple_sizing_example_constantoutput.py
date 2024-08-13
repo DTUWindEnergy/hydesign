@@ -1,7 +1,7 @@
 
 import pandas as pd
 import numpy as np
-from hydesign.hpp_assembly_constantoutput import hpp_model
+from hydesign.assembly.hpp_assembly_constantoutput import hpp_model_constant_output as hpp_model
 from hydesign.examples import examples_filepath
 import matplotlib.pyplot as plt
 import time
@@ -212,7 +212,7 @@ plt.show()
 # Sizing
 """ def main():
     if __name__ == '__main__':
-        from hydesign.hpp_assembly_constantoutput import hpp_model
+        from hydesign.assembly.hpp_assembly_constantoutput import hpp_model_constant_output as hpp_model
         from hydesign.Parallel_EGO import get_kwargs, EfficientGlobalOptimizationDriver
 
         # Simple example to size wind only with a single core to run test machines and colab

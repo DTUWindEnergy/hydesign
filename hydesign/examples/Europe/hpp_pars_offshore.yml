@@ -103,6 +103,7 @@ electrolyzer_eff_curve_name: 'PEM electrolyzer H2 production'
 
 # The storage size can be kept as zero when there is no storage
 # For infinite hydrogen offtake keep the demand very high in 'H2_demand.csv' file
+min_power_standby: 0.0 # ref value 0.02 for standard operation mode (and make sure to include battery if this in included). minimum percentage of rated electrolyzer power required to operate in standby mode, set it to '0' to not include standby operation mode (ref: 10.1016/j.ijhydene.2019.05.092)
 
 # --------------------------------------------------------------------------------------------
 # Shared costs

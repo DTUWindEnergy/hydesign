@@ -1,5 +1,5 @@
 if __name__ == '__main__':
-    from hydesign.hpp_assembly_P2X import hpp_model_P2X as hpp_model
+    from hydesign.assembly.hpp_assembly_P2X import hpp_model_P2X as hpp_model
     from hydesign.Parallel_EGO import get_kwargs, EfficientGlobalOptimizationDriver
 
     # Simple example to size wind and electrolyzer only with a single core to run test machines and colab

@@ -35,7 +35,6 @@ Explanations of hydesign's core objects can be found in the following tutorials:
 	notebooks/Quickstart
 	notebooks/Advanced_hpp_model
 	notebooks/HPP_evaluation_P2X
-	notebooks/hpp_sizing
 	notebooks/more_sizing_examples
 	notebooks/break_even_price_and_PPA
 	notebooks/constant_output
@@ -45,20 +44,15 @@ Explanations of hydesign's core objects can be found in the following tutorials:
 	notebooks/Hybridize
 
     .. toctree::
+        :glob:
         :maxdepth: 1
-	:caption: API Reference
-            
-        api/Parallel_EGO
-        api/battery_degradation
-        api/costs
-        api/ems
-        api/finance
-        api/hpp_assembly
-        api/hpp_assembly_P2X
-        api/nrel_csm_wrapper
-        api/pv
-        api/weather
-        api/wind
+	:caption: Publications
+    
+        publications/*
+    
 
+    .. toctree::
+        :maxdepth: 1
+	:caption: API reference
 
     

@@ -52,6 +52,8 @@ extensions = [
     'nbsphinx',
     'sphinx.ext.doctest',
     #'sphinx.ext.imgconverter',
+    'autoapi.extension',
+    "sphinx_tags",
 ]
 
 intersphinx_mapping = {
@@ -59,6 +61,12 @@ intersphinx_mapping = {
     'numpy': ('https://docs.scipy.org/doc/numpy/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
 }
+
+# Auto API conf.:
+autoapi_dirs = ['../hydesign']
+
+# Spinx tags
+tags_create_tags = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -101,6 +109,7 @@ napolean_use_rtype = False
 # Execute notebooks before conversion: 'always', 'never', 'auto' (default)
 # We execute all notebooks, exclude the slow ones using 'exclude_patterns'
 nbsphinx_execute = 'always'
+# nbsphinx_execute = 'never'
 
 # Use this kernel instead of the one stored in the notebook metadata:
 nbsphinx_kernel_name = 'python3'
@@ -280,3 +289,4 @@ epub_exclude_files = ['search.html']
 
 
 # -- Extension configuration -------------------------------------------------
+

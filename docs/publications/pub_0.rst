@@ -1,0 +1,20 @@
+.. pub_0:
+
+Surrogate-Based Modeling and Sensitivity Analysis of Future European Electricity Spot Market Prices.
+=====================================================================================================
+
+**Abstract**
+
+Europe is transitioning towards a sustainable energy economy. Planning these future power and energy systems is multifaceted and complex, requiring long-term projections of future electricity market dynamics. The prognostication of future prices is crucial for power system planning, as these prices will drive investments and impact incentives to build and improve new systems. The price of electricity in different regions impacts transmission investment. Energy systems models have high-dimensional output and are expensive to evaluate, leading to unique challenges in managing the uncertainty in model assumptions. This study presents a novel methodology for determining which cost assumptions are most impactful on the output of a detailed model of the European energy system. Because this model is computationally intensive, only a small number of samples are available to us. A multiple-output support vector regression is used as a surrogate of predicted electricity prices timeseries. We find that solar and wind costs are the primary drivers of electricity prices, but natural gas costs generally drive peak electricity prices and those far in the future.
+
+
+**Cite this**
+
+Quick, J, Murcia Leon, JP, Kanellas, P, Yamujala, S, Das, Kaushik, and Koivisto, MJ. Surrogate-Based Modeling and Sensitivity Analysis of Future European Electricity Spot Market Prices. Electric Power Systems Research.
+
+**Link**
+
+Download `here
+<https://pdf.sciencedirectassets.com/271091/1-s2.0-S0378779624X00061/1-s2.0-S0378779624005613/main.pdf?X-Amz-Security-Token=IQoJb3JpZ2luX2VjEKv%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIQDSInNFawQGsJYK19cMxYhVJ%2BG02KshbZBatKxfNgGlrAIgBh46U%2FdDR7CAbRggaLtRgFa0BAb%2FEbLo30Yz1v8yqTcqugUIpP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARAFGgwwNTkwMDM1NDY4NjUiDH8YPlrS899Mt%2FAJ1SqOBZ3YXDWD82WOkMMXktB5ozFUCqNod5GjrxmZBg8VxnEdxlulEMrAKl%2FydSibl%2Fft52FUGWiKP%2BDg7lqFDHt7TkogHR7IwdQge%2BVl5Lf%2FbrnVFSUxNAw%2BrH4DyzZJn9NCZzdx30mugM1XuG19rhAHeq7Zlcs65Blx7ICPkrMG8Wo8HLGuahTZmd9KMkBLvCYgIA2mw6m2wItL1lCPy9v%2FaoJWdPLyfRFZLPMy5prsCCHVjgNoPUog%2BbPThvogP%2BlbT78rd%2BdEu0fuKMalEuJFTOKZfaHfayDq846pKB6bHl38i3wkuPPSHRNG2NSz8BY7RcDSX1%2Fgzy3Go%2FV4V%2ByC6BwagGIze%2FAPgHtpZRet7umPWW8aJCBkyrz1X31a7%2Fz0GO0DdaaYOW1LYTWLIg7TK7608tyKeJvz0UsX6tJJCyqtYyTX1YwV0SR8Ca9R5CztXu0dDS56mTK7IgROaaVGouyQssEUwosKIQ2fojuxXqU3R%2BYDsvJ8hjnGTqH9Y1VKKKhG4WKsoDjqmAtPXkQY%2BCUNrH3LWna8y6ivZjL%2Bo4fDEM%2BVDYa9%2BmAJow0gv1LxRkA5KF%2B7tii6THtMHpvT2%2FxVADE4GrjAm9mnONsM%2B8FZnFMrhginx8n%2Bb5bNT9d6%2BKHUvdlTgiuCuOnM7bw9%2BAsdlrwoBHXL8oHzjv4z25s0jTlsGZB9gRrexa3HJ9%2B%2Fpf%2BWi%2FosPoQCCXu5fNExU3kUYzBWSHwJ2AGjOQ7EPSINonSEAu8TX6ybmrL9%2FLCd5HOrlDo5R7blp5ba908DAUwYvYvr0FQf3Yt9F5%2FnB7cYKpk3f8UR8KO3TKPBwLN2WZfVfq1wcMc%2BxQdnaFfG2fR0Jgr5NJJnOS951RotWTDk%2BOy1BjqxASLGIqrlNJD0mB%2FkAbKboGmWH2Zo9RF1e2QwwYTyJCOdSSWTeEEKkBZN3j24ZlosFcOaX1jiBHYX8IQFBS7NC4SY6mISYKOpIVQOjPUx%2F9lruR%2FZA84175ALb%2FulgNrloxN4AassQF4F6qc1f8E5pfVRZnoJYyyyrE3dikB4tJwy7wM%2Fv0afV8QWaO1u5N7HrFJTO2u%2BHslFlk8Qyuf8vdiGbd5KdbmPojuOlbip4YBJyg%3D%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20240813T112242Z&X-Amz-SignedHeaders=host&X-Amz-Expires=300&X-Amz-Credential=ASIAQ3PHCVTY45OQG25Y%2F20240813%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=31ec3d1ee984d9e656f1492559a167894d0044c767b2c67bc30b40deedd3b895&hash=c55f7f7682e3c594eafd7da14288a3734986b2fcd772441ab8c283a6e9fc5a1a&host=68042c943591013ac2b2430a89b270f6af2c76d8dfd086a07176afe7c76c2c61&pii=S0378779624005613&tid=spdf-0818e777-4347-45c1-b3c4-b405effae970&sid=72a637ac173d9049566bc11716dab1537f5agxrqb&type=client&tsoh=d3d3LnNjaWVuY2VkaXJlY3QuY29t&ua=040e5b06505d555251&rr=8b2854319f419312&cc=dk>`_.
+
+.. tags:: Energy System Modelling, Market modelling, Surrogate based modeling, HPP Environment

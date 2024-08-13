@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from hydesign.hpp_assembly import hpp_model
+from hydesign.assembly.hpp_assembly import hpp_model
 from hydesign.examples import examples_filepath
 
 import argparse

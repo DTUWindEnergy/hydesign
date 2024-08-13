@@ -1,6 +1,6 @@
 def main():
     if __name__ == '__main__':
-        from hydesign.hpp_assembly import hpp_model
+        from hydesign.assembly.hpp_assembly import hpp_model
         from hydesign.Parallel_EGO import get_kwargs, EfficientGlobalOptimizationDriver
 
         # Simple example to size wind only with a single core to run test machines and colab

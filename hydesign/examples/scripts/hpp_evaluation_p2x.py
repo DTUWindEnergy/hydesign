@@ -65,7 +65,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from hydesign.hpp_assembly_P2X import hpp_model_P2X
+from hydesign.assembly.hpp_assembly_P2X import hpp_model_P2X
 from hydesign.examples import examples_filepath
 
 """##
