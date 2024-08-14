@@ -27,7 +27,7 @@ class ems_solar_abc(ems_abc):
         ems_args.update(added_ems_args)
         return ems_args
 
-    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems_WSB):
+    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         solar_t = inputs['solar_t']
 
         # Extend (by repeating them and stacking) all variable to full lifetime
@@ -66,7 +66,7 @@ class ems_solar_long_term_operation(ems_abc):
         ems_args.update(added_ems_args)
         return ems_args
 
-    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems_WSB):
+    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         return outputs
 
 class ems_cplex_solar(ems_cplex_abc):

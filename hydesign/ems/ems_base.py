@@ -63,11 +63,11 @@ class ems_base_abc(ems_abc):
         ems_args.update(added_ems_args)
         return ems_args
 
-    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems_WSB):
+    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         price_t = inputs['price_t']
-        P_HPP_ts = outputs_ems_WSB['hpp_t']
-        P_curtailment_ts = outputs_ems_WSB['hpp_curt_t']
-        penalty_ts = outputs_ems_WSB['penalty_t']
+        P_HPP_ts = outputs_ems['hpp_t']
+        P_curtailment_ts = outputs_ems['hpp_curt_t']
+        penalty_ts = outputs_ems['penalty_t']
 
         # Extend (by repeating them and stacking) all variable to full lifetime
         outputs['price_t_ext'] = expand_to_lifetime(
@@ -151,11 +151,11 @@ class ems_base_long_term_operation(ems_abc):
         ems_args.update(added_ems_args)
         return ems_args
 
-    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems_WSB):
-        outputs['hpp_t_with_deg'] = outputs_ems_WSB['Hpp_deg']
-        outputs['hpp_curt_t_with_deg'] = outputs_ems_WSB['P_curt_deg']
-        outputs['penalty_t_with_deg'] = outputs_ems_WSB['penalty_ts']
-        outputs['total_curtailment_with_deg'] = outputs_ems_WSB['P_curt_deg'].sum()
+    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
+        outputs['hpp_t_with_deg'] = outputs_ems['Hpp_deg']
+        outputs['hpp_curt_t_with_deg'] = outputs_ems['P_curt_deg']
+        outputs['penalty_t_with_deg'] = outputs_ems['penalty_ts']
+        outputs['total_curtailment_with_deg'] = outputs_ems['P_curt_deg'].sum()
         outputs['total_curtailment'] = inputs['hpp_curt_t'].sum()
 
         return outputs
@@ -207,8 +207,8 @@ class ems_cplex_parts_base_pre(ems_cplex_parts_abc):
         self.G_MW = inputs['G_MW']
         self.time = extra_inputs['time']
 
-    def _variables(self):
 
+    def _variables(self):
         self.P_HPP_t = self.mdl.continuous_var_dict(
             self.time, lb=0, ub=self.G_MW,
             name='HPP power output')

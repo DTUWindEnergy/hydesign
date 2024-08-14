@@ -54,9 +54,9 @@ class ems_bess_abc(ems_abc):
         ems_args.update(added_ems_args)
         return ems_args
 
-    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems_WSB):
-        P_charge_discharge_ts = outputs_ems_WSB['b_t']
-        E_SOC_ts = outputs_ems_WSB['b_E_SOC_t']
+    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
+        P_charge_discharge_ts = outputs_ems['b_t']
+        E_SOC_ts = outputs_ems['b_E_SOC_t']
 
         # Extend (by repeating them and stacking) all variable to full lifetime
         outputs['b_t'] = expand_to_lifetime(
@@ -129,9 +129,9 @@ class ems_bess_long_term_operation(ems_abc):
         ems_args.update(added_ems_args)
         return ems_args
 
-    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems_WSB):
-        outputs['b_t_with_deg'] = outputs_ems_WSB['b_t_sat']
-        outputs['b_E_SOC_t_with_deg'] = outputs_ems_WSB['b_E_SOC_t_sat']
+    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
+        outputs['b_t_with_deg'] = outputs_ems['b_t_sat']
+        outputs['b_E_SOC_t_with_deg'] = outputs_ems['b_E_SOC_t_sat']
 
         return outputs
 

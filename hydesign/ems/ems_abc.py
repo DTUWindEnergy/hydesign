@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import inspect
 
 class ems_abc(ABC):
     @abstractmethod
@@ -20,6 +21,58 @@ class ems_abc(ABC):
     @abstractmethod
     def postprocessing_outputs():
         pass
+
+    def get_code_addinputs(self):
+        code = inspect.getsource(self.add_inputs)
+        code = code.replace("component.", "self.")
+        # Specify the line you want to remove (exact match or part of the line)
+        line_to_remove = "def"
+
+        # Filter out the line from the input string
+        lines = [line for line in code.splitlines() if line_to_remove not in line.strip()]
+
+        # Join the remaining lines into a single string with appropriate line breaks
+        output_string = "\n".join(lines)
+        return output_string
+
+    def get_code_addoutputs(self):
+        code = inspect.getsource(self.add_outputs)
+        code = code.replace("component.", "self.")
+        # Specify the line you want to remove (exact match or part of the line)
+        line_to_remove = "def"
+
+        # Filter out the line from the input string
+        lines = [line for line in code.splitlines() if line_to_remove not in line.strip()]
+
+        # Join the remaining lines into a single string with appropriate line breaks
+        output_string = "\n".join(lines)
+        return output_string
+
+    def get_code_add_ems_args(self):
+        code = inspect.getsource(self.add_ems_args)
+        code = code.replace("component.", "self.")
+        # Specify the line you want to remove (exact match or part of the line)
+        lines_to_remove = ["def ", "return "]
+
+        # Filter out lines that start with any of the specified keywords
+        lines = [line for line in code.splitlines() if not any(line.strip().startswith(keyword) for keyword in lines_to_remove)]
+
+        # Join the remaining lines into a single string with appropriate line breaks
+        output_string = "\n".join(lines)
+        return output_string
+
+    def get_code_postprocessing_outputs(self):
+        code = inspect.getsource(self.postprocessing_outputs)
+        code = code.replace("component.", "self.")
+        # Specify the line you want to remove (exact match or part of the line)
+        lines_to_remove = ["def ", "return "]
+
+        # Filter out lines that start with any of the specified keywords
+        lines = [line for line in code.splitlines() if not any(line.strip().startswith(keyword) for keyword in lines_to_remove)]
+
+        # Join the remaining lines into a single string with appropriate line breaks
+        output_string = "\n".join(lines)
+        return output_string
 
 class ems_cplex_abc(ABC):
     @abstractmethod

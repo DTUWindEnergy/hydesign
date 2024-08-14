@@ -1,6 +1,10 @@
 # %%
+import inspect
+import trace
+import sys
 import numpy as np
 import pandas as pd
+
 import openmdao.api as om
 from docplex.mp.model import Model
 import openmdao.api as om
@@ -10,6 +14,19 @@ from .ems_solar import ems_solar_abc, ems_solar_long_term_operation, ems_cplex_s
 from .ems_bess import ems_bess_abc, ems_bess_long_term_operation, ems_cplex_bess, ems_cplex_parts_bess
 from .ems_base import ems_base_abc, ems_base_long_term_operation, ems_cplex_base, ems_cplex_parts_base_pre, ems_cplex_parts_base_post, ems_degredation_base
 from .ems_utils import expand_to_lifetime, split_in_batch, print_cplex_model_details
+from .ems_sections import section1, section2, section3, section4, section5
+
+def build_ems_code(section):
+    code = inspect.getsource(section)
+    # Split the code into lines
+    lines = code.splitlines()
+
+    # Remove the function definition line (the first line) and remove leading indentation from the remaining lines
+    indented_code = "\n".join(line[4:] if line.startswith("    ") else line for line in lines[1:]) +"\n"
+
+    # Save the combined string to a Python (.py) file
+    with open("ems_build.py", "a") as file:
+        file.write(indented_code)
 
 class ems(om.ExplicitComponent):
     """Energy management optimization model
@@ -71,18 +88,40 @@ class ems(om.ExplicitComponent):
         for techonogy_type in self.technology_types_and_base:
             setattr(self, f"ems_{techonogy_type}_abc_instance", class_map[techonogy_type]())
 
+        # Start ems_build
+        with open("ems_build.py", "w") as file:
+            file.write("# Built by ems_builder\n")
+
+        build_ems_code(section1)
+
     def setup(self):
+        code = build_ems_code(section2)
+        code_setup = "\n        # add inputs to the cplex model"
         for tech_type in self.technology_types_and_base:
             class_name = getattr(self, f"ems_{tech_type}_abc_instance")
             class_name.add_inputs(self)
+            code_class = class_name.get_code_addinputs()
+            code_setup = code_setup + f"\n        # inputs added for {tech_type}"
+            code_setup = code_setup + "\n" + code_class + "\n"
+
+        code_setup = code_setup + "\n        # add outputs to the cplex model"
+        for tech_type in self.technology_types_and_base:
+            class_name = getattr(self, f"ems_{tech_type}_abc_instance")
             class_name.add_outputs(self)
+            code_class = class_name.get_code_addoutputs()
+            code_setup = code_setup + f"\n        # outputs added for {tech_type}"
+            code_setup = code_setup + "\n" + code_class + "\n"
+
+        # Save the combined string to a Python (.py) file
+        with open("ems_build.py", "a") as file:
+            file.write(code_setup)
 
     def compute(self, inputs, outputs):
         # Get the appropriate EMS function name based on ems_type
-        ems_WSB = self.available_ems_types.get(self.ems_type)
+        ems_type = self.available_ems_types.get(self.ems_type)
 
         # Raise a warning if the ems_type is not found in the dictionary
-        if ems_WSB is None:
+        if ems_type is None:
             raise Warning("Selected ems type is not supported")
 
         # Build a sintetic time to avoid problems with time sereis
@@ -94,17 +133,39 @@ class ems(om.ExplicitComponent):
                 freq='1h'))
 
         ems_args = {}
+
+        build_ems_code(section3)
+        code_setup = "\n        # ems arguments"
         for tech_type in self.technology_types_and_base:
             class_name = getattr(self, f"ems_{tech_type}_abc_instance")
             ems_args = class_name.add_ems_args(ems_args, WSPr_df, inputs)
 
-        # short term ems evaluation
-        outputs_ems_WSB = ems_WSB(ems_args)
+            code_class = class_name.get_code_add_ems_args()
+            code_setup = code_setup + f"\n        # arguments added for {tech_type}"
+            code_setup = code_setup + "\n" + code_class + "\n"
 
+        # Save the combined string to a Python (.py) file
+        with open("ems_build.py", "a") as file:
+            file.write(code_setup)
+
+        # short term ems evaluation
+        outputs_ems = ems_type(ems_args)
+        build_ems_code(section4)
+
+
+        code_setup = "\n        # post processing outputs"
         for tech_type in self.technology_types_and_base:
             class_name = getattr(self, f"ems_{tech_type}_abc_instance")
             # extention of the outputs to the project lifetime
-            outputs = class_name.postprocessing_outputs(component=self, inputs=inputs, outputs=outputs, outputs_ems_WSB=outputs_ems_WSB)
+            outputs = class_name.postprocessing_outputs(component=self, inputs=inputs, outputs=outputs, outputs_ems=outputs_ems)
+
+            code_class = class_name.get_code_postprocessing_outputs()
+            code_setup = code_setup + f"\n        # post processing outputs for {tech_type}"
+            code_setup = code_setup + "\n" + code_class + "\n"
+
+        # Save the combined string to a Python (.py) file
+        with open("ems_build.py", "a") as file:
+            file.write(code_setup)
 
 class ems_long_term_operation(om.ExplicitComponent):
     """Long term operation EMS. Predicts the operation of the plant throughout the entire lifetime, taking into account the battery
@@ -192,7 +253,7 @@ class ems_long_term_operation(om.ExplicitComponent):
 
         for tech_type in self.technology_types:
             class_name = getattr(self, f"ems_{tech_type}_long_term_operation_instance")
-            outputs = class_name.postprocessing_outputs(component=self, inputs=inputs, outputs=outputs, outputs_ems_WSB=outputs_ems_longterm)
+            outputs = class_name.postprocessing_outputs(component=self, inputs=inputs, outputs=outputs, outputs_ems=outputs_ems_longterm)
 
 # ------------
 # ems_cplex
@@ -329,11 +390,11 @@ def ems_cplex_parts(inputs):
         ems_cplex_parts_instances[tech_type] = ems_cplex_parts_map[tech_type](mdl, inputs, extra_inputs)
         mdl = ems_cplex_parts_instances[tech_type].get_updated_model()
 
-    # print mdl details
-    print('dict_hydesign_equations =', mdl.dict_hydesign_equations)
-    print('decision variables =', mdl.dict_hydesign_equations['decision variables'])
-    print('objective function =', mdl.dict_hydesign_equations['objective function'])
-    print('constraints =', mdl.dict_hydesign_equations['constraints'])
+    # # print mdl details
+    # print('dict_hydesign_equations =', mdl.dict_hydesign_equations)
+    # print('decision variables =', mdl.dict_hydesign_equations['decision variables'])
+    # print('objective function =', mdl.dict_hydesign_equations['objective function'])
+    # print('constraints =', mdl.dict_hydesign_equations['constraints'])
 
 
     # Solving the problem

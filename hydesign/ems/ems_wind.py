@@ -28,7 +28,7 @@ class ems_wind_abc(ems_abc):
 
         return ems_args
 
-    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems_WSB):
+    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         # Extend (by repeating them and stacking) all variable to full lifetime
         outputs['wind_t_ext'] = expand_to_lifetime(
             inputs['wind_t'], life_h=component.life_h, weeks_per_season_per_year=component.weeks_per_season_per_year)
@@ -65,7 +65,7 @@ class ems_wind_long_term_operation(ems_abc):
         ems_args.update(added_ems_args)
         return ems_args
 
-    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems_WSB):
+    def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         return outputs
 
 class ems_cplex_wind(ems_cplex_abc):
