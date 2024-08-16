@@ -63,7 +63,7 @@ class ems_abc(ABC):
 
     def get_code_postprocessing_outputs(self):
         code = inspect.getsource(self.postprocessing_outputs)
-        #code = code.replace("component.", "self.")
+        code = code.replace("component.", "self.")
         # Specify the line you want to remove (exact match or part of the line)
         lines_to_remove = ["def ", "return "]
 

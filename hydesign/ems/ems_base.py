@@ -101,8 +101,8 @@ class ems_base_long_term_operation(ems_abc):
             shape=[component.life_h])
         component.add_input(
             'peak_hr_quantile',
-            desc="Quantile of price tim sereis to define peak price hours (above this quantile).\n" +
-                 "Only used for peak production penalty and for cost of battery degradation.")
+            desc="Quantile of price tim sereis to define peak price hours (above this quantile)."
+                 ) # "Only used for peak production penalty and for cost of battery degradation."
         component.add_input(
             'n_full_power_hours_expected_per_day_at_peak_price',
             desc="Pnealty occurs if nunmber of full power hours expected per day at peak price are not reached.")
