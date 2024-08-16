@@ -2,6 +2,7 @@
 import inspect
 import trace
 import sys
+import os
 import numpy as np
 import pandas as pd
 
@@ -12,21 +13,14 @@ import openmdao.api as om
 from .ems_wind import ems_wind_abc, ems_wind_long_term_operation, ems_cplex_wind, ems_cplex_parts_wind
 from .ems_solar import ems_solar_abc, ems_solar_long_term_operation, ems_cplex_solar, ems_cplex_parts_solar
 from .ems_bess import ems_bess_abc, ems_bess_long_term_operation, ems_cplex_bess, ems_cplex_parts_bess
-from .ems_base import ems_base_abc, ems_base_long_term_operation, ems_cplex_base, ems_cplex_parts_base_pre, ems_cplex_parts_base_post, ems_degredation_base
-from .ems_utils import expand_to_lifetime, split_in_batch, print_cplex_model_details
-from .ems_sections import section1, section2, section3, section4, section5
+from .ems_base import ems_base_abc, ems_base_long_term_operation, ems_cplex_base, ems_cplex_parts_base_pre,\
+                      ems_cplex_parts_base_post, ems_degredation_base
+from .ems_utils import expand_to_lifetime, split_in_batch, print_cplex_model_details, insert_ems_section, get_path_builded_ems
+from .ems_sections import imports, init_ems, init_ems_long, setup_ems, setup_ems_long, compute_ems, compute_ems_long
 
-def build_ems_code(section):
-    code = inspect.getsource(section)
-    # Split the code into lines
-    lines = code.splitlines()
 
-    # Remove the function definition line (the first line) and remove leading indentation from the remaining lines
-    indented_code = "\n".join(line[4:] if line.startswith("    ") else line for line in lines[1:]) +"\n"
+#from .builded_ems import ems_long_term_operation as ems_long_built
 
-    # Save the combined string to a Python (.py) file
-    with open("ems_build.py", "a") as file:
-        file.write(indented_code)
 
 class ems(om.ExplicitComponent):
     """Energy management optimization model
@@ -39,7 +33,7 @@ class ems(om.ExplicitComponent):
     ----------
     wind_t : WPP power time series [MW]
     solar_t : PVP power time series [MW]
-    price_t : Electricity price time series 
+    price_t : Electricity price time series
     b_P : Battery power capacity [MW]
     b_E : Battery energy storage capacity [MW]
     G_MW : Grid capacity [MW]
@@ -59,11 +53,11 @@ class ems(om.ExplicitComponent):
     b_t : Battery charge/discharge power time series
     b_E_SOC_t : Battery energy SOC time series
     penalty_t : Penalty for not reaching expected energy productin at peak hours
-    
+
     """
     def __init__(self,
         N_time,
-        life_h = 25*365*24, 
+        life_h = 25*365*24,
         weeks_per_season_per_year = None,
         ems_type='cplex',
         technology_types=['wind', 'solar', 'bess']
@@ -85,92 +79,113 @@ class ems(om.ExplicitComponent):
             'bess': ems_bess_abc
         }
 
-        for techonogy_type in self.technology_types_and_base:
-            setattr(self, f"ems_{techonogy_type}_abc_instance", class_map[techonogy_type]())
+        self.build_ems = True
 
-        # Start ems_build
-        with open("ems_build.py", "w") as file:
-            file.write("# Built by ems_builder\n")
+        if self.build_ems:
+            # Start ems_build
+            file_path = get_path_builded_ems()
 
-        build_ems_code(section1)
+            # Write to the file
+            with open(file_path, "w") as file:
+                file.write("# Built by ems_builder\n")
+
+            insert_ems_section(imports)
+            insert_ems_section(init_ems)
+
+        from .builded_ems import init_ems as my_init
+        my_init(self)
 
     def setup(self):
-        code = build_ems_code(section2)
-        code_setup = "\n        # add inputs to the cplex model"
-        for tech_type in self.technology_types_and_base:
-            class_name = getattr(self, f"ems_{tech_type}_abc_instance")
-            class_name.add_inputs(self)
-            code_class = class_name.get_code_addinputs()
-            code_setup = code_setup + f"\n        # inputs added for {tech_type}"
-            code_setup = code_setup + "\n" + code_class + "\n"
+        if self.build_ems:
+            insert_ems_section(setup_ems)
+            code_setup = "\n    # add inputs to the cplex model"
+            for tech_type in self.technology_types_and_base:
+                class_name = getattr(self, f"ems_{tech_type}_abc_instance")
+                class_name.add_inputs(self)
+                code_class = class_name.get_code_addinputs()
+                code_setup = code_setup + f"\n    # inputs added for {tech_type}"
+                code_setup = code_setup + "\n" + code_class + "\n"
 
-        code_setup = code_setup + "\n        # add outputs to the cplex model"
-        for tech_type in self.technology_types_and_base:
-            class_name = getattr(self, f"ems_{tech_type}_abc_instance")
-            class_name.add_outputs(self)
-            code_class = class_name.get_code_addoutputs()
-            code_setup = code_setup + f"\n        # outputs added for {tech_type}"
-            code_setup = code_setup + "\n" + code_class + "\n"
+            code_setup = code_setup + "\n    # add outputs to the cplex model"
+            for tech_type in self.technology_types_and_base:
+                class_name = getattr(self, f"ems_{tech_type}_abc_instance")
+                class_name.add_outputs(self)
+                code_class = class_name.get_code_addoutputs()
+                code_setup = code_setup + f"\n    # outputs added for {tech_type}"
+                code_setup = code_setup + "\n" + code_class + "\n"
 
-        # Save the combined string to a Python (.py) file
-        with open("ems_build.py", "a") as file:
-            file.write(code_setup)
+            # Save the combined string to a Python (.py) file
+            file_path = get_path_builded_ems()
+            with open(file_path, "a") as file:
+                file.write(code_setup)
+
+        else:
+            ems_built.setup(self)
 
     def compute(self, inputs, outputs):
-        # Get the appropriate EMS function name based on ems_type
-        ems_type = self.available_ems_types.get(self.ems_type)
+        if self.build_ems:
+            # Get the appropriate EMS function name based on ems_type
+            ems_type = self.available_ems_types.get(self.ems_type)
 
-        # Raise a warning if the ems_type is not found in the dictionary
-        if ems_type is None:
-            raise Warning("Selected ems type is not supported")
+            # Raise a warning if the ems_type is not found in the dictionary
+            if ems_type is None:
+                raise Warning("Selected ems type is not supported")
 
-        # Build a sintetic time to avoid problems with time sereis
-        # indexing in ems
-        WSPr_df = pd.DataFrame(
-            index=pd.date_range(
-                start='01-01-1991 00:00',
-                periods=len(inputs['wind_t']),
-                freq='1h'))
+            # Build a sintetic time to avoid problems with time sereis
+            # indexing in ems
+            WSPr_df = pd.DataFrame(
+                index=pd.date_range(
+                    start='01-01-1991 00:00',
+                    periods=len(inputs['wind_t']),
+                    freq='1h'))
 
-        ems_args = {}
-
-        build_ems_code(section3)
-        code_setup = "\n        # ems arguments"
-        for tech_type in self.technology_types_and_base:
-            class_name = getattr(self, f"ems_{tech_type}_abc_instance")
-            ems_args = class_name.add_ems_args(ems_args, WSPr_df, inputs)
-
-            code_class = class_name.get_code_add_ems_args()
-            code_setup = code_setup + f"\n        # arguments added for {tech_type}"
-            code_setup = code_setup + "\n" + code_class + "\n"
-
-        # Save the combined string to a Python (.py) file
-        with open("ems_build.py", "a") as file:
-            file.write(code_setup)
-
-        # short term ems evaluation
-        outputs_ems = ems_type(ems_args)
-        build_ems_code(section4)
+            ems_args = {}
 
 
-        code_setup = "\n        # post processing outputs"
-        for tech_type in self.technology_types_and_base:
-            class_name = getattr(self, f"ems_{tech_type}_abc_instance")
-            # extention of the outputs to the project lifetime
-            outputs = class_name.postprocessing_outputs(component=self, inputs=inputs, outputs=outputs, outputs_ems=outputs_ems)
+            code_setup = "\n        # ems arguments"
+            for tech_type in self.technology_types_and_base:
+                class_name = getattr(self, f"ems_{tech_type}_abc_instance")
+                ems_args = class_name.add_ems_args(ems_args, WSPr_df, inputs)
 
-            code_class = class_name.get_code_postprocessing_outputs()
-            code_setup = code_setup + f"\n        # post processing outputs for {tech_type}"
-            code_setup = code_setup + "\n" + code_class + "\n"
+                code_class = class_name.get_code_add_ems_args()
+                code_setup = code_setup + f"\n        # arguments added for {tech_type}"
+                code_setup = code_setup + "\n" + code_class + "\n"
 
-        # Save the combined string to a Python (.py) file
-        with open("ems_build.py", "a") as file:
-            file.write(code_setup)
+            # Save the combined string to a Python (.py) file
+            insert_ems_section(compute_ems)
+            file_path = get_path_builded_ems()
+            with open(file_path, "a") as file:
+                file.write(code_setup)
+
+            #insert_ems_section(section4)
+
+            # short term ems evaluation
+            outputs_ems = ems_type(ems_args)
+
+
+            code_setup = "\n    # post processing outputs"
+            for tech_type in self.technology_types_and_base:
+                class_name = getattr(self, f"ems_{tech_type}_abc_instance")
+                # extention of the outputs to the project lifetime
+                outputs = class_name.postprocessing_outputs(component=self, inputs=inputs, outputs=outputs, outputs_ems=outputs_ems)
+
+                code_class = class_name.get_code_postprocessing_outputs()
+                code_setup = code_setup + f"\n   # post processing outputs for {tech_type}"
+                code_setup = code_setup + "\n" + code_class + "\n"
+
+            # Save the combined string to a Python (.py) file
+            with open(file_path, "a") as file:
+                file.write(code_setup)
+
+            #insert_ems_section(section5)
+
+        else:
+            ems_built.compute(self, inputs, outputs)
 
 class ems_long_term_operation(om.ExplicitComponent):
     """Long term operation EMS. Predicts the operation of the plant throughout the entire lifetime, taking into account the battery
     and PV degradations.
-    
+
     Parameters
     ----------
     ii_time : indices on the liftime timeseries. Hydesign operates in each range at constant battery health.
@@ -193,19 +208,19 @@ class ems_long_term_operation(om.ExplicitComponent):
 
     Returns
     -------
-    hpp_t_with_deg : HPP power time series 
+    hpp_t_with_deg : HPP power time series
     hpp_curt_t_with_deg : HPP curtailed power time series
     b_t_with_deg : Battery charge/discharge power time series
-    b_E_SOC_t_with_deg : Battery energy SOC time series 
+    b_E_SOC_t_with_deg : Battery energy SOC time series
     penalty_t_with_deg : penalty for not reaching expected energy production at peak hours
     total_curtailment : total curtailment in the lifetime
     """
 
     def __init__(
-        self, 
+        self,
         N_time,
         num_batteries = 1,
-        life_h = 25*365*24, 
+        life_h = 25*365*24,
         ems_type='energy_penalty',
         load_min_penalty_factor=1e6,
         ):
@@ -215,46 +230,95 @@ class ems_long_term_operation(om.ExplicitComponent):
         self.life_h = life_h
         self.ems_type = ems_type
         self.load_min_penalty_factor = load_min_penalty_factor
+        self.build_ems = True
 
-        self.technology_types = ['base'] + ['solar', 'wind', 'bess']
+        self.technology_types_and_base = ['base'] + ['solar', 'wind', 'bess']
 
-        class_map = {
-            'base': ems_base_long_term_operation,
-            'wind': ems_wind_long_term_operation,
-            'solar': ems_solar_long_term_operation,
-            'bess': ems_bess_long_term_operation
-        }
+        if self.build_ems:
+            class_map = {
+                'base': ems_base_long_term_operation,
+                'wind': ems_wind_long_term_operation,
+                'solar': ems_solar_long_term_operation,
+                'bess': ems_bess_long_term_operation
+            }
 
-        for techonogy_type in self.technology_types:
-            setattr(self, f"ems_{techonogy_type}_long_term_operation_instance", class_map[techonogy_type]())
+            for techonogy_type in self.technology_types_and_base:
+                setattr(self, f"ems_{techonogy_type}_long_term_operation_instance", class_map[techonogy_type]())
+
+            insert_ems_section(init_ems_long)
+
+        else:
+            pass
 
     def setup(self):
 
-        for tech_type in self.technology_types:
-            class_name = getattr(self, f"ems_{tech_type}_long_term_operation_instance")
-            class_name.add_inputs(self)
-            class_name.add_outputs(self)
+        if self.build_ems:
+            code = insert_ems_section(setup_ems_long)
+            code_setup = "\n    # add inputs to the cplex model"
+            for tech_type in self.technology_types_and_base:
+                class_name = getattr(self, f"ems_{tech_type}_long_term_operation_instance")
+                class_name.add_inputs(self)
+                code_class = class_name.get_code_addinputs()
+                code_setup = code_setup + f"\n    # inputs added for {tech_type}"
+                code_setup = code_setup + "\n" + code_class + "\n"
+
+            code_setup = code_setup + "\n    # add outputs to the cplex model"
+            for tech_type in self.technology_types_and_base:
+                class_name = getattr(self, f"ems_{tech_type}_long_term_operation_instance")
+                class_name.add_outputs(self)
+                code_class = class_name.get_code_addoutputs()
+                code_setup = code_setup + f"\n    # outputs added for {tech_type}"
+                code_setup = code_setup + "\n" + code_class + "\n"
+
+            # Save the combined string to a Python (.py) file
+            file_path = get_path_builded_ems()
+            with open(file_path, "a") as file:
+                file.write(code_setup)
+
+        else:
+            pass #ems_long_built.setup(self)
 
     def compute(self, inputs, outputs):
+        if self.build_ems:
+            # life_h = self.life_h
 
-        # life_h = self.life_h
+            if self.ems_type == 'energy_penalty':
+                ems_longterm = operation_solar_batt_deg
+            else:
+                raise Warning("This class should only be used for energy_penalty")
 
-        if self.ems_type == 'energy_penalty':
-            ems_longterm = operation_solar_batt_deg
+            ems_args = {}
+
+            code_setup = "\n    # ems_long arguments"
+            for tech_type in self.technology_types_and_base:
+                class_name = getattr(self, f"ems_{tech_type}_long_term_operation_instance")
+                ems_args = class_name.add_ems_args(ems_args, inputs)
+                code_class = class_name.get_code_add_ems_args()
+                code_setup = code_setup + f"\n    # arguments added for {tech_type}"
+                code_setup = code_setup + "\n" + code_class + "\n"
+
+            # Save the combined string to a Python (.py) file
+            insert_ems_section(compute_ems_long)
+            file_path = get_path_builded_ems()
+            with open(file_path, "a") as file:
+                file.write(code_setup)
+
+            outputs_ems_longterm = ems_longterm(ems_args)
+
+            code_setup = "\n    # post processing outputs"
+            for tech_type in self.technology_types_and_base:
+                class_name = getattr(self, f"ems_{tech_type}_long_term_operation_instance")
+                outputs = class_name.postprocessing_outputs(component=self, inputs=inputs, outputs=outputs, outputs_ems=outputs_ems_longterm)
+
+                code_class = class_name.get_code_postprocessing_outputs()
+                code_setup = code_setup + f"\n    # post processing outputs for {tech_type}"
+                code_setup = code_setup + "\n" + code_class + "\n"
+
+            # Save the combined string to a Python (.py) file
+            with open(file_path, "a") as file:
+                file.write(code_setup)
         else:
-            raise Warning("This class should only be used for energy_penalty")
-
-        ems_args = {}
-        for tech_type in self.technology_types:
-            class_name = getattr(self, f"ems_{tech_type}_long_term_operation_instance")
-            ems_args = class_name.add_ems_args(ems_args, inputs)
-
-        outputs_ems_longterm = ems_longterm(ems_args)
-
-        for tech_type in self.technology_types:
-            class_name = getattr(self, f"ems_{tech_type}_long_term_operation_instance")
-            outputs = class_name.postprocessing_outputs(component=self, inputs=inputs, outputs=outputs, outputs_ems=outputs_ems_longterm)
-
+            pass
 # ------------
 # ems_cplex
 # ------------

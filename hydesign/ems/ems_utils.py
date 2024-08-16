@@ -1,5 +1,7 @@
 import numpy as np
 from docplex.mp.model import Model
+import inspect
+import os
 
 def expand_to_lifetime(x, life_h = 25*365*24, weeks_per_season_per_year=None):
     """
@@ -81,4 +83,45 @@ def print_cplex_model_details(mdl: Model):
     print("\nParameters:")
     for param in mdl.parameters:
         print(f"  - {param.name}: {param.value}")
+
+
+def insert_ems_section(section):
+    code = inspect.getsource(section)
+    # Split the code into lines
+    lines = code.splitlines()
+
+    # Remove the function definition line (the first line) and remove leading indentation from the remaining lines
+    indented_code = "\n".join(line[4:] if line.startswith("    ") else line for line in lines[1:]) +"\n"
+
+    # Save the combined string to a Python (.py) file
+    # Get the directory of the current script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Create the full path for the new file in the same directory as the script
+    file_path = os.path.join(script_dir, "builded_ems.py")
+
+    # Write to the file
+    with open(file_path, "a") as file:
+        file.write(indented_code)
+
+def append_ems_section(code, section):
+    section_code = inspect.getsource(section)
+    # Split the code into lines
+    lines = section_code.splitlines()
+
+    # Remove the function definition line (the first line) and remove leading indentation from the remaining lines
+    indented_code = "\n".join(line[4:] if line.startswith("    ") else line for line in lines[1:]) +"\n"
+
+    code = code + indented_code
+
+    return code
+
+def get_path_builded_ems():
+    # Get the directory of the current script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Create the full path for the new file in the same directory as the script
+    file_path = os.path.join(script_dir, "builded_ems.py")
+    return file_path
+
 

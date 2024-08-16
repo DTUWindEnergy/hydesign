@@ -15,10 +15,12 @@ class ems_base_abc(ems_abc):
             'G_MW',
             desc="Grid capacity",
             units='MW')
+
         component.add_input(
             'peak_hr_quantile',
-            desc="Quantile of price time series to define peak price hours (above this quantile)." +
-                 " Only used for peak production penalty and for cost of battery degradation.")
+            desc="Quantile of price time series to define peak price hours (above this quantile). Only used for peak production penalty and for cost of battery degradation."
+        )
+
         component.add_input(
             'n_full_power_hours_expected_per_day_at_peak_price',
             desc="Penalty occurs if number of full power hours expected per day at peak price are not reached.")
