@@ -126,14 +126,16 @@ class hpp_model_base(hpp_model_abc):
             'promotes_outputs': []
         }
 
-        ems_dict = {
-            'name': 'ems',
-            'component': ems(
+        ems_inputs = dict(
                 N_time=N_time,
                 weeks_per_season_per_year=weeks_per_season_per_year,
                 life_h=life_h,
-                ems_type=ems_type
-            ),
+                ems_type=ems_type,
+                technology_types=['wind', 'solar', 'bess']
+        )
+        ems_dict = {
+            'name': 'ems',
+            'component': ems(ems_inputs),
             'promotes_inputs': [
                 'price_t', 'b_P', 'b_E', 'G_MW', 'battery_depth_of_discharge',
                 'battery_charge_efficiency', 'peak_hr_quantile',

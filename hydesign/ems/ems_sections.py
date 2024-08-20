@@ -11,6 +11,7 @@ def imports():
     from .ems_bess import ems_bess_abc, ems_bess_long_term_operation, ems_cplex_bess, ems_cplex_parts_bess
     from .ems_base import ems_base_abc, ems_base_long_term_operation, ems_cplex_base, ems_cplex_parts_base_pre, ems_cplex_parts_base_post, ems_degredation_base
     from .ems_utils import expand_to_lifetime, split_in_batch, print_cplex_model_details
+    from .ems_builder_utils import ems_cplex, ems_cplex_parts, operation_solar_batt_deg
 
 def section1():
     class ems(om.ExplicitComponent):
@@ -47,28 +48,18 @@ def section1():
 
         """
 def init_ems():
-    def init_ems(self):
-        class_map = {
-            'base': ems_base_abc,
-            'wind': ems_wind_abc,
-            'solar': ems_solar_abc,
-            'bess': ems_bess_abc
-        }
-
-        # Dynamically create and assign instances of EMS classes for each technology type
-        for techonogy_type in self.technology_types_and_base:
-            setattr(self, f"ems_{techonogy_type}_abc_instance", class_map[techonogy_type]())
+    def init(self, inputs):
+        ''
 
 def setup_ems():
-    def setup_ems(component):
+    def setup(component):
         """setup of the cplex model"""
-
 def setup_ems_long():
-    def setup_ems_long_term_operation(component):
+    def setup(component):
         """setup of the cplex model"""
 
 def compute_ems():
-    def compute_ems(self, inputs, outputs):
+    def compute(self, inputs, outputs):
         # Get the appropriate EMS function name based on ems_type
         ems_type = self.available_ems_types.get(self.ems_type)
 
@@ -87,7 +78,7 @@ def compute_ems():
         ems_args = {}
 
 def compute_ems_long():
-    def compute_ems_long_term_operation(self, inputs, outputs):
+    def compute(self, inputs, outputs):
         # life_h = self.life_h
 
         if self.ems_type == 'energy_penalty':
@@ -136,17 +127,8 @@ def section5():
         total_curtailment : total curtailment in the lifetime
         """
 def init_ems_long():
-    def init_ems_long_term_operation(self):
-        class_map = {
-            'base': ems_base_long_term_operation,
-            'wind': ems_wind_long_term_operation,
-            'solar': ems_solar_long_term_operation,
-            'bess': ems_bess_long_term_operation
-        }
-
-        # Dynamically create and assign instances of ems_long_term_operation classes for each technology type
-        for techonogy_type in self.technology_types_and_base:
-            setattr(self, f"ems_{techonogy_type}_long_term_operation_instance", class_map[techonogy_type]())
+    def init(self):
+        ''
 
 def section11():
         # def setup(self):
