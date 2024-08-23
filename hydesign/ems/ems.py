@@ -1410,8 +1410,8 @@ def operation_solar_batt_deg(
     wind_t_deg,
     solar_t_deg,
     batt_degradation,
-    wind_t,
-    solar_t,
+    wind_t,  #  this method is not using wind_t
+    solar_t,  #  this method is not using solar_t
     hpp_curt_t,
     b_t,
     b_E_SOC_t,

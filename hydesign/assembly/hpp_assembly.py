@@ -23,6 +23,7 @@ from hydesign.battery_degradation import battery_degradation, battery_loss_in_ca
 from hydesign.costs.costs import wpp_cost, pvp_cost, battery_cost, shared_cost
 from hydesign.finance.finance import finance
 from hydesign.look_up_tables import lut_filepath
+from hydesign.reliability import battery_with_reliability, wpp_with_reliability, pvp_with_reliability
 
 
 class hpp_model:
@@ -47,6 +48,10 @@ class hpp_model:
         verbose = True,
         name = '',
         ppa_price=None,
+        reliability_ts_battery=None,
+        reliability_ts_trans=None,
+        reliability_ts_wind=None,
+        reliability_ts_pv=None,
         **kwargs
         ):
         """Initialization of the hybrid power plant evaluator
@@ -325,9 +330,41 @@ class hpp_model:
                 life_h = life_h,
                 pv_deg_yr = sim_pars['pv_deg_yr'],
                 pv_deg = sim_pars['pv_deg'],
+                )
             )
-        )
+
         
+        model.add_subsystem(
+            'battery_with_reliability', 
+            battery_with_reliability(
+                life_h = life_h,
+                reliability_ts_battery=reliability_ts_battery,
+                reliability_ts_trans=reliability_ts_trans,
+                ),
+            )        
+        
+
+        model.add_subsystem(
+            'wpp_with_reliability', 
+            wpp_with_reliability(
+                life_h = life_h,
+                reliability_ts_wind=reliability_ts_wind,
+                reliability_ts_trans=reliability_ts_trans,
+                ),
+            # promotes_inputs=['Nwt',]
+            )        
+        
+
+        model.add_subsystem(
+            'pvp_with_reliability', 
+            pvp_with_reliability(
+                life_h = life_h,
+                reliability_ts_pv=reliability_ts_pv,
+                # reliability_ts_inv_fn=reliability_ts_inv_fn,
+                reliability_ts_trans=reliability_ts_trans,
+                ),
+            # promotes_inputs=['solar_MW',]
+            )        
         
         model.add_subsystem(
             'ems_long_term_operation', 
@@ -346,7 +383,7 @@ class hpp_model:
             promotes_outputs=[
                 'total_curtailment',
                 'total_curtailment_with_deg'
-            ])
+                ])
         
         model.add_subsystem(
             'wpp_cost',
@@ -359,7 +396,7 @@ class hpp_model:
                 hh_ref=sim_pars['hh_ref'],
                 p_rated_ref=sim_pars['p_rated_ref'],
                 N_time = N_time, 
-            ),
+                ),
             promotes_inputs=[
                 'Nwt',
                 'Awpp',
@@ -457,17 +494,20 @@ class hpp_model:
         model.connect('genericWT.ws', 'wpp_with_degradation.ws')
         model.connect('genericWake.pcw', 'wpp_with_degradation.pcw')
         model.connect('abl.wst', 'wpp_with_degradation.wst')
-        model.connect('wpp_with_degradation.wind_t_ext_deg', 'ems_long_term_operation.wind_t_ext_deg')
+        model.connect('wpp_with_degradation.wind_t_ext_deg', 'wpp_with_reliability.wind_t')
+        model.connect('wpp_with_reliability.wind_t_rel', 'ems_long_term_operation.wind_t_ext_deg')
 
         model.connect('ems.solar_t_ext','pvp_with_degradation.solar_t_ext')
-        model.connect('pvp_with_degradation.solar_t_ext_deg', 'ems_long_term_operation.solar_t_ext_deg')
+        model.connect('pvp_with_degradation.solar_t_ext_deg', 'pvp_with_reliability.solar_t')
+        model.connect('pvp_with_reliability.solar_t_rel', 'ems_long_term_operation.solar_t_ext_deg')
         
         model.connect('ems.wind_t_ext', 'ems_long_term_operation.wind_t_ext')
         model.connect('ems.solar_t_ext', 'ems_long_term_operation.solar_t_ext')
         model.connect('ems.price_t_ext', 'ems_long_term_operation.price_t_ext')
         model.connect('ems.hpp_curt_t', 'ems_long_term_operation.hpp_curt_t')
         model.connect('ems.b_E_SOC_t', 'ems_long_term_operation.b_E_SOC_t')
-        model.connect('ems.b_t', 'ems_long_term_operation.b_t')
+        model.connect('ems.b_t', 'battery_with_reliability.b_t')
+        model.connect('battery_with_reliability.b_t_rel', 'ems_long_term_operation.b_t')
 
         model.connect('wpp.wind_t', 'wpp_cost.wind_t')
         
