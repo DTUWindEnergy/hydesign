@@ -46,24 +46,14 @@ class ems_base_abc(ems_abc):
             shape=[component.life_h])
 
 
-    def add_ems_args(self, ems_args,  WSPr_df, inputs):
-        G_MW = inputs['G_MW']
-        peak_hr_quantile = inputs['peak_hr_quantile'][0]
-        n_full_power_hours_expected_per_day_at_peak_price = inputs[
-            'n_full_power_hours_expected_per_day_at_peak_price'][0]
-        WSPr_df['price_t'] = inputs['price_t']
-
-
-        added_ems_args = {
+    def add_ems_args(self):
+        added_ems_args = """
             'price_ts': WSPr_df.price_t,
-            'G_MW': G_MW[0],
-            'peak_hr_quantile': peak_hr_quantile,
-            'n_full_power_hours_expected_per_day_at_peak_price': n_full_power_hours_expected_per_day_at_peak_price,
-            'technology_types': ['wind', 'solar', 'bess'],
-            }
-
-        ems_args.update(added_ems_args)
-        return ems_args
+            'G_MW': inputs['G_MW'][0],
+            'peak_hr_quantile': inputs['peak_hr_quantile'][0],
+            'n_full_power_hours_expected_per_day_at_peak_price': inputs['n_full_power_hours_expected_per_day_at_peak_price'][0],
+            'technology_types': ['wind', 'solar', 'bess'],"""
+        return added_ems_args
 
     def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         price_t = inputs['price_t']
@@ -136,22 +126,15 @@ class ems_base_long_term_operation(ems_abc):
             units='GW*h',
         )
 
-    def add_ems_args(self, ems_args, inputs):
-        price_t_ext = inputs['price_t_ext']
-        G_MW = inputs['G_MW']
-        hpp_curt_t = inputs['hpp_curt_t']
-        peak_hr_quantile = inputs['peak_hr_quantile'][0]
-        n_full_power_hours_expected_per_day_at_peak_price = inputs['n_full_power_hours_expected_per_day_at_peak_price'][0]
-
-        added_ems_args = dict(
-                    hpp_curt_t=hpp_curt_t,
-                    G_MW=G_MW[0],
-                    price_ts=price_t_ext,
-                    peak_hr_quantile=peak_hr_quantile,
-                    n_full_power_hours_expected_per_day_at_peak_price=n_full_power_hours_expected_per_day_at_peak_price, )
-
-        ems_args.update(added_ems_args)
-        return ems_args
+    def add_ems_args(self):
+        added_ems_args = """
+hpp_curt_t=inputs['hpp_curt_t'],
+G_MW=inputs['G_MW'][0],
+price_ts=inputs['price_t_ext'],
+peak_hr_quantile=inputs['peak_hr_quantile'][0],
+n_full_power_hours_expected_per_day_at_peak_price=inputs['n_full_power_hours_expected_per_day_at_peak_price'][0], )
+        """
+        return added_ems_args
 
     def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         outputs['hpp_t_with_deg'] = outputs_ems['Hpp_deg']

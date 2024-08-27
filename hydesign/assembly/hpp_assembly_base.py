@@ -19,11 +19,17 @@ import xarray as xr
 from hydesign.weather.weather import extract_weather_for_HPP, ABL, select_years
 from hydesign.wind.wind import get_rotor_area, get_rotor_d
 from hydesign.ems.ems import ems, ems_long_term_operation
+from hydesign.ems.ems_builder import ems_builder, ems_long_term_operation_builder
 from hydesign.look_up_tables import lut_filepath
 from .hpp_model_base import hpp_model_base
 from .hpp_model_wind import hpp_model_wind
 from .hpp_model_solar import hpp_model_solar
 from .hpp_model_bess import hpp_model_bess
+
+from hydesign.ems.ems_wind import ems_wind_abc
+from hydesign.ems.ems_solar import ems_solar_abc
+from hydesign.ems.ems_bess import ems_bess_abc
+from hydesign.ems.ems_base import ems_base_abc
 
 
 class hpp_model:
@@ -229,7 +235,15 @@ class hpp_model:
             'bess': hpp_model_bess,
         }
 
+        self.ems_class_map = {
+            'base': ems_base_abc,
+            'wind': ems_wind_abc,
+            'solar': ems_solar_abc,
+            'bess': ems_bess_abc
+        }
+
         technology_types_and_base = ['base'] + ['wind', 'solar', 'bess'] #+ technology_types
+        self.technology_types_and_base = technology_types_and_base
         hpp_model_instances = {}
         for tech_type in technology_types_and_base:
             hpp_model_instances[tech_type] = hpp_model_map[tech_type](excel_data, sim_pars, verbose, weather, N_time, genWT_fn, N_ws, genWake_fn, price, **kwargs)
@@ -273,6 +287,11 @@ class hpp_model:
 
         self.list_vars = list_vars
         self.list_out_vars = list_out_vars
+
+    def build(self):
+        ems_builder(self)
+        ems_long_term_operation_builder(self)
+
 
     def evaluate(
         self,

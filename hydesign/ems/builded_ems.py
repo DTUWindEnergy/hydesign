@@ -234,4 +234,3 @@ def compute(self, inputs, outputs):
         P_charge_discharge_ts, life_h=self.life_h, weeks_per_season_per_year=self.weeks_per_season_per_year)
     outputs['b_E_SOC_t'] = expand_to_lifetime(
         E_SOC_ts[:-1], life_h=self.life_h + 1, weeks_per_season_per_year=self.weeks_per_season_per_year)
-

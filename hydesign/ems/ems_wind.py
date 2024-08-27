@@ -19,14 +19,9 @@ class ems_wind_abc(ems_abc):
             units='MW',
             shape=[component.life_h])
 
-    def add_ems_args(self, ems_args, WSPr_df, inputs):
-        WSPr_df['wind_t'] = inputs['wind_t']
-        added_ems_args = {'wind_ts': WSPr_df.wind_t}
-
-        ems_args.update(added_ems_args)
-        # make sure the variable is not overwritten
-
-        return ems_args
+    def add_ems_args(self):
+        added_ems_args = """'wind_ts': inputs['wind_t'],"""
+        return added_ems_args
 
     def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         # Extend (by repeating them and stacking) all variable to full lifetime
@@ -52,18 +47,11 @@ class ems_wind_long_term_operation(ems_abc):
     def add_outputs(self, component):
         pass
 
-    def add_ems_args(self, ems_args, inputs):
-        wind_t_ext_deg = inputs['wind_t_ext_deg']
-        wind_t_ext = inputs['wind_t_ext']
-
-        added_ems_args = dict(
-                    wind_t_deg=wind_t_ext_deg,
-                    wind_t=wind_t_ext,
-                    )
-
-
-        ems_args.update(added_ems_args)
-        return ems_args
+    def add_ems_args(self):
+        added_ems_args ="""
+wind_t_deg=inputs['wind_t_ext_deg'],
+wind_t=inputs['wind_t_ext'],"""
+        return added_ems_args
 
     def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         return outputs

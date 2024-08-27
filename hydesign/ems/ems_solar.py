@@ -19,13 +19,9 @@ class ems_solar_abc(ems_abc):
             units='MW',
             shape=[component.life_h])
 
-    def add_ems_args(self, ems_args,  WSPr_df, inputs):
-        WSPr_df['solar_t'] = inputs['solar_t']
-
-        added_ems_args = {'solar_ts': WSPr_df.solar_t,}
-
-        ems_args.update(added_ems_args)
-        return ems_args
+    def add_ems_args(self):
+        added_ems_args = """'solar_ts': inputs['solar_t'],"""
+        return added_ems_args
 
     def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         solar_t = inputs['solar_t']
@@ -53,18 +49,11 @@ class ems_solar_long_term_operation(ems_abc):
     def add_outputs(self, component):
         pass
 
-    def add_ems_args(self, ems_args, inputs):
-        solar_t_ext_deg = inputs['solar_t_ext_deg']
-        solar_t_ext = inputs['solar_t_ext']
-
-        added_ems_args = dict(
-                    solar_t_deg=solar_t_ext_deg,
-                    solar_t=solar_t_ext,
-                    )
-
-
-        ems_args.update(added_ems_args)
-        return ems_args
+    def add_ems_args(self):
+        added_ems_args = """
+    solar_t_deg=inputs['solar_t_ext_deg'],
+    solar_t=inputs['solar_t_ext'],"""
+        return added_ems_args
 
     def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         return outputs

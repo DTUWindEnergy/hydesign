@@ -34,25 +34,15 @@ class ems_bess_abc(ems_abc):
             desc="Battery energy SOC time series",
             shape=[component.life_h + 1])
 
-    def add_ems_args(self, ems_args,  WSPr_df, inputs):
-        b_P = inputs['b_P']
-        b_E = inputs['b_E']
-        WSPr_df['b_E'] = inputs['b_E'][0]
+    def add_ems_args(self):
 
-        battery_depth_of_discharge = inputs['battery_depth_of_discharge']
-        battery_charge_efficiency = inputs['battery_charge_efficiency']
-        cost_of_battery_P_fluct_in_peak_price_ratio = inputs['cost_of_battery_P_fluct_in_peak_price_ratio'][0]
-
-        added_ems_args = {
-            'b_P': b_P[0],
-            'b_E': WSPr_df.b_E,
-            'battery_depth_of_discharge': battery_depth_of_discharge[0],
-            'battery_charge_efficiency': battery_charge_efficiency[0],
-            'cost_of_battery_P_fluct_in_peak_price_ratio': cost_of_battery_P_fluct_in_peak_price_ratio
-            }
-
-        ems_args.update(added_ems_args)
-        return ems_args
+        added_ems_args = """
+            'b_P': inputs['b_P'][0],
+            'b_E': inputs['b_E'][0],
+            'battery_depth_of_discharge': inputs['battery_depth_of_discharge'][0],
+            'battery_charge_efficiency': inputs['battery_charge_efficiency'][0],
+            'cost_of_battery_P_fluct_in_peak_price_ratio': inputs['cost_of_battery_P_fluct_in_peak_price_ratio'][0],"""
+        return added_ems_args
 
     def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         P_charge_discharge_ts = outputs_ems['b_t']
@@ -108,26 +98,17 @@ class ems_bess_long_term_operation(ems_abc):
             desc="Battery energy SOC time series",
             shape=[component.life_h + 1])
 
-    def add_ems_args(self, ems_args, inputs):
-        SoH = inputs['SoH']
-        b_E = inputs['b_E']
-        battery_depth_of_discharge = inputs['battery_depth_of_discharge']
-        battery_charge_efficiency = inputs['battery_charge_efficiency']
-        b_t = inputs['b_t']
-        b_E_SOC_t = inputs['b_E_SOC_t']
+    def add_ems_args(self):
 
-        added_ems_args = dict(
-                    batt_degradation=SoH,
-                    b_t=b_t,
-                    b_E_SOC_t=b_E_SOC_t,
-                    b_E=b_E[0],
-                    battery_depth_of_discharge=battery_depth_of_discharge[0],
-                    battery_charge_efficiency=battery_charge_efficiency[0],
-                    b_E_SOC_0=None,
-                    )
-
-        ems_args.update(added_ems_args)
-        return ems_args
+        added_ems_args = """
+batt_degradation=inputs['SoH'],
+b_t=inputs['b_t'],
+b_E_SOC_t=inputs['b_E_SOC_t'],
+b_E=inputs['b_E'][0],
+battery_depth_of_discharge=inputs['battery_depth_of_discharge'][0],
+battery_charge_efficiency=inputs['battery_charge_efficiency'][0],
+b_E_SOC_0=inputs['b_E_SOC_t'],"""
+        return added_ems_args
 
     def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         outputs['b_t_with_deg'] = outputs_ems['b_t_sat']

@@ -32,7 +32,8 @@ class ems_abc(ABC):
         lines = [line for line in code.splitlines() if line_to_remove not in line.strip()]
 
         # Join the remaining lines into a single string with appropriate line breaks
-        output_string = "\n".join(line[4:] if line.startswith("    ") else line for line in lines)
+        output_string = "\n".join(line for line in lines)
+        #output_string = "\n".join(line[4:] if line.startswith("    ") else line for line in lines)
         return output_string
 
     def get_code_addoutputs(self):
@@ -45,7 +46,7 @@ class ems_abc(ABC):
         lines = [line for line in code.splitlines() if line_to_remove not in line.strip()]
 
         # Join the remaining lines into a single string with appropriate line breaks
-        output_string = "\n".join(line[4:] if line.startswith("    ") else line for line in lines)
+        output_string = "\n".join(line for line in lines)
         return output_string
 
     def get_code_add_ems_args(self):
@@ -58,7 +59,7 @@ class ems_abc(ABC):
         lines = [line for line in code.splitlines() if not any(line.strip().startswith(keyword) for keyword in lines_to_remove)]
 
         # Join the remaining lines into a single string with appropriate line breaks
-        output_string = "\n".join(line[4:] if line.startswith("    ") else line for line in lines)
+        output_string = "\n".join(line for line in lines)
         return output_string
 
     def get_code_postprocessing_outputs(self):
@@ -71,7 +72,7 @@ class ems_abc(ABC):
         lines = [line for line in code.splitlines() if not any(line.strip().startswith(keyword) for keyword in lines_to_remove)]
 
         # Join the remaining lines into a single string with appropriate line breaks
-        output_string = "\n".join(line[4:] if line.startswith("    ") else line for line in lines)
+        output_string = "\n".join(line for line in lines)
         return output_string
 
 class ems_cplex_abc(ABC):

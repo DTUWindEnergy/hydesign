@@ -57,110 +57,15 @@ class ems(om.ExplicitComponent):
     """
     def __init__(self, inputs):
         super().__init__()
-
-        self.build_ems = True
-
-        if self.build_ems:
-            # Start ems_build
-            file_path = get_path_builded_ems('short')
-
-            # Write to the file
-            with open(file_path, "w") as file:
-                file.write("# Built by ems_builder\n")
-
-            self.class_map = {
-                'base': ems_base_abc,
-                'wind': ems_wind_abc,
-                'solar': ems_solar_abc,
-                'bess': ems_bess_abc
-            }
-
-            # Dynamically create and assign instances of EMS classes for each technology type
-            code_init = """def init(self, inputs):
-    self.weeks_per_season_per_year = inputs.get('weeks_per_season_per_year')
-    self.N_time = int(inputs.get('N_time'))
-    self.ems_type = inputs.get('ems_type', 'cplex')
-    self.technology_types = inputs.get('technology_types', ['wind', 'solar', 'bess'])
-    self.life_h = int(inputs.get('life_h', 25*365*24))
-    self.available_ems_types = {
-        'cplex': ems_cplex}
-    # set default order of the technologies
-    self.technology_types_and_base = ['base'] + self.technology_types\n"""
-
-            insert_ems_section(imports)
-            #insert_ems_section(init_ems)
-            with open(file_path, "a") as file:
-                file.write(code_init)
-
-        # Reload the module
-        importlib.reload(builded_ems)
         builded_ems.init(self, inputs)
 
         ## make the input arguments explicit
         ## no for loop on the technology class, without any call for abstract classes
 
     def setup(self):
-        if self.build_ems:
-            insert_ems_section(setup_ems)
-
-            code_setup = "    # add inputs to the openmdao model"
-            for tech_type in self.technology_types_and_base:
-                class_name = self.class_map[tech_type]() #getattr(self, f"ems_{tech_type}_abc_instance")
-                #class_name.add_inputs(self)
-                code_class = class_name.get_code_addinputs()
-                code_setup = code_setup + f"\n    # inputs added for {tech_type}"
-                code_setup = code_setup + "\n" + code_class + "\n"
-
-            code_setup = code_setup + "\n    # add outputs to the openmdao model"
-            for tech_type in self.technology_types_and_base:
-                class_name = self.class_map[tech_type]() #getattr(self, f"ems_{tech_type}_abc_instance")
-                #class_name.add_outputs(self)
-                code_class = class_name.get_code_addoutputs()
-                code_setup = code_setup + f"\n    # outputs added for {tech_type}"
-                code_setup = code_setup + "\n" + code_class + "\n"
-
-            # Save the combined string to a Python (.py) file
-            file_path = get_path_builded_ems('short')
-            with open(file_path, "a") as file:
-                file.write(code_setup)
-
-        # Reload the module
-        importlib.reload(builded_ems)
         builded_ems.setup(self)
 
     def compute(self, inputs, outputs):
-        if self.build_ems:
-            code_setup = "\n    # ems arguments"
-            for tech_type in self.technology_types_and_base:
-                class_name = self.class_map[tech_type]() # getattr(self, f"ems_{tech_type}_abc_instance")
-                #ems_args = class_name.add_ems_args(ems_args, WSPr_df, inputs)
-
-                code_class = class_name.get_code_add_ems_args()
-                code_setup = code_setup + f"\n    # arguments added for {tech_type}"
-                code_setup = code_setup + "\n" + code_class + "\n"
-
-            # Save the combined string to a Python (.py) file
-            insert_ems_section(compute_ems)
-            file_path = get_path_builded_ems('short')
-            with open(file_path, "a") as file:
-                file.write(code_setup)
-
-            code_setup = "\n    outputs_ems = ems_type(ems_args) \n    # post processing outputs"
-            for tech_type in self.technology_types_and_base:
-                class_name = self.class_map[tech_type]() #  getattr(self, f"ems_{tech_type}_abc_instance")
-                # extention of the outputs to the project lifetime
-                #outputs = class_name.postprocessing_outputs(component=self, inputs=inputs, outputs=outputs, outputs_ems=outputs_ems)
-
-                code_class = class_name.get_code_postprocessing_outputs()
-                code_setup = code_setup + f"\n    # post processing outputs for {tech_type}"
-                code_setup = code_setup + "\n" + code_class + "\n"
-
-            # Save the combined string to a Python (.py) file
-            with open(file_path, "a") as file:
-                file.write(code_setup)
-
-        # Reload the module
-        importlib.reload(builded_ems)
         builded_ems.compute(self, inputs, outputs)
 
 
@@ -217,7 +122,7 @@ class ems_long_term_operation(om.ExplicitComponent):
         self.ems_type = ems_type
         self.load_min_penalty_factor = load_min_penalty_factor
         self.technology_types = technology_types
-        self.build_ems = True
+        self.build_ems = False
 
         self.technology_types_and_base = ['base'] + ['solar', 'wind', 'bess']
 
@@ -228,14 +133,13 @@ class ems_long_term_operation(om.ExplicitComponent):
             'bess': ems_bess_long_term_operation
         }
 
-        # Start ems_build
-        file_path = get_path_builded_ems('long')
-
-        # Write to the file
-        with open(file_path, "w") as file:
-            file.write("# Built by ems_builder\n")
-
         if self.build_ems:
+            # Start ems_build
+            file_path = get_path_builded_ems('long')
+
+            # Write to the file
+            with open(file_path, "w") as file:
+                file.write("# Built by ems_builder\n")
             insert_ems_long_term_operation_section(imports)
             insert_ems_long_term_operation_section(init_ems_long)
 
@@ -271,7 +175,8 @@ class ems_long_term_operation(om.ExplicitComponent):
         importlib.reload(builded_ems_long_term_operation)
         builded_ems_long_term_operation.setup(self)
 
-        insert_ems_long_term_operation_section(section10)
+        if self.build_ems:
+            insert_ems_long_term_operation_section(section10)
 
     def compute(self, inputs, outputs):
         if self.build_ems:
