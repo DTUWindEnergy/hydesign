@@ -47,20 +47,21 @@ class ems_base_abc(ems_abc):
 
 
     def add_ems_args(self):
+        WSPr_df = """WSPr_df['price_t'] = inputs['price_t']"""
         added_ems_args = """
+            # args base
             'price_ts': WSPr_df.price_t,
             'G_MW': inputs['G_MW'][0],
             'peak_hr_quantile': inputs['peak_hr_quantile'][0],
             'n_full_power_hours_expected_per_day_at_peak_price': inputs['n_full_power_hours_expected_per_day_at_peak_price'][0],
             'technology_types': ['wind', 'solar', 'bess'],"""
-        return added_ems_args
+        return WSPr_df, added_ems_args
 
     def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         price_t = inputs['price_t']
         P_HPP_ts = outputs_ems['hpp_t']
         P_curtailment_ts = outputs_ems['hpp_curt_t']
         penalty_ts = outputs_ems['penalty_t']
-
         # Extend (by repeating them and stacking) all variable to full lifetime
         outputs['price_t_ext'] = expand_to_lifetime(
             price_t, life_h=component.life_h, weeks_per_season_per_year=component.weeks_per_season_per_year)
@@ -127,14 +128,16 @@ class ems_base_long_term_operation(ems_abc):
         )
 
     def add_ems_args(self):
+        WSPr_df = """WSPr_df['price_t'] = inputs['price_t']"""
         added_ems_args = """
-hpp_curt_t=inputs['hpp_curt_t'],
-G_MW=inputs['G_MW'][0],
-price_ts=inputs['price_t_ext'],
-peak_hr_quantile=inputs['peak_hr_quantile'][0],
-n_full_power_hours_expected_per_day_at_peak_price=inputs['n_full_power_hours_expected_per_day_at_peak_price'][0], )
-        """
-        return added_ems_args
+            # args base
+            'hpp_curt_t': inputs['hpp_curt_t'],
+            'G_MW': inputs['G_MW'][0],
+            'price_ts': WSPr_df.price_t,
+            'peak_hr_quantile': inputs['peak_hr_quantile'][0],
+            'n_full_power_hours_expected_per_day_at_peak_price': inputs['n_full_power_hours_expected_per_day_at_peak_price'][0],
+            """
+        return WSPr_df, added_ems_args
 
     def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         outputs['hpp_t_with_deg'] = outputs_ems['Hpp_deg']

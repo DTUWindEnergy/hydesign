@@ -26,10 +26,10 @@ from .hpp_model_wind import hpp_model_wind
 from .hpp_model_solar import hpp_model_solar
 from .hpp_model_bess import hpp_model_bess
 
-from hydesign.ems.ems_wind import ems_wind_abc
-from hydesign.ems.ems_solar import ems_solar_abc
-from hydesign.ems.ems_bess import ems_bess_abc
-from hydesign.ems.ems_base import ems_base_abc
+from hydesign.ems.ems_wind import ems_wind_abc, ems_wind_long_term_operation
+from hydesign.ems.ems_solar import ems_solar_abc, ems_solar_long_term_operation
+from hydesign.ems.ems_bess import ems_bess_abc, ems_bess_long_term_operation
+from hydesign.ems.ems_base import ems_base_abc, ems_base_long_term_operation
 
 
 class hpp_model:
@@ -143,6 +143,7 @@ class hpp_model:
         wind_deg = sim_pars.get('wind_deg', [0, 0.25])
         wind_deg_yr = sim_pars.get('wind_deg_yr', [0, 25])
         share_WT_deg_types = sim_pars.get('share_WT_deg_types', 0.5)
+        self.ems_type = sim_pars.get('ems_type', 'cplex')
 
         # Extract weather timeseries
         if input_ts_data.empty:
@@ -242,6 +243,14 @@ class hpp_model:
             'bess': ems_bess_abc
         }
 
+        self.ems_long_class_map = {
+            'base': ems_base_long_term_operation,
+            'wind': ems_wind_long_term_operation,
+            'solar': ems_solar_long_term_operation,
+            'bess': ems_bess_long_term_operation
+        }
+        self.ems_long_type = 'energy_penalty'
+
         technology_types_and_base = ['base'] + ['wind', 'solar', 'bess'] #+ technology_types
         self.technology_types_and_base = technology_types_and_base
         hpp_model_instances = {}
@@ -287,6 +296,8 @@ class hpp_model:
 
         self.list_vars = list_vars
         self.list_out_vars = list_out_vars
+
+        self.available_ems_types = {'cplex': 'ems_cplex'}
 
     def build(self):
         ems_builder(self)

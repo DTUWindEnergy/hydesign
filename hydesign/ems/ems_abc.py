@@ -24,7 +24,7 @@ class ems_abc(ABC):
 
     def get_code_addinputs(self):
         code = inspect.getsource(self.add_inputs)
-        #code = code.replace("component.", "self.")
+        code = code.replace("component.", "self.")
         # Specify the line you want to remove (exact match or part of the line)
         line_to_remove = "def"
 
@@ -38,7 +38,7 @@ class ems_abc(ABC):
 
     def get_code_addoutputs(self):
         code = inspect.getsource(self.add_outputs)
-        #code = code.replace("component.", "self.")
+        code = code.replace("component.", "self.")
         # Specify the line you want to remove (exact match or part of the line)
         line_to_remove = "def"
 

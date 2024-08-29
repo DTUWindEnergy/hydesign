@@ -35,19 +35,19 @@ class ems_bess_abc(ems_abc):
             shape=[component.life_h + 1])
 
     def add_ems_args(self):
-
+        WSPr_df = """WSPr_df['b_E'] = inputs['b_E'][0]"""
         added_ems_args = """
+            # args bess
             'b_P': inputs['b_P'][0],
-            'b_E': inputs['b_E'][0],
+            'b_E': WSPr_df.b_E,
             'battery_depth_of_discharge': inputs['battery_depth_of_discharge'][0],
             'battery_charge_efficiency': inputs['battery_charge_efficiency'][0],
             'cost_of_battery_P_fluct_in_peak_price_ratio': inputs['cost_of_battery_P_fluct_in_peak_price_ratio'][0],"""
-        return added_ems_args
+        return WSPr_df, added_ems_args
 
     def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         P_charge_discharge_ts = outputs_ems['b_t']
         E_SOC_ts = outputs_ems['b_E_SOC_t']
-
         # Extend (by repeating them and stacking) all variable to full lifetime
         outputs['b_t'] = expand_to_lifetime(
             P_charge_discharge_ts, life_h=component.life_h, weeks_per_season_per_year=component.weeks_per_season_per_year)
@@ -99,16 +99,18 @@ class ems_bess_long_term_operation(ems_abc):
             shape=[component.life_h + 1])
 
     def add_ems_args(self):
-
+        WSPr_df = """WSPr_df['b_E'] = inputs['b_E'][0]"""
         added_ems_args = """
-batt_degradation=inputs['SoH'],
-b_t=inputs['b_t'],
-b_E_SOC_t=inputs['b_E_SOC_t'],
-b_E=inputs['b_E'][0],
-battery_depth_of_discharge=inputs['battery_depth_of_discharge'][0],
-battery_charge_efficiency=inputs['battery_charge_efficiency'][0],
-b_E_SOC_0=inputs['b_E_SOC_t'],"""
-        return added_ems_args
+            # args bess
+            'batt_degradation': inputs['SoH'],
+            'b_t': inputs['b_t'],
+            'b_E_SOC_t': inputs['b_E_SOC_t'],
+            'b_E': WSPr_df.b_E,
+            'battery_depth_of_discharge': inputs['battery_depth_of_discharge'][0],
+            'battery_charge_efficiency': inputs['battery_charge_efficiency'][0],
+            'b_E_SOC_0': inputs['b_E_SOC_t'],
+            """
+        return WSPr_df, added_ems_args
 
     def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         outputs['b_t_with_deg'] = outputs_ems['b_t_sat']

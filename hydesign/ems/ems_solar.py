@@ -20,12 +20,14 @@ class ems_solar_abc(ems_abc):
             shape=[component.life_h])
 
     def add_ems_args(self):
-        added_ems_args = """'solar_ts': inputs['solar_t'],"""
-        return added_ems_args
+        WSPr_df = """WSPr_df['solar_t'] = inputs['solar_t']"""
+        added_ems_args = """
+            # args solar
+            'solar_ts': WSPr_df.solar_t,"""
+        return WSPr_df, added_ems_args
 
     def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         solar_t = inputs['solar_t']
-
         # Extend (by repeating them and stacking) all variable to full lifetime
         outputs['solar_t_ext'] = expand_to_lifetime(
             solar_t, life_h=component.life_h, weeks_per_season_per_year=component.weeks_per_season_per_year)
@@ -50,10 +52,13 @@ class ems_solar_long_term_operation(ems_abc):
         pass
 
     def add_ems_args(self):
+        WSPr_df = """WSPr_df['solar_t'] = inputs['solar_t']"""
         added_ems_args = """
-    solar_t_deg=inputs['solar_t_ext_deg'],
-    solar_t=inputs['solar_t_ext'],"""
-        return added_ems_args
+            # args solar
+            'solar_t_deg': inputs['solar_t_ext_deg'],
+            'solar_t': inputs['solar_t_ext'],
+            """
+        return WSPr_df, added_ems_args
 
     def postprocessing_outputs(self, component, inputs, outputs, outputs_ems):
         return outputs
