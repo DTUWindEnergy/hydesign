@@ -128,12 +128,12 @@ class ems_base_long_term_operation(ems_abc):
         )
 
     def add_ems_args(self):
-        WSPr_df = """WSPr_df['price_t'] = inputs['price_t']"""
+        WSPr_df = ''
         added_ems_args = """
             # args base
             'hpp_curt_t': inputs['hpp_curt_t'],
             'G_MW': inputs['G_MW'][0],
-            'price_ts': WSPr_df.price_t,
+            'price_ts': inputs['price_t_ext'],
             'peak_hr_quantile': inputs['peak_hr_quantile'][0],
             'n_full_power_hours_expected_per_day_at_peak_price': inputs['n_full_power_hours_expected_per_day_at_peak_price'][0],
             """

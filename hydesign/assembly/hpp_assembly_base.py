@@ -19,7 +19,7 @@ import xarray as xr
 from hydesign.weather.weather import extract_weather_for_HPP, ABL, select_years
 from hydesign.wind.wind import get_rotor_area, get_rotor_d
 from hydesign.ems.ems import ems, ems_long_term_operation
-from hydesign.ems.ems_builder import ems_builder, ems_long_term_operation_builder
+from hydesign.ems.ems_builder import ems_builder, ems_long_term_operation_builder, ems_cplex_builder
 from hydesign.look_up_tables import lut_filepath
 from .hpp_model_base import hpp_model_base
 from .hpp_model_wind import hpp_model_wind
@@ -302,6 +302,7 @@ class hpp_model:
     def build(self):
         ems_builder(self)
         ems_long_term_operation_builder(self)
+        ems_cplex_builder(self)
 
 
     def evaluate(

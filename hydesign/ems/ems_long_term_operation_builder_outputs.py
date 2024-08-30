@@ -169,32 +169,35 @@ class ems_long_term_operation(om.ExplicitComponent):
             shape=[self.life_h + 1])
 
     def compute(self, inputs, outputs):
-        # ems_long arguments
-        WSPr_df['price_t'] = inputs['price_t']
-        WSPr_df['wind_t'] = inputs['wind_t']
-        WSPr_df['solar_t'] = inputs['solar_t']
-        WSPr_df['b_E'] = inputs['b_E'][0]
         ems_args = {
-
  
             # args base
-            'price_ts': WSPr_df.price_t,
+            'hpp_curt_t': inputs['hpp_curt_t'],
             'G_MW': inputs['G_MW'][0],
+            'price_ts': inputs['price_t_ext'],
             'peak_hr_quantile': inputs['peak_hr_quantile'][0],
             'n_full_power_hours_expected_per_day_at_peak_price': inputs['n_full_power_hours_expected_per_day_at_peak_price'][0],
-            'technology_types': ['wind', 'solar', 'bess'],
+            
             # args wind
-            'wind_ts':  WSPr_df.wind_t,
+            'wind_t_deg': inputs['wind_t_ext_deg'],
+            'wind_t': inputs['wind_t_ext'],
+            
             # args solar
-            'solar_ts': WSPr_df.solar_t,
+            'solar_t_deg': inputs['solar_t_ext_deg'],
+            'solar_t': inputs['solar_t_ext'],
+            
             # args bess
-            'b_P': inputs['b_P'][0],
-            'b_E': WSPr_df.b_E,
+            'batt_degradation': inputs['SoH'],
+            'b_t': inputs['b_t'],
+            'b_E_SOC_t': inputs['b_E_SOC_t'],
+            'b_E': inputs['b_E'][0],
             'battery_depth_of_discharge': inputs['battery_depth_of_discharge'][0],
             'battery_charge_efficiency': inputs['battery_charge_efficiency'][0],
-            'cost_of_battery_P_fluct_in_peak_price_ratio': inputs['cost_of_battery_P_fluct_in_peak_price_ratio'][0],
+            'b_E_SOC_0': None,
+            
          }
-        outputs_ems = energy_penalty(ems_args) 
+
+        outputs_ems = operation_solar_batt_deg(ems_args) 
 
         # post processing outputs 
         # post processing outputs for base

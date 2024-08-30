@@ -99,16 +99,16 @@ class ems_bess_long_term_operation(ems_abc):
             shape=[component.life_h + 1])
 
     def add_ems_args(self):
-        WSPr_df = """WSPr_df['b_E'] = inputs['b_E'][0]"""
+        WSPr_df = ''
         added_ems_args = """
             # args bess
             'batt_degradation': inputs['SoH'],
             'b_t': inputs['b_t'],
             'b_E_SOC_t': inputs['b_E_SOC_t'],
-            'b_E': WSPr_df.b_E,
+            'b_E': inputs['b_E'][0],
             'battery_depth_of_discharge': inputs['battery_depth_of_discharge'][0],
             'battery_charge_efficiency': inputs['battery_charge_efficiency'][0],
-            'b_E_SOC_0': inputs['b_E_SOC_t'],
+            'b_E_SOC_0': None,
             """
         return WSPr_df, added_ems_args
 

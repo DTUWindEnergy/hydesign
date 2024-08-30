@@ -51,10 +51,10 @@ class ems_wind_long_term_operation(ems_abc):
         pass
 
     def add_ems_args(self):
-        WSPr_df = """WSPr_df['wind_t'] = inputs['wind_t']"""
+        WSPr_df = ''
         added_ems_args ="""
             # args wind
-            'wind_t_deg': WSPr_df.wind_t,
+            'wind_t_deg': inputs['wind_t_ext_deg'],
             'wind_t': inputs['wind_t_ext'],
             """
         return WSPr_df, added_ems_args

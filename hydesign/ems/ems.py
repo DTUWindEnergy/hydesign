@@ -22,7 +22,7 @@ from .ems_builder_utils import insert_ems_section, insert_ems_long_term_operatio
 from .ems_sections import imports, init_ems, init_ems_long, setup_ems, setup_ems_long, compute_ems, compute_ems_long, section10
 
 from .ems_builder_outputs import ems
-#from .emse_long_term_operation_builder_outputs import ems_long_term_operation
+from .ems_long_term_operation_builder_outputs import ems_long_term_operation
 
 # class ems(om.ExplicitComponent):
 #     """Energy management optimization model
@@ -74,144 +74,154 @@ from .ems_builder_outputs import ems
 #         ## ems_type should be explicitly called
 #         ## show only final arguments
 
-class ems_long_term_operation(om.ExplicitComponent):
-    """Long term operation EMS. Predicts the operation of the plant throughout the entire lifetime, taking into account the battery
-    and PV degradations.
+# class ems_long_term_operation(om.ExplicitComponent):
+#     """Long term operation EMS. Predicts the operation of the plant throughout the entire lifetime, taking into account the battery
+#     and PV degradations.
+#
+#     Parameters
+#     ----------
+#     ii_time : indices on the liftime timeseries. Hydesign operates in each range at constant battery health.
+#     SoH : Battery state of health at discretization levels
+#     wind_t_ext_deg : WPP power time series with degradation [MW]
+#     solar_t_ext_deg : WPP power time series with degradation [MW]
+#     wind_t_ext : WPP power time series [MW]
+#     solar_t_ext : PVP power time series [MW]
+#     price_t_ext : Electricity price time series
+#     b_P : Battery power capacity
+#     b_E : Battery energy storage capacity
+#     G_MW : Grid capacity
+#     battery_depth_of_discharge : battery depth of discharge
+#     battery_charge_efficiency : battery charge efficiency
+#     hpp_curt_t : HPP curtailed power time series
+#     b_t : Battery charge/discharge power time series
+#     b_E_SOC_t : Battery energy SOC time series
+#     peak_hr_quantile : Quantile of price time series to define peak price hours
+#     n_full_power_hours_expected_per_day_at_peak_price : Penalty occurs if number of full power hours expected per day at peak price are not reached
+#
+#     Returns
+#     -------
+#     hpp_t_with_deg : HPP power time series
+#     hpp_curt_t_with_deg : HPP curtailed power time series
+#     b_t_with_deg : Battery charge/discharge power time series
+#     b_E_SOC_t_with_deg : Battery energy SOC time series
+#     penalty_t_with_deg : penalty for not reaching expected energy production at peak hours
+#     total_curtailment : total curtailment in the lifetime
+#     """
+#
+#     def __init__(
+#         self,
+#         N_time,
+#         num_batteries = 1,
+#         life_h = 25*365*24,
+#         ems_type='energy_penalty',
+#         load_min_penalty_factor=1e6,
+#         technology_types=['wind', 'solar', 'bess']
+#         ):
+#
+#         super().__init__()
+#         self.N_time = N_time
+#         self.life_h = life_h
+#         self.ems_type = ems_type
+#         self.load_min_penalty_factor = load_min_penalty_factor
+#         self.technology_types = technology_types
+#         self.build_ems = False
+#
+#         self.technology_types_and_base = ['base'] + ['solar', 'wind', 'bess']
+#
+#         self.class_map = {
+#             'base': ems_base_long_term_operation,
+#             'wind': ems_wind_long_term_operation,
+#             'solar': ems_solar_long_term_operation,
+#             'bess': ems_bess_long_term_operation
+#         }
+#
+#         if self.build_ems:
+#             # Start ems_build
+#             file_path = get_path_builded_ems('long')
+#
+#             # Write to the file
+#             with open(file_path, "w") as file:
+#                 file.write("# Built by ems_builder\n")
+#             insert_ems_long_term_operation_section(imports)
+#             insert_ems_long_term_operation_section(init_ems_long)
+#
+#         # Reload the module
+#         importlib.reload(builded_ems)
+#         builded_ems_long_term_operation.init(self)
+#
+#     def setup(self):
+#         if self.build_ems:
+#             code = insert_ems_long_term_operation_section(setup_ems_long)
+#             code_setup = "\n    # add inputs to the cplex model"
+#             for tech_type in self.technology_types_and_base:
+#                 class_name = self.class_map[tech_type]() # getattr(self, f"ems_{tech_type}_long_term_operation_instance")
+#                 #class_name.add_inputs(self)
+#                 code_class = class_name.get_code_addinputs()
+#                 code_setup = code_setup + f"\n    # inputs added for {tech_type}"
+#                 code_setup = code_setup + "\n" + code_class + "\n"
+#
+#             code_setup = code_setup + "\n    # add outputs to the cplex model"
+#             for tech_type in self.technology_types_and_base:
+#                 class_name = self.class_map[tech_type]() #  getattr(self, f"ems_{tech_type}_long_term_operation_instance")
+#                 #class_name.add_outputs(self)
+#                 code_class = class_name.get_code_addoutputs()
+#                 code_setup = code_setup + f"\n    # outputs added for {tech_type}"
+#                 code_setup = code_setup + "\n" + code_class + "\n"
+#
+#             # Save the combined string to a Python (.py) file
+#             file_path = get_path_builded_ems('long')
+#             with open(file_path, "a") as file:
+#                 file.write(code_setup)
+#
+#         # Reload the module
+#         importlib.reload(builded_ems_long_term_operation)
+#         builded_ems_long_term_operation.setup(self)
+#
+#         if self.build_ems:
+#             insert_ems_long_term_operation_section(section10)
+#
+#     def compute(self, inputs, outputs):
+#         if self.build_ems:
+#             code_setup = "\n    # ems_long arguments"
+#             for tech_type in self.technology_types_and_base:
+#                 class_name = self.class_map[tech_type]() #  getattr(self, f"ems_{tech_type}_long_term_operation_instance")
+#                 #ems_args = class_name.add_ems_args(ems_args, inputs)
+#                 code_class = class_name.get_code_add_ems_args()
+#                 code_setup = code_setup + f"\n    # arguments added for {tech_type}"
+#                 code_setup = code_setup + "\n" + code_class + "\n"
+#
+#             # Save the combined string to a Python (.py) file
+#             insert_ems_long_term_operation_section(compute_ems_long)
+#             file_path = get_path_builded_ems('long')
+#             with open(file_path, "a") as file:
+#                 file.write(code_setup)
+#
+#             code_setup = "\n    outputs_ems = ems_longterm(ems_args)\n    # post processing outputs"
+#             for tech_type in self.technology_types_and_base:
+#                 class_name = self.class_map[tech_type]() #  getattr(self, f"ems_{tech_type}_long_term_operation_instance")
+#                 #outputs = class_name.postprocessing_outputs(component=self, inputs=inputs, outputs=outputs, outputs_ems=outputs_ems_longterm)
+#
+#                 code_class = class_name.get_code_postprocessing_outputs()
+#                 code_setup = code_setup + f"\n    # post processing outputs for {tech_type}"
+#                 code_setup = code_setup + "\n" + code_class + "\n"
+#
+#             # Save the combined string to a Python (.py) file
+#             with open(file_path, "a") as file:
+#                 file.write(code_setup)
+#         # Reload the module
+#         importlib.reload(builded_ems_long_term_operation)
+#         builded_ems_long_term_operation.compute(self, inputs, outputs)
 
-    Parameters
-    ----------
-    ii_time : indices on the liftime timeseries. Hydesign operates in each range at constant battery health.
-    SoH : Battery state of health at discretization levels
-    wind_t_ext_deg : WPP power time series with degradation [MW]
-    solar_t_ext_deg : WPP power time series with degradation [MW]
-    wind_t_ext : WPP power time series [MW]
-    solar_t_ext : PVP power time series [MW]
-    price_t_ext : Electricity price time series
-    b_P : Battery power capacity
-    b_E : Battery energy storage capacity
-    G_MW : Grid capacity
-    battery_depth_of_discharge : battery depth of discharge
-    battery_charge_efficiency : battery charge efficiency
-    hpp_curt_t : HPP curtailed power time series
-    b_t : Battery charge/discharge power time series
-    b_E_SOC_t : Battery energy SOC time series
-    peak_hr_quantile : Quantile of price time series to define peak price hours
-    n_full_power_hours_expected_per_day_at_peak_price : Penalty occurs if number of full power hours expected per day at peak price are not reached
 
-    Returns
-    -------
-    hpp_t_with_deg : HPP power time series
-    hpp_curt_t_with_deg : HPP curtailed power time series
-    b_t_with_deg : Battery charge/discharge power time series
-    b_E_SOC_t_with_deg : Battery energy SOC time series
-    penalty_t_with_deg : penalty for not reaching expected energy production at peak hours
-    total_curtailment : total curtailment in the lifetime
-    """
 
-    def __init__(
-        self,
-        N_time,
-        num_batteries = 1,
-        life_h = 25*365*24,
-        ems_type='energy_penalty',
-        load_min_penalty_factor=1e6,
-        technology_types=['wind', 'solar', 'bess']
-        ):
 
-        super().__init__()
-        self.N_time = N_time
-        self.life_h = life_h
-        self.ems_type = ems_type
-        self.load_min_penalty_factor = load_min_penalty_factor
-        self.technology_types = technology_types
-        self.build_ems = False
 
-        self.technology_types_and_base = ['base'] + ['solar', 'wind', 'bess']
 
-        self.class_map = {
-            'base': ems_base_long_term_operation,
-            'wind': ems_wind_long_term_operation,
-            'solar': ems_solar_long_term_operation,
-            'bess': ems_bess_long_term_operation
-        }
 
-        if self.build_ems:
-            # Start ems_build
-            file_path = get_path_builded_ems('long')
 
-            # Write to the file
-            with open(file_path, "w") as file:
-                file.write("# Built by ems_builder\n")
-            insert_ems_long_term_operation_section(imports)
-            insert_ems_long_term_operation_section(init_ems_long)
 
-        # Reload the module
-        importlib.reload(builded_ems)
-        builded_ems_long_term_operation.init(self)
 
-    def setup(self):
-        if self.build_ems:
-            code = insert_ems_long_term_operation_section(setup_ems_long)
-            code_setup = "\n    # add inputs to the cplex model"
-            for tech_type in self.technology_types_and_base:
-                class_name = self.class_map[tech_type]() # getattr(self, f"ems_{tech_type}_long_term_operation_instance")
-                #class_name.add_inputs(self)
-                code_class = class_name.get_code_addinputs()
-                code_setup = code_setup + f"\n    # inputs added for {tech_type}"
-                code_setup = code_setup + "\n" + code_class + "\n"
-
-            code_setup = code_setup + "\n    # add outputs to the cplex model"
-            for tech_type in self.technology_types_and_base:
-                class_name = self.class_map[tech_type]() #  getattr(self, f"ems_{tech_type}_long_term_operation_instance")
-                #class_name.add_outputs(self)
-                code_class = class_name.get_code_addoutputs()
-                code_setup = code_setup + f"\n    # outputs added for {tech_type}"
-                code_setup = code_setup + "\n" + code_class + "\n"
-
-            # Save the combined string to a Python (.py) file
-            file_path = get_path_builded_ems('long')
-            with open(file_path, "a") as file:
-                file.write(code_setup)
-
-        # Reload the module
-        importlib.reload(builded_ems_long_term_operation)
-        builded_ems_long_term_operation.setup(self)
-
-        if self.build_ems:
-            insert_ems_long_term_operation_section(section10)
-
-    def compute(self, inputs, outputs):
-        if self.build_ems:
-            code_setup = "\n    # ems_long arguments"
-            for tech_type in self.technology_types_and_base:
-                class_name = self.class_map[tech_type]() #  getattr(self, f"ems_{tech_type}_long_term_operation_instance")
-                #ems_args = class_name.add_ems_args(ems_args, inputs)
-                code_class = class_name.get_code_add_ems_args()
-                code_setup = code_setup + f"\n    # arguments added for {tech_type}"
-                code_setup = code_setup + "\n" + code_class + "\n"
-
-            # Save the combined string to a Python (.py) file
-            insert_ems_long_term_operation_section(compute_ems_long)
-            file_path = get_path_builded_ems('long')
-            with open(file_path, "a") as file:
-                file.write(code_setup)
-
-            code_setup = "\n    outputs_ems = ems_longterm(ems_args)\n    # post processing outputs"
-            for tech_type in self.technology_types_and_base:
-                class_name = self.class_map[tech_type]() #  getattr(self, f"ems_{tech_type}_long_term_operation_instance")
-                #outputs = class_name.postprocessing_outputs(component=self, inputs=inputs, outputs=outputs, outputs_ems=outputs_ems_longterm)
-
-                code_class = class_name.get_code_postprocessing_outputs()
-                code_setup = code_setup + f"\n    # post processing outputs for {tech_type}"
-                code_setup = code_setup + "\n" + code_class + "\n"
-
-            # Save the combined string to a Python (.py) file
-            with open(file_path, "a") as file:
-                file.write(code_setup)
-        # Reload the module
-        importlib.reload(builded_ems_long_term_operation)
-        builded_ems_long_term_operation.compute(self, inputs, outputs)
-# ------------
+# # ------------
 # ems_cplex
 # ------------
 

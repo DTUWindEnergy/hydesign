@@ -52,7 +52,7 @@ class ems_solar_long_term_operation(ems_abc):
         pass
 
     def add_ems_args(self):
-        WSPr_df = """WSPr_df['solar_t'] = inputs['solar_t']"""
+        WSPr_df = ''
         added_ems_args = """
             # args solar
             'solar_t_deg': inputs['solar_t_ext_deg'],

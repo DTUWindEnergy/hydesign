@@ -124,10 +124,12 @@ class ems(om.ExplicitComponent):
     ######### final code
     with open(file_path, "w") as file:
         file.write(code_builder)
+        file.flush()  # Ensure all data is written to disk
+        os.fsync(file.fileno())  # Ensure the file is physically written to disk
 
 def ems_long_term_operation_builder(self):
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(script_dir, "emse_long_term_operation_builder_outputs.py")
+    file_path = os.path.join(script_dir, "ems_long_term_operation_builder_outputs.py")
 
     code_builder = """# Built by ems_builder
 # %%
@@ -196,25 +198,30 @@ class ems_long_term_operation(om.ExplicitComponent):
         code_builder += "\n" + code_class + "\n"
 
     code_builder += """
-    def compute(self, inputs, outputs):
-        # ems_long arguments"""
+    def compute(self, inputs, outputs):"""
+    if self.ems_long_type == 'energy_penalty':
+        ems_longterm = 'operation_solar_batt_deg'
+    else:
+        raise Warning("This class should only be used for energy_penalty")
+        """# ems_long arguments"""
 
     code_added_ems_args =""
     for tech_type in self.technology_types_and_base:
-        class_name = self.ems_class_map[tech_type]() # getattr(self, f"ems_{tech_type}_abc_instance")
+        class_name = self.ems_long_class_map[tech_type]() # getattr(self, f"ems_{tech_type}_abc_instance")
         #ems_args = class_name.add_ems_args(ems_args, WSPr_df, inputs)
 
         WSPr_df, added_ems_args = class_name.add_ems_args()
-        code_builder += "\n        " + WSPr_df
+        if WSPr_df:
+            code_builder += "\n        " + WSPr_df
         code_added_ems_args += added_ems_args
 
-    code_builder += "\n        ems_args = {\n"
+    code_builder += "\n        ems_args = {"
     code_builder += f"\n {code_added_ems_args}\n"
-    code_builder += "         }"
+    code_builder += "         }\n"
 
 
     code_builder += f"""
-        outputs_ems = {self.ems_long_type}(ems_args) \n
+        outputs_ems = {ems_longterm}(ems_args) \n
         # post processing outputs \n"""
     for tech_type in self.technology_types_and_base:
         class_name = self.ems_long_class_map[tech_type]()  # getattr(self, f"ems_{tech_type}_long_term_operation_instance")
@@ -224,6 +231,26 @@ class ems_long_term_operation(om.ExplicitComponent):
         code_builder += f"        # post processing outputs for {tech_type}\n"
         code_builder += code_class + "\n"
 
+
+    ######### final code
+    with open(file_path, "w") as file:
+        file.write(code_builder)
+        file.flush()  # Ensure all data is written to disk
+        os.fsync(file.fileno())  # Ensure the file is physically written to disk
+
+
+def ems_cplex_builder(self):
+    # Get the appropriate EMS function name based on ems_type
+    ems_type = self.available_ems_types.get(self.ems_type)
+
+    # Raise a warning if the ems_type is not found in the dictionary
+    if ems_type is None:
+        raise Warning("Selected ems type is not supported")
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(script_dir, "ems_cplex_builder_output.py")
+
+    code_builder = """# Built by ems_builder"""
 
     ######### final code
     with open(file_path, "w") as file:
@@ -334,9 +361,13 @@ class ems_long_term_operation(om.ExplicitComponent):
         # Reload the module
         importlib.reload(builded_ems_long_term_operation)
         builded_ems_long_term_operation.compute(self, inputs, outputs)
+
+
 # ------------
 # ems_cplex
 # ------------
+
+
 
 # def operation_solar_batt_deg(inputs):
 #
