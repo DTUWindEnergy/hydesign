@@ -106,3 +106,6 @@ class hybridization_shifted(om.ExplicitComponent):
         delta_life = int(inputs['delta_life'])
 
         outputs['SoH_shifted'] = np.concatenate((np.zeros(delta_life * 365 * 24), SoH[0:N_life * 365 * 24], np.zeros((N_limit-delta_life) * 365 * 24)))
+
+def sample_mean(outs):
+    return np.mean(outs, axis=0)

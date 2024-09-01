@@ -1,5 +1,5 @@
 if __name__ == '__main__':
-    from hydesign.Parallel_EGO import get_kwargs, EfficientGlobalOptimizationDriver
+    from hydesign.Parallel_EGO import EfficientGlobalOptimizationDriver
     import os
 
     # import numpy as np
@@ -42,7 +42,6 @@ if __name__ == '__main__':
 
 
     inputs = {
-        'example': None,
         'name': 'Denmark_hybridization_solar_Langelinie',
         'longitude': longitude,
         'latitude': latitude,
@@ -67,10 +66,7 @@ if __name__ == '__main__':
         'work_dir': './',
         'hpp_model': hpp_model,
         #'PPA_price': 40,
-        }
-    kwargs = get_kwargs(inputs)
-
-    kwargs['variables'] = {
+    'variables': {
         'clearance [m]':
         {'var_type':'design',
          'limits':[10, 60],
@@ -134,9 +130,9 @@ if __name__ == '__main__':
              },
         #         {'var_type':'fixed',
         #           'value': 10},
-    }
+    }}
 
-    EGOD = EfficientGlobalOptimizationDriver(**kwargs)
+    EGOD = EfficientGlobalOptimizationDriver(**inputs)
     EGOD.run()
     result = EGOD.result
 

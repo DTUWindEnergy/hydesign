@@ -43,6 +43,7 @@ Explanations of hydesign's core objects can be found in the following tutorials:
 	notebooks/HPP_evaluation_BM
 	notebooks/Hybridize
 	notebooks/evaluate_with_reliability
+	notebooks/sizing_with_reliability
 
     .. toctree::
         :glob:

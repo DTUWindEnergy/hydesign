@@ -14,6 +14,7 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from scipy import optimize
 from scipy.stats import norm
 from multiprocessing import Pool
+import os
 
 # SMT imports
 from smt.utils.design_space import (
@@ -391,43 +392,43 @@ class ParallelEvaluator(Evaluator):
         with Pool(n_procs) as p:
             return np.vstack(p.map(fun, [(x[[ii],:], kwargs) for ii in range(x.shape[0])]))
     
-def derive_example_info(kwargs):
-    example = kwargs['example']
-    sim_pars_fn = kwargs['sim_pars_fn']
+# def derive_example_info(kwargs):
+#     example = kwargs['example']
+#     sim_pars_fn = kwargs['sim_pars_fn']
     
-    if example == None:
-        pass
-    else:
-        examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0, sep=';')
+#     if example == None:
+#         pass
+#     else:
+#         examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0, sep=';')
         
-        try:
-            ex_site = examples_sites.iloc[int(example),:]
+#         try:
+#             ex_site = examples_sites.iloc[int(example),:]
     
-            print('Selected example site:')
-            print('---------------------------------------------------')
-            print(ex_site.T)
+#             print('Selected example site:')
+#             print('---------------------------------------------------')
+#             print(ex_site.T)
     
-            kwargs['name'] = ex_site['name']
-            kwargs['longitude'] = ex_site['longitude']
-            kwargs['latitude'] = ex_site['latitude']
-            kwargs['altitude'] = ex_site['altitude']
-            kwargs['input_ts_fn'] = examples_filepath+ex_site['input_ts_fn']
-            kwargs['H2_demand_fn'] = examples_filepath+ex_site['H2_demand_col']
-            kwargs['input_HA_ts_fn'] = examples_filepath+str(ex_site['input_HA_ts_fn'])
-            kwargs['price_up_ts_fn'] = examples_filepath+str(ex_site['price_up_ts'])
-            kwargs['price_dwn_ts_fn'] = examples_filepath+str(ex_site['price_dwn_ts'])
-            kwargs['price_col'] = ex_site['price_col']
-            if sim_pars_fn == None:
-                kwargs['sim_pars_fn'] = examples_filepath+ex_site['sim_pars_fn']
+#             kwargs['name'] = ex_site['name']
+#             kwargs['longitude'] = ex_site['longitude']
+#             kwargs['latitude'] = ex_site['latitude']
+#             kwargs['altitude'] = ex_site['altitude']
+#             kwargs['input_ts_fn'] = examples_filepath+ex_site['input_ts_fn']
+#             kwargs['H2_demand_fn'] = examples_filepath+ex_site['H2_demand_col']
+#             kwargs['input_HA_ts_fn'] = examples_filepath+str(ex_site['input_HA_ts_fn'])
+#             kwargs['price_up_ts_fn'] = examples_filepath+str(ex_site['price_up_ts'])
+#             kwargs['price_dwn_ts_fn'] = examples_filepath+str(ex_site['price_dwn_ts'])
+#             kwargs['price_col'] = ex_site['price_col']
+#             if sim_pars_fn == None:
+#                 kwargs['sim_pars_fn'] = examples_filepath+ex_site['sim_pars_fn']
             
-        except:
-            raise(f'Not a valid example: {int(example)}')
+#         except:
+#             raise(f'Not a valid example: {int(example)}')
     
-    return kwargs
+#     return kwargs
            
 
-def get_kwargs(kwargs):
-    kwargs = derive_example_info(kwargs)
+def check_types(kwargs):
+    # kwargs = derive_example_info(kwargs)
     for x in ['num_batteries', 'n_procs', 'n_doe', 'n_clusters',
               'n_seed', 'max_iter']:
         kwargs[x] = int(kwargs[x])
@@ -443,6 +444,8 @@ def get_kwargs(kwargs):
 class EfficientGlobalOptimizationDriver(Driver):
 
     def __init__(self, **kwargs):
+        os.environ["OPENMDAO_USE_MPI"] = '0'
+        kwargs = check_types(kwargs)
         self.kwargs = kwargs
         super().__init__(**kwargs)
 
@@ -693,123 +696,98 @@ class EfficientGlobalOptimizationDriver(Driver):
 if __name__ == '__main__':
     from hydesign.assembly.hpp_assembly import hpp_model
     
+    name = 'France_good_wind'
+    examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0, sep=';')
+    ex_site = examples_sites.loc[examples_sites.name == name]
+
+    longitude = ex_site['longitude'].values[0]
+    latitude = ex_site['latitude'].values[0]
+    altitude = ex_site['altitude'].values[0]
+
+    sim_pars_fn = examples_filepath+ex_site['sim_pars_fn'].values[0]
+    input_ts_fn = examples_filepath+ex_site['input_ts_fn'].values[0]
+
     inputs = {
-        'example': 4,
-        'name': None,
-        'longitude': None,
-        'latitude': None,
-        'altitude': None,
-        'input_ts_fn': None,
-        'sim_pars_fn': None,
-    
-        'opt_var': "NPV_over_CAPEX",
+        # HPP Model Inputs
+        'name': name,
+        'longitude': longitude,
+        'latitude': latitude,
+        'altitude': altitude,
+        'input_ts_fn': input_ts_fn,
+        'sim_pars_fn': sim_pars_fn,
         'num_batteries': 10,
+        'work_dir': './',
+        'hpp_model': hpp_model,
+    
+        # EGO Inputs
+        'opt_var': "NPV_over_CAPEX",
         'n_procs': 4,
         'n_doe': 10,
-        'n_clusters': 2, # total number of evals per iteration = n_clusters + 2*n_dims
+        'n_clusters': 4, # total number of evals per iteration = n_clusters + 2*n_dims
         'n_seed': 0,
-        'max_iter': 10,
+        'max_iter': 3,
         'final_design_fn': 'hydesign_design_0.csv',
         'npred': 2e4,
         'tol': 1e-6,
-        # 'theta_bounds': [1e-3, 1e2],
-        # 'n_comp': 2,
         'min_conv_iter': 3,
-        'work_dir': './',
-        'hpp_model': hpp_model,
+
+        
+        # Design Variables
+        'variables': {
+            'clearance [m]': {
+                'var_type':'design',
+                'limits':[10, 60],
+                'types':'int'
+                },
+            'sp [W/m2]': {
+                'var_type':'design',
+                'limits':[200, 360],
+                'types':'int'
+                },
+            'p_rated [MW]': {
+                'var_type':'fixed',
+                'value': 6
+                },
+            'Nwt': {
+                'var_type':'fixed',
+                'value': 200
+                },
+            'wind_MW_per_km2 [MW/km2]': {
+                'var_type':'fixed',
+                'value': 7
+                },
+            'solar_MW [MW]': {
+                'var_type':'fixed',
+                'value': 200
+                },
+            'surface_tilt [deg]': {
+                'var_type':'fixed',
+                'value': 25
+                },
+            'surface_azimuth [deg]': {
+                'var_type':'design',
+                'limits':[150, 210],
+                'types':'float'
+                },
+            'DC_AC_ratio': {
+                'var_type':'fixed',
+                'value':1.0,
+                },
+            'b_P [MW]': {
+                'var_type':'fixed',
+                'value': 50
+                },
+            'b_E_h [h]': {
+                'var_type':'fixed',
+                'value': 6
+                },
+            'cost_of_battery_P_fluct_in_peak_price_ratio': {
+                'var_type':'fixed',
+                'value': 10
+                },
+            },
         }
-    
-    kwargs = get_kwargs(inputs)
-    kwargs['variables'] = {
-        'clearance [m]':
-            {'var_type':'design',
-             'limits':[10, 60],
-             'types':'int'
-             },
-         'sp [W/m2]':
-            {'var_type':'design',
-             'limits':[200, 360],
-             'types':'int'
-             },
-        'p_rated [MW]':
-            # {'var_type':'design',
-            #  'limits':[1, 10],
-            #  'types':'int'
-            #  },
-            {'var_type':'fixed',
-              'value': 6
-              },
-        'Nwt':
-            # {'var_type':'design',
-            #  'limits':[0, 400],
-            #  'types':'int'
-            #  },
-            {'var_type':'fixed',
-              'value': 200
-              },
-        'wind_MW_per_km2 [MW/km2]':
-            # {'var_type':'design',
-            #  'limits':[5, 9],
-            #  'types':'float'
-            #  },
-            {'var_type':'fixed',
-              'value': 7
-              },
-        'solar_MW [MW]':
-            # {'var_type':'design',
-            #  'limits':[0, 400],
-            #  'types':'int'
-             # },
-            {'var_type':'fixed',
-              'value': 200
-              },
-        'surface_tilt [deg]':
-            # {'var_type':'design',
-            #  'limits':[0, 50],
-            #  'types':'float'
-            #  },
-            {'var_type':'fixed',
-              'value': 25
-              },
-        'surface_azimuth [deg]':
-            {'var_type':'design',
-             'limits':[150, 210],
-             'types':'float'
-             },
-        'DC_AC_ratio':
-            # {'var_type':'design',
-            #   'limits':[1, 2.0],
-            #   'types':'float'
-            #  },
-            {'var_type':'fixed',
-              'value':1.0,
-              },
-        'b_P [MW]':
-            # {'var_type':'design',
-            #  'limits':[0, 100],
-            #  'types':'int'
-            #  },
-            {'var_type':'fixed',
-              'value': 50
-              },
-        'b_E_h [h]':
-            # {'var_type':'design',
-            #  'limits':[1, 10],
-            #  'types':'int'
-            #  },
-            {'var_type':'fixed',
-              'value': 6
-              },
-        'cost_of_battery_P_fluct_in_peak_price_ratio':
-            # {'var_type':'design',
-            #  'limits':[0, 20],
-            #  'types':'float',
-            #  # 'resolution':0.5,
-            #  },
-            {'var_type':'fixed',
-              'value': 10},
-    }    
-    EGOD = EfficientGlobalOptimizationDriver(**kwargs)
+    EGOD = EfficientGlobalOptimizationDriver(**inputs)
     EGOD.run()
     result = EGOD.result
     

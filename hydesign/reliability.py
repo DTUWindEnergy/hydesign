@@ -60,10 +60,6 @@ class wpp_with_reliability(om.ExplicitComponent):
         self.reliability_ts_trans = reliability_ts_trans
         
     def setup(self):
-        # self.add_input(
-        #     'Nwt',
-        #     val=1,
-        #     desc="Number of wind turbines")
         self.add_input(
             'wind_t',
             desc="WPP power time series w/o reliability",
@@ -99,11 +95,6 @@ class pvp_with_reliability(om.ExplicitComponent):
         self.reliability_ts_trans = reliability_ts_trans
         
     def setup(self):
-        # self.add_input(
-        #     'solar_MW',
-        #     val=1,
-        #     desc="Solar PV plant installed capacity",
-        #     units='MW')
         self.add_input(
             'solar_t',
             desc="PVP power time series w/o reliability",

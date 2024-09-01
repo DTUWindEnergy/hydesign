@@ -6,7 +6,7 @@ import pandas as pd
 import xarray as xr
 
 from hydesign.assembly.hpp_assembly import hpp_model
-from hydesign.Parallel_EGO import get_kwargs, EfficientGlobalOptimizationDriver
+from hydesign.Parallel_EGO import EfficientGlobalOptimizationDriver
 from hydesign.examples import examples_filepath
 
 def fillin_prices_missing_days(pr_df):
@@ -93,10 +93,7 @@ if __name__ == '__main__':
         'work_dir': './',
         #
         'hpp_model': hpp_model,
-        }
-
-    kwargs = get_kwargs(inputs)
-    kwargs['variables'] = {
+    'variables' : {
         'clearance [m]':
             {'var_type':'fixed',
              'value':10,
@@ -158,8 +155,8 @@ if __name__ == '__main__':
              'types':'resolution',
              'resolution':0.5,
              },
-    }  
-    EGOD = EfficientGlobalOptimizationDriver(model=hpp_model, **kwargs)
+    }  }
+    EGOD = EfficientGlobalOptimizationDriver(**inputs)
     EGOD.run()
     result = EGOD.result
     

@@ -213,18 +213,17 @@ plt.show()
 """ def main():
     if __name__ == '__main__':
         from hydesign.assembly.hpp_assembly_constantoutput import hpp_model_constant_output as hpp_model
-        from hydesign.Parallel_EGO import get_kwargs, EfficientGlobalOptimizationDriver
+        from hydesign.Parallel_EGO import EfficientGlobalOptimizationDriver
 
         # Simple example to size wind only with a single core to run test machines and colab
         
         inputs = {
-            'example': 10,
-            'name': None,
-            'longitude': None,
-            'latitude': None,
-            'altitude': None,
-            'input_ts_fn': None,
-            'sim_pars_fn': None,
+            'name': name,
+            'longitude': longitude,
+            'latitude': latitude,
+            'altitude': altitude,
+            'input_ts_fn': input_ts_fn,
+            'sim_pars_fn': sim_pars_fn,
     
             'opt_var': "NPV_over_CAPEX",
             'num_batteries': 2,
@@ -240,10 +239,7 @@ plt.show()
             'work_dir': './',
             'hpp_model': hpp_model,
             'PPA_price': 40,
-            }
-    
-        kwargs = get_kwargs(inputs)
-        kwargs['variables'] = {
+        'variables': {
             'clearance [m]':
                 #{'var_type':'design',
                 #  'limits':[10, 60],
@@ -339,8 +335,8 @@ plt.show()
                 #   },
                 {'var_type':'fixed',
                   'value': 10},
-            }
-        EGOD = EfficientGlobalOptimizationDriver(**kwargs)
+            }}
+        EGOD = EfficientGlobalOptimizationDriver(**inputs)
         EGOD.run()
         result = EGOD.result
 

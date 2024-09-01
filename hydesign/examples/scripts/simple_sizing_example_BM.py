@@ -1,18 +1,27 @@
 def main():
     if __name__ == '__main__':
         from hydesign.assembly.hpp_assembly_BM import hpp_model
-        from hydesign.Parallel_EGO import get_kwargs, EfficientGlobalOptimizationDriver
+        from hydesign.Parallel_EGO import EfficientGlobalOptimizationDriver
+        from hydesign.examples import examples_filepath
+        import pandas as pd
+        
+        example = 11
+        examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0, sep=';')
+        ex_site = examples_sites.iloc[example]
 
         # Simple example to size wind only with a single core to run test machines and colab
         
         inputs = {
-            'example': 11,
-            'name': None,
-            'longitude': None,
-            'latitude': None,
-            'altitude': None,
-            'input_ts_fn': None,
-            'sim_pars_fn': None,
+            'name': ex_site['name'],
+            'longitude': ex_site['longitude'],
+            'latitude': ex_site['latitude'],
+            'altitude': ex_site['altitude'],
+            'input_ts_fn': examples_filepath+ex_site['input_ts_fn'],
+            'sim_pars_fn': examples_filepath+ex_site['sim_pars_fn'],
+            'input_HA_ts_fn': examples_filepath+str(ex_site['input_HA_ts_fn']),
+            'price_up_ts_fn': examples_filepath+str(ex_site['price_up_ts']),
+            'price_dwn_ts_fn': examples_filepath+str(ex_site['price_dwn_ts']),
+            'price_col': ex_site['price_col'],
     
             'opt_var': "NPV_over_CAPEX",
             'num_batteries': 5,
@@ -28,10 +37,7 @@ def main():
             'min_conv_iter': 2,
             'work_dir': './',
             'hpp_model': hpp_model,
-            }
-    
-        kwargs = get_kwargs(inputs)
-        kwargs['variables'] = {
+        'variables': {
             'clearance [m]':
                 # {'var_type':'design',
                 #   'limits':[10, 60],
@@ -127,8 +133,8 @@ def main():
                 #   },
                 {'var_type':'fixed',
                   'value': 2},
-            }
-        EGOD = EfficientGlobalOptimizationDriver(**kwargs)
+            }}
+        EGOD = EfficientGlobalOptimizationDriver(**inputs)
         EGOD.run()
         result = EGOD.result
         print(result)

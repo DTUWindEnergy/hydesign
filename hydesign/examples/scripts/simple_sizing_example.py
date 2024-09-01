@@ -1,18 +1,23 @@
 def main():
     if __name__ == '__main__':
         from hydesign.assembly.hpp_assembly import hpp_model
-        from hydesign.Parallel_EGO import get_kwargs, EfficientGlobalOptimizationDriver
+        from hydesign.Parallel_EGO import EfficientGlobalOptimizationDriver
+        from hydesign.examples import examples_filepath
+        import pandas as pd
+        
+        example = 4
+        examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0, sep=';')
+        ex_site = examples_sites.iloc[example]
 
         # Simple example to size wind only with a single core to run test machines and colab
         
         inputs = {
-            'example': 4,
-            'name': None,
-            'longitude': None,
-            'latitude': None,
-            'altitude': None,
-            'input_ts_fn': None,
-            'sim_pars_fn': None,
+            'name': ex_site['name'],
+            'longitude': ex_site['longitude'],
+            'latitude': ex_site['latitude'],
+            'altitude': ex_site['altitude'],
+            'input_ts_fn': examples_filepath+ex_site['input_ts_fn'],
+            'sim_pars_fn': examples_filepath+ex_site['sim_pars_fn'],
     
             'opt_var': "NPV_over_CAPEX",
             'num_batteries': 1,
@@ -27,10 +32,7 @@ def main():
             'min_conv_iter': 2,
             'work_dir': './',
             'hpp_model': hpp_model,
-            }
-    
-        kwargs = get_kwargs(inputs)
-        kwargs['variables'] = {
+        'variables': {
             'clearance [m]':
                 {'var_type':'design',
                   'limits':[10, 60],
@@ -123,8 +125,8 @@ def main():
                 #   },
                 {'var_type':'fixed',
                   'value': 10},
-            }
-        EGOD = EfficientGlobalOptimizationDriver(**kwargs)
+            }}
+        EGOD = EfficientGlobalOptimizationDriver(**inputs)
         EGOD.run()
         result = EGOD.result
 
