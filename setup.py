@@ -72,6 +72,7 @@ setup(name='hydesign',
           'zarr',
           'ortools',
           'NREL-PySAM',
+          'chaospy',
           ],
       extras_require={
         'test': [

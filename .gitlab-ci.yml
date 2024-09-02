@@ -20,6 +20,7 @@ test_hydesign_windows:
   - "if (test-path $PROFILE.CurrentUserAllHosts) { & $PROFILE.CurrentUserAllHosts}"
   - conda activate hydesign113
   - pip install -e . --no-deps
+  - pip install chaospy
   - pytest --cov-report term-missing:skip-covered --cov=hydesign --cov-config .coveragerc
   tags:
   - ANMH_old
