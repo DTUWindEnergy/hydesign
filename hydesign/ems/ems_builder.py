@@ -3,6 +3,7 @@ import inspect
 import trace
 import sys
 import os
+import re
 import numpy as np
 import pandas as pd
 import importlib
@@ -239,22 +240,121 @@ class ems_long_term_operation(om.ExplicitComponent):
         os.fsync(file.fileno())  # Ensure the file is physically written to disk
 
 
+import os
+import inspect
+import re
+
+
 def ems_cplex_builder(self):
-    # Get the appropriate EMS function name based on ems_type
-    ems_type = self.available_ems_types.get(self.ems_type)
-
-    # Raise a warning if the ems_type is not found in the dictionary
-    if ems_type is None:
-        raise Warning("Selected ems type is not supported")
-
     script_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(script_dir, "ems_cplex_builder_output.py")
 
-    code_builder = """# Built by ems_builder"""
+    code_builder = """# Built by ems_builder
+def ems_cplex(inputs):
+    # Variable allocation"""
+    # Create a dictionary to store the instances
+    ems_cplex_instances = {}
 
-    ######### final code
-    with open(file_path, "w") as file:
+    # Loop through the technology types and create instances
+    allocated_vars = {}
+    output_string = {}
+    modified_output_string = {}
+
+    allocated_vars_all = '{\n'
+
+    for tech_type in self.technology_types_and_base:
+        if tech_type in self.ems_cplex_map:
+            ems_cplex_instances[tech_type] = self.ems_cplex_map[tech_type]()
+            # allocated_vars_instance = ems_cplex_instances[tech_type].allocate_vars2(100)
+            # allocated_vars.update(allocated_vars_instance)
+            #code = inspect.getsource(ems_cplex_instances[tech_type].allocate_vars2)
+
+            code_builder += f"\n    # allocated variables for {tech_type}: \n"
+            code_allocated_vars = ems_cplex_instances[tech_type].get_function_code(ems_cplex_instances[tech_type].allocate_vars2, indent_adjustment=4)
+
+            if 'dict' in code_allocated_vars or '{' in code_allocated_vars:
+
+                new_variable_name = f"allocated_vars_{tech_type}"
+                allocated_vars_all += f"                    **{new_variable_name}, \n"
+                code_allocated_vars_renamed = re.sub(r"^\s*\w+\s*=", f"    {new_variable_name} =", code_allocated_vars, count=1)
+                code_builder += code_allocated_vars_renamed + "\n"
+
+    allocated_vars_all += "    }\n"
+    code_builder += "\n    # allocated variables for all technologies: \n"
+    code_builder += f"    allocated_vars_all = {allocated_vars_all}"
+
+    code_builder += """
+    # split in batches, ussually a week
+    wind_ts = inputs['wind_ts']
+    batch_size_default = 2*24 # should depend on technology_types
+    batch_size = inputs.get('batch_size', batch_size_default)
+    batches_all = split_in_batch(list(range(len(wind_ts))), batch_size)
+    # Make sure the last batch is not smaller than the others
+    # instead append it to the previous last one
+    batches = batches_all[:-1]
+    batches[-1] = batches_all[-2]+batches_all[-1]
+    
+    for ib, batch in enumerate(batches):
+    """
+
+    code_builder += "\n        # inputs_to_ems_cplex_parts"
+    inputs_to_ems_cplex_parts_all = '{\n'
+    for tech_type in self.technology_types_and_base:
+        if tech_type in self.ems_cplex_map:
+            ems_cplex_instances[tech_type] = self.ems_cplex_map[tech_type]()
+
+            code_builder += f"\n        # inputs_to_ems_cplex_parts for {tech_type}: \n"
+            code_inputs_to_ems_cplex_parts = ems_cplex_instances[tech_type].get_function_code(ems_cplex_instances[tech_type].inputs_to_ems_cplex_parts2, indent_adjustment=8)
+
+            if 'dict' in code_inputs_to_ems_cplex_parts or '{' in code_inputs_to_ems_cplex_parts:
+
+                new_variable_name = f"inputs_to_ems_cplex_parts_{tech_type}"
+                inputs_to_ems_cplex_parts_all += f"                    **{new_variable_name}, \n"
+                code_inputs_to_ems_cplex_parts_renamed = re.sub(r"^\s*\w+\s*=", f"    {new_variable_name} =", code_inputs_to_ems_cplex_parts, count=1)
+                code_builder += "    " + code_inputs_to_ems_cplex_parts_renamed + "\n"
+
+    inputs_to_ems_cplex_parts_all += "        }\n"
+    code_builder += "\n        # inputs_to_ems_cplex_parts for all technologies: \n"
+    code_builder += f"        inputs_to_ems_cplex_parts_all = {inputs_to_ems_cplex_parts_all}\n"
+
+    code_builder += """        # run ems cplex parts
+        outputs_ems_cplex_parts = ems_cplex_parts(inputs_to_ems_cplex_parts_all)\n"""
+
+    code_builder += f"\n        # outputs_batch"
+    for tech_type in self.technology_types_and_base:
+        if tech_type in self.ems_cplex_map:
+            ems_cplex_instances[tech_type] = self.ems_cplex_map[tech_type]()
+
+            code_builder += f"\n        # outputs_batch for {tech_type}: \n"
+            code_outputs_batch = "    " + ems_cplex_instances[tech_type].get_function_code(ems_cplex_instances[tech_type].outputs_batch, indent_adjustment=8)
+            code_builder += "    " + code_outputs_batch +"\n"
+
+    code_builder += f"\n    # outputs of ems cplex"
+    ems_cplex_outputs_all = '{\n'
+    for tech_type in self.technology_types_and_base:
+        if tech_type in self.ems_cplex_map:
+            ems_cplex_instances[tech_type] = self.ems_cplex_map[tech_type]()
+
+            code_builder += f"\n    # ems_cplex_outputs for {tech_type}: \n"
+            code_ems_cplex_outputs = ems_cplex_instances[tech_type].get_function_code(ems_cplex_instances[tech_type].ems_cplex_outputs2, indent_adjustment=8)
+
+            if 'dict' in code_ems_cplex_outputs or '{' in code_ems_cplex_outputs:
+
+                new_variable_name = f"ems_cplex_outputs_{tech_type}"
+                ems_cplex_outputs_all += f"                    **{new_variable_name}, \n"
+                code_ems_cplex_outputs_renamed = re.sub(r"^\s*\w+\s*=", f"    {new_variable_name} =", code_ems_cplex_outputs, count=1)
+                code_builder += code_ems_cplex_outputs_renamed + "\n"
+
+    ems_cplex_outputs_all += "    }\n"
+    code_builder += "\n    # ems_cplex_outputs for all technologies: \n"
+    code_builder += f"    ems_cplex_outputs_all = {ems_cplex_outputs_all}"
+
+    code_builder += "\n    return ems_cplex_outputs_all"
+
+    # Save the generated code to the output file
+    with open(file_path, 'w') as file:
         file.write(code_builder)
+
 
 class ems_long_term_operation(om.ExplicitComponent):
 

@@ -127,6 +127,13 @@ class ems_cplex_bess(ems_cplex_abc):
         allocated_vars.update(added_allocated_vars)
         return allocated_vars
 
+    def allocate_vars2(self, length_ts):
+        allocated_vars_bess = dict(
+            P_charge_discharge_ts = np.zeros(length_ts),
+            E_SOC_ts = np.zeros(length_ts + 1)
+        )
+
+
     def inputs_to_ems_cplex_parts(self, inputs, batch, outputs):
         added_outputs = dict(
             b_P=inputs['b_P'],
@@ -138,19 +145,33 @@ class ems_cplex_bess(ems_cplex_abc):
         outputs.update(added_outputs)
         return outputs
 
+    def inputs_to_ems_cplex_parts2(self, inputs, batch, outputs):
+        added_outputs = dict(
+            b_P=inputs['b_P'],
+            battery_depth_of_discharge=inputs['battery_depth_of_discharge'],
+            battery_charge_efficiency=inputs['battery_charge_efficiency'],
+            cost_of_battery_P_fluct_in_peak_price_ratio=inputs['cost_of_battery_P_fluct_in_peak_price_ratio'],  # [0, 0.8]. For higher values might cause errors
+            b_E=inputs['b_E'].iloc[batch]
+        )
+
     def outputs_batch(self, outputs_ems_cplex_parts, batch, allocated_vars):
         allocated_vars['P_charge_discharge_ts'][batch] = outputs_ems_cplex_parts['P_charge_discharge_ts']
         allocated_vars['E_SOC_ts'][batch] = outputs_ems_cplex_parts['E_SOC_ts'][:-1]
         return allocated_vars
 
     def ems_cplex_outputs(self, outputs, allocated_vars):
-        allocated_vars['E_SOC_ts'][-1] = allocated_vars['E_SOC_ts'][0]
         added_outputs = {
             'b_t': allocated_vars['P_charge_discharge_ts'],
             'b_E_SOC_t': allocated_vars['E_SOC_ts']
         }
         outputs.update(added_outputs)
         return outputs
+
+    def ems_cplex_outputs2(self):
+        added_outputs = {
+            'b_t': allocated_vars['P_charge_discharge_ts'],
+            'b_E_SOC_t': allocated_vars['E_SOC_ts']
+        }
 
 class ems_cplex_parts_bess(ems_cplex_parts_abc):
     def __init__(self, mdl, inputs, extra_inputs={}):

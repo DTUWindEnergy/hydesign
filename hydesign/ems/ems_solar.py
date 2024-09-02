@@ -67,16 +67,25 @@ class ems_cplex_solar(ems_cplex_abc):
     def allocate_vars(self, allocated_vars, length_ts):
         return allocated_vars
 
+    def allocate_vars2(self, length_ts):
+        pass
+
     def inputs_to_ems_cplex_parts(self, inputs, batch, outputs):
         added_outputs=dict(solar_ts=inputs['solar_ts'].iloc[batch])
         outputs.update(added_outputs)
         return outputs
+
+    def inputs_to_ems_cplex_parts2(self, inputs, batch, outputs):
+        added_outputs=dict(solar_ts=inputs['solar_ts'].iloc[batch])
 
     def outputs_batch(self, outputs_ems_cplex_parts, batch, allocated_vars):
         return allocated_vars
 
     def ems_cplex_outputs(self, outputs, allocated_vars):
         return outputs
+
+    def ems_cplex_outputs2(self):
+        return None
 
 class ems_cplex_parts_solar(ems_cplex_parts_abc):
     def __init__(self, mdl, inputs, extra_inputs={}):

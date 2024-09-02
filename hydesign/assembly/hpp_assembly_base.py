@@ -26,10 +26,10 @@ from .hpp_model_wind import hpp_model_wind
 from .hpp_model_solar import hpp_model_solar
 from .hpp_model_bess import hpp_model_bess
 
-from hydesign.ems.ems_wind import ems_wind_abc, ems_wind_long_term_operation
-from hydesign.ems.ems_solar import ems_solar_abc, ems_solar_long_term_operation
-from hydesign.ems.ems_bess import ems_bess_abc, ems_bess_long_term_operation
-from hydesign.ems.ems_base import ems_base_abc, ems_base_long_term_operation
+from hydesign.ems.ems_wind import ems_wind_abc, ems_wind_long_term_operation, ems_cplex_wind
+from hydesign.ems.ems_solar import ems_solar_abc, ems_solar_long_term_operation, ems_cplex_solar
+from hydesign.ems.ems_bess import ems_bess_abc, ems_bess_long_term_operation, ems_cplex_bess
+from hydesign.ems.ems_base import ems_base_abc, ems_base_long_term_operation, ems_cplex_base
 
 
 class hpp_model:
@@ -250,6 +250,13 @@ class hpp_model:
             'bess': ems_bess_long_term_operation
         }
         self.ems_long_type = 'energy_penalty'
+
+        self.ems_cplex_map = {
+            'base': ems_cplex_base,
+            'wind': ems_cplex_wind,
+            'solar': ems_cplex_solar,
+            'bess': ems_cplex_bess
+        }
 
         technology_types_and_base = ['base'] + ['wind', 'solar', 'bess'] #+ technology_types
         self.technology_types_and_base = technology_types_and_base

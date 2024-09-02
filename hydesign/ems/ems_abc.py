@@ -92,6 +92,58 @@ class ems_cplex_abc(ABC):
     def ems_cplex_outputs(self):
         pass
 
+    def get_allocate_vars(self):
+        code = inspect.getsource(self.add_ems_args)
+        code = code.replace("component.", "self.")
+        # Specify the line you want to remove (exact match or part of the line)
+        lines_to_remove = ["def ", "return "]
+
+        # Filter out lines that start with any of the specified keywords
+        lines = [line for line in code.splitlines() if not any(line.strip().startswith(keyword) for keyword in lines_to_remove)]
+
+        # Join the remaining lines into a single string with appropriate line breaks
+        output_string = "\n".join(line for line in lines)
+        return output_string
+
+    @staticmethod
+    def get_function_code(func, dict_rename=None, indent_adjustment=0):
+        source_code = inspect.getsource(func)
+
+        # Split the source code into lines
+        code_lines = source_code.splitlines()
+
+        # Find the indentation of the first non-def, non-return line
+        base_indent = None
+        for line in code_lines:
+            stripped_line = line.strip()
+            if stripped_line and not stripped_line.startswith(("def", "return")):
+                base_indent = len(line) - len(stripped_line)
+                break
+
+        # Remove the function definition line (the one containing "def") and return line
+        filtered_code_lines = [
+            line for line in code_lines if not line.strip().startswith("def") and not line.strip().startswith("return")
+        ]
+
+        # If a dictionary rename is provided, replace dictionary names
+        if dict_rename:
+            filtered_code = "\n".join(filtered_code_lines)
+            filtered_code = re.sub(r'(\w+)\s*=\s*{', f'{dict_rename} = {{', filtered_code)
+            filtered_code_lines = filtered_code.splitlines()
+
+        # Adjust indentation
+        adjusted_code_lines = []
+        for line in filtered_code_lines:
+            # Preserve or adjust the indentation
+            current_indent = len(line) - len(line.lstrip())
+            adjusted_indent = max(0, current_indent + indent_adjustment - base_indent)
+            adjusted_line = ' ' * adjusted_indent + line.lstrip()
+            adjusted_code_lines.append(adjusted_line)
+
+        # Combine the code lines into a single string
+        refined_code = "\n".join(adjusted_code_lines).strip()
+
+        return refined_code
 
 class ems_cplex_parts_abc(ABC):
     @abstractmethod

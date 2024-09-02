@@ -158,6 +158,13 @@ class ems_cplex_base(ems_cplex_abc):
         allocated_vars.update(added_allocated_vars)
         return allocated_vars
 
+    def allocate_vars2(self, length_ts):
+        allocated_vars = dict(
+            P_HPP_ts = np.zeros(length_ts),
+            P_curtailment_ts = np.zeros(length_ts),
+            penalty_ts = np.zeros(length_ts))
+
+
     def inputs_to_ems_cplex_parts(self, inputs, batch, outputs):
         added_outputs = dict(
             price_ts=inputs['price_ts'].iloc[batch],
@@ -171,6 +178,16 @@ class ems_cplex_base(ems_cplex_abc):
         outputs.update(added_outputs)
 
         return outputs
+
+    def inputs_to_ems_cplex_parts2(self, inputs, batch, outputs):
+        added_outputs = dict(
+            price_ts=inputs['price_ts'].iloc[batch],
+            G_MW=inputs['G_MW'],
+            peak_hr_quantile=inputs['peak_hr_quantile'],
+            cost_of_battery_P_fluct_in_peak_price_ratio=inputs['cost_of_battery_P_fluct_in_peak_price_ratio'],  # [0, 0.8]. For higher values might cause errors
+            n_full_power_hours_expected_per_day_at_peak_price=inputs['n_full_power_hours_expected_per_day_at_peak_price'],
+            technology_types=inputs['technology_types'],
+        )
 
     def outputs_batch(self, outputs_ems_cplex_parts, batch, allocated_vars):
         allocated_vars['P_HPP_ts'][batch] = outputs_ems_cplex_parts['P_HPP_ts']
@@ -186,6 +203,13 @@ class ems_cplex_base(ems_cplex_abc):
         }
         outputs.update(added_outputs)
         return outputs
+
+    def ems_cplex_outputs2(self):
+        added_outputs = {
+            'hpp_t': allocated_vars['P_HPP_ts'],
+            'hpp_curt_t': allocated_vars['P_curtailment_ts'],
+            'penalty_t': allocated_vars['penalty_ts'],
+        }
 
 class ems_cplex_parts_base_pre(ems_cplex_parts_abc):
     def __init__(self, mdl, inputs, extra_inputs={}):
