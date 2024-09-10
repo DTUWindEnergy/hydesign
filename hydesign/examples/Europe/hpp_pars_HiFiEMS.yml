@@ -1,7 +1,7 @@
 # --------------------------------------------------------------------------------------------
 # HPP Global
 # --------------------------------------------------------------------------------------------
-G_MW: 300 # Grid capacity
+G_MW: 100 # Grid capacity
 year: '2012' # Single representative year
 N_life: 25
 
@@ -141,18 +141,19 @@ elevation_fn: '/groups/INP/era5/SRTMv3_plus_ViewFinder_coarsen.nc' # Altitude ma
 # HiFiEMS
 # --------------------------------------------------------------------------------------------
 
-        
+## PARAMETER KEYS
 
-# HPP parameters     
+# hpp battery parameters
 battery_maximum_SoC: 0.9
-battery_initial_SoC: 0.5
+battery_initial_SoC: 0.1
 battery_hour_discharge_efficiency: 0.985  #
 battery_hour_charge_efficiency: 0.975
 battery_self_discharge_efficiency: 0
+# hpp battery degradation parameters
+battery_marginal_degradation_cost: 142_000 # in EUR/MWh
+battery_capital_cost: 142_000 # in EUR/MWh
 
-degradation_in_optimization: 1 # 1:yes 0:no
-
-# mFRR bid parameters
+# bid parameters
 max_up_bid: 50
 max_dw_bid: 50
 min_up_bid: 5
@@ -162,24 +163,31 @@ min_dw_bid: 5
 dispatch_interval: 0.25
 settlement_interval: 0.25
 
-imbalance_fee: 0.13 # DK: 0.13€/MWh
+imbalance_fee: 0.13  # DK: 0.13 €/MWh, other Nordic countries: , others: 0.001
 
-
+## SIMULATION KEYS
 start_date: '1/1/22'
-number_of_run_day: 15   # 
-out_dir: "./test/"
+number_of_run_day: 50   # 
+out_dir: './test/'
 
-DA_wind: "DA"   #DA, Measurement
-HA_wind: "HA"   #HA, Measurement
-FMA_wind: "RT"  #5min_ahead, Measurement
-DA_solar: "Measurement"
-HA_solar: "Measurement"
-FMA_solar: "Measurement"
-SP: "SM_forecast"  # SM_forecast;SM_cleared
-RP: "reg_forecast" #reg_cleared;reg_forecast_pre
+DA_wind: 'DA'   #DA, Measurement
+HA_wind: 'HA'  #HA, Measurement
+FMA_wind: 'RT'  #5min_ahead, Measurement
+DA_solar: 'DA'
+HA_solar: 'HA'
+FMA_solar: 'RT'
+SP: 'SM_forecast'  # SM_forecast;SM_cleared
+RP: 'reg_forecast' #reg_cleared;reg_forecast_pre
 BP: 1 #1:forecast value 2: perfect value
 
+# Data
+wind_fn: '../HiFiEMS_inputs/Winddata2021_15min.csv'
+solar_fn: '../HiFiEMS_inputs/Solardata2021_15min.csv'
+market_fn: '../HiFiEMS_inputs/Market2021.csv'
 
+# for DDEMS (spot market) -- Historical data
+history_wind_fn: '../HiFiEMS_inputs/Winddata2022_15min.csv'
+history_market_fn: '../HiFiEMS_inputs/Market2021.csv'
 
 
 

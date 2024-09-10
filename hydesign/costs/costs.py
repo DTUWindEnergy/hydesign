@@ -91,7 +91,10 @@ class wpp_cost(om.ExplicitComponent):
                         desc="OPEX wpp")
 
     def setup_partials(self):
-        self.declare_partials('*', '*', method='fd')
+        self.declare_partials('*', '*', dependent=False, val=0)
+
+    def compute_partials(self, inputs, partials):
+        pass        
 
     def compute(self, inputs, outputs):#, discrete_inputs, discrete_outputs):
         """ Computing the CAPEX and OPEX of the wind power plant.
@@ -210,7 +213,10 @@ class pvp_cost(om.ExplicitComponent):
                         desc="OPEX solar pvp")
 
     def setup_partials(self):
-        self.declare_partials('*', '*', method='fd')
+        self.declare_partials('*', '*', dependent=False, val=0)
+
+    def compute_partials(self, inputs, partials):
+        pass        
 
     def compute(self, inputs, outputs):
         """ Computing the CAPEX and OPEX of the solar power plant.
@@ -313,7 +319,10 @@ class battery_cost(om.ExplicitComponent):
                         desc="OPEX battery")
 
     def setup_partials(self):
-        self.declare_partials('*', '*', method='fd')
+        self.declare_partials('*', '*', dependent=False, val=0)
+
+    def compute_partials(self, inputs, partials):
+        pass        
 
     def compute(self, inputs, outputs):
         """ Computing the CAPEX and OPEX of battery.
@@ -402,7 +411,10 @@ class shared_cost(om.ExplicitComponent):
                         desc="OPEX electrical infrastructure/ land rent")
 
     def setup_partials(self):
-        self.declare_partials('*', '*', method='fd')
+        self.declare_partials('*', '*', dependent=False, val=0)
+
+    def compute_partials(self, inputs, partials):
+        pass        
 
     def compute(self, inputs, outputs):
         """ Computing the CAPEX and OPEX of the shared land and infrastructure.

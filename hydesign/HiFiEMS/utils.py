@@ -43,6 +43,7 @@ def ReadHistoricalData(PsMax, PwMax, T, DI_num, demension):
 
 
 def f_xmin_to_ymin(x,reso_x, reso_y):  #x: dataframe reso: in hour
+    x = np.asarray(x).squeeze()
     y = pd.DataFrame()
     if reso_y > reso_x:
         a=0
@@ -50,15 +51,17 @@ def f_xmin_to_ymin(x,reso_x, reso_y):  #x: dataframe reso: in hour
         
         for ii in range(len(x)):        
             if ii%num == num-1:
-                a = (a + x.iloc[ii][0]) /num   
+                a = (a + x[ii]) /num   
                 y = y.append(pd.DataFrame([a]))
                 a = 0
             else:                       
-                a = a + x.iloc[ii][0]     
-        y.index = range(int(len(x)/num))
+                a = a + x[ii]    
+        # y.index = range(int(len(x)/num))
     else:
-        y = pd.DataFrame(np.repeat(x.iloc[:,0],int(reso_x/reso_y)))
-        y.index = range(int(24/reso_y))
+        y = pd.DataFrame(np.repeat(x,int(reso_x/reso_y)))
+        num = int(reso_x/reso_y)
+        # y.index = range(int(24/reso_y))
+    y.index = range(int(len(x)/num))
     return y
 
 
@@ -405,7 +408,7 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
         elif EMStype == "SEMS":
            DA_wind_forecast, HA_wind_forecast, RT_wind_forecast, DA_solar_forecast, HA_solar_forecast, RT_solar_forecast, SM_price_forecast, SM_price_cleared, Wind_measurement, Solar_measurement, BM_dw_price_forecast, BM_up_price_forecast, BM_dw_price_cleared, BM_up_price_cleared, reg_up_sign_forecast, reg_dw_sign_forecast, reg_vol_up, reg_vol_dw, Reg_price_cleared, time_index, HA_wind_forecast_scenario, probability_wind = EMS.ReadData(day_num, exten_num, DI_num, T, PsMax, PwMax, simulation_dict)
     
-           if simulation_dict['price_scenario_dir'] == None:      
+           if simulation_dict['price_scenario_fn'] == None:      
               probability_price, SP_scenario, RP_scenario = scenario_generation(PsMax, PwMax, T, DI_num, simulation_dict)
 
            
@@ -914,7 +917,7 @@ def run(parameter_dict, simulation_dict, EMS, EMStype, BM_model=False, RD_model=
             break
     pbar.close()
     # return P_HPP_RT_ts, P_HPP_SM_k_opt, P_HPP_RT_refs, P_HPP_UP_bid_ts, P_HPP_DW_bid_ts, RES_RT_cur_ts, P_cha_RT_ts, P_dis_RT_ts, SoC_ts
-    return (P_HPP_SM_k_opt.values.ravel(),
+    return (P_HPP_SM_t_opt.values.ravel(),
             SM_price_cleared.values,
             BM_dw_price_cleared.values,
             BM_up_price_cleared.values,

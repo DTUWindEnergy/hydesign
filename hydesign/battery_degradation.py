@@ -59,7 +59,7 @@ class battery_degradation(om.ExplicitComponent):
 
         air_temp_K_t = expand_to_lifetime(
             weather.temp_air_1.values, 
-            life_y = life_y, intervals_per_hour=intervals_per_hour,
+            life_h = self.life_h, intervals_per_hour=intervals_per_hour,
             weeks_per_season_per_year = weeks_per_season_per_year)
 
         self.air_temp_K_t = air_temp_K_t
@@ -162,7 +162,7 @@ class battery_loss_in_capacity_due_to_temp(om.ExplicitComponent):
 
         air_temp_C_t = expand_to_lifetime(
             (weather.temp_air_1 - 273.15).values, 
-            life_y=life_y, intervals_per_hour=intervals_per_hour,
+            life_h=self.life_h, intervals_per_hour=intervals_per_hour,
             weeks_per_season_per_year = weeks_per_season_per_year)
 
         self.air_temp_C_t = air_temp_C_t

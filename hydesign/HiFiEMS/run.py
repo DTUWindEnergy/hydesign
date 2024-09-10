@@ -74,26 +74,26 @@ simulation_dict = {
         'BP': 1, #1:forecast value 2: perfect value
         
         # Data
-        'wind_dir': examples_filepath + "HiFiEMS_inputs/Winddata2021_15min.csv",
-        'solar_dir': examples_filepath + "HiFiEMS_inputs/Solardata2021_15min.csv",
-        'market_dir': examples_filepath + "HiFiEMS_inputs/Market2021.csv",
+        'wind_fn': examples_filepath + "HiFiEMS_inputs/Winddata2021_15min.csv",
+        'solar_fn': examples_filepath + "HiFiEMS_inputs/Solardata2021_15min.csv",
+        'market_fn': examples_filepath + "HiFiEMS_inputs/Market2021.csv",
         
         # for DDEMS (spot market) -- Historical data
-        'history_wind_dir': examples_filepath + "HiFiEMS_inputs/Winddata2022_15min.csv",
-        'history_market_dir': examples_filepath + "HiFiEMS_inputs/Market2021.csv",
+        'history_wind_fn': examples_filepath + "HiFiEMS_inputs/Winddata2022_15min.csv",
+        'history_market_fn': examples_filepath + "HiFiEMS_inputs/Market2021.csv",
         
         # for REMS (balancing market)
         'HA_wind_error_ub': "5%_fc_error",
         'HA_wind_error_lb': "95%_fc_error",
         
         # for SEMS
-        #'wind_scenario_dir': "../Data/Winddata2022_15min.csv",  # "../Data/probabilistic_wind2022.csv"
-        'price_scenario_dir': None,  # "../Data/xxx.csv", if None then use the build in method to generate price scenarios
+        #'wind_scenario_fn': "../Data/Winddata2022_15min.csv",  # "../Data/probabilistic_wind2022.csv"
+        'price_scenario_fn': None,  # "../Data/xxx.csv", if None then use the build in method to generate price scenarios
         'number_of_wind_scenario': 3, 
         'number_of_price_scenario': 3, 
     }
 
-out_keys = ['P_HPP_SM_k_opt',
+out_keys = ['P_HPP_SM_t_opt',
                 'SM_price_cleared',
                 'BM_dw_price_cleared',
                 'BM_up_price_cleared',
@@ -119,6 +119,7 @@ res = utils.run(
     
 for k, r in zip(out_keys, res):
     print(k, r.shape)
+
 #EMS.run_SM_RD(
 #        parameter_dict = parameter_dict,
 #        simulation_dict = simulation_dict

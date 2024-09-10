@@ -28,9 +28,9 @@ def ReadData(day_num, exten_num, DI_num, T, PsMax, PwMax, simulation_dict):
     skips1 = range(1, ((day_num - 1 + day_num_start - 1) * T)%(359*T) + 1)
     skips2 = range(1, ((day_num - 1 + day_num_start - 1) * 24)%(359*24) + 1)
 
-    Wind_data = pd.read_csv(simulation_dict["wind_dir"], skiprows = skips1, nrows=T+exten_num)
-    Solar_data = pd.read_csv(simulation_dict["solar_dir"], skiprows = skips1, nrows=T+exten_num)
-    Market_data = pd.read_csv(simulation_dict["market_dir"], skiprows = skips2, nrows=int(T/DI_num)+int(exten_num/DI_num))
+    Wind_data = pd.read_csv(simulation_dict["wind_fn"], skiprows = skips1, nrows=T+exten_num)
+    Solar_data = pd.read_csv(simulation_dict["solar_fn"], skiprows = skips1, nrows=T+exten_num)
+    Market_data = pd.read_csv(simulation_dict["market_fn"], skiprows = skips2, nrows=int(T/DI_num)+int(exten_num/DI_num))
     
     
     
@@ -59,35 +59,39 @@ def ReadData(day_num, exten_num, DI_num, T, PsMax, PwMax, simulation_dict):
     Reg_price_cleared = Market_data['reg_cleared']
     #Reg_price_forecast = Market_data['reg_cleared']
 
-    BM_dw_price_forecast = pd.DataFrame(columns=['Down'])
-    BM_up_price_forecast = pd.DataFrame(columns=['Up'])
-    reg_up_sign_forecast = pd.DataFrame(columns=['up_sign'])
-    reg_dw_sign_forecast = pd.DataFrame(columns=['dw_sign'])
+    BM_dw_price_forecasts = []
+    BM_up_price_forecasts = []
+    reg_up_sign_forecasts = []
+    reg_dw_sign_forecasts = []
     
     for i in range(int(T/DI_num)+int(exten_num/DI_num)):
         if Reg_price_forecast.iloc[i] > SM_price_cleared.iloc[i]:
-            BM_up_price_forecast = pd.concat([BM_up_price_forecast, pd.DataFrame([Reg_price_forecast.iloc[i]], columns=['Up'])], ignore_index=True)
-            BM_dw_price_forecast = pd.concat([BM_dw_price_forecast, pd.DataFrame([SM_price_cleared.iloc[i]], columns=['Down'])], ignore_index=True)
+            BM_up_price_forecast_i = Reg_price_forecast.iloc[i]
+            BM_dw_price_forecast_i = SM_price_cleared.iloc[i]
+            reg_up_sign_forecast_i = 1
+            reg_dw_sign_forecast_i = 0
             
-            reg_up_sign_forecast = pd.concat([reg_up_sign_forecast, pd.DataFrame([1], columns=['up_sign'])], ignore_index=True)
-            reg_dw_sign_forecast = pd.concat([reg_dw_sign_forecast, pd.DataFrame([0], columns=['dw_sign'])], ignore_index=True)
         elif Reg_price_forecast.iloc[i] < SM_price_cleared.iloc[i]:
-            BM_up_price_forecast = pd.concat([BM_up_price_forecast, pd.DataFrame([SM_price_cleared.iloc[i]], columns=['Up'])], ignore_index=True)
-            BM_dw_price_forecast = pd.concat([BM_dw_price_forecast, pd.DataFrame([Reg_price_forecast.iloc[i]], columns=['Down'])], ignore_index=True)
+            BM_up_price_forecast_i = SM_price_cleared.iloc[i]
+            BM_dw_price_forecast_i = Reg_price_forecast.iloc[i]
+            reg_up_sign_forecast_i = 0
+            reg_dw_sign_forecast_i = 1
             
-            reg_up_sign_forecast = pd.concat([reg_up_sign_forecast, pd.DataFrame([0], columns=['up_sign'])], ignore_index=True)
-            reg_dw_sign_forecast = pd.concat([reg_dw_sign_forecast, pd.DataFrame([1], columns=['dw_sign'])], ignore_index=True)
         else:
-            BM_up_price_forecast = pd.concat([BM_up_price_forecast, pd.DataFrame([SM_price_cleared.iloc[i]], columns=['Up'])], ignore_index=True)
-            BM_dw_price_forecast = pd.concat([BM_dw_price_forecast, pd.DataFrame([SM_price_cleared.iloc[i]], columns=['Down'])], ignore_index=True)   
-            
-            reg_up_sign_forecast = pd.concat([reg_up_sign_forecast, pd.DataFrame([0], columns=['up_sign'])], ignore_index=True)
-            reg_dw_sign_forecast = pd.concat([reg_dw_sign_forecast, pd.DataFrame([0], columns=['dw_sign'])], ignore_index=True)
+            BM_up_price_forecast_i = SM_price_cleared.iloc[i]
+            BM_dw_price_forecast_i = SM_price_cleared.iloc[i]
+            reg_up_sign_forecast_i = 0
+            reg_dw_sign_forecast_i = 0
+
+        BM_dw_price_forecasts.append({'Up': BM_up_price_forecast_i})
+        BM_up_price_forecasts.append({'Down': BM_dw_price_forecast_i})
+        reg_up_sign_forecasts.append({'up_sign': reg_up_sign_forecast_i})
+        reg_dw_sign_forecasts.append({'dw_sign': reg_dw_sign_forecast_i})
     
-    BM_dw_price_forecast = BM_dw_price_forecast.squeeze()
-    BM_up_price_forecast = BM_up_price_forecast.squeeze()
-    reg_up_sign_forecast = reg_up_sign_forecast.squeeze()
-    reg_dw_sign_forecast = reg_dw_sign_forecast.squeeze()        
+    BM_dw_price_forecast = pd.DataFrame(BM_dw_price_forecasts).squeeze()
+    BM_up_price_forecast = pd.DataFrame(BM_up_price_forecasts).squeeze()
+    reg_up_sign_forecast = pd.DataFrame(reg_up_sign_forecasts).squeeze()
+    reg_dw_sign_forecast = pd.DataFrame(reg_dw_sign_forecasts).squeeze()        
     
     if simulation_dict["BP"] == 2:
        BM_dw_price_forecast = Market_data['BM_Down_cleared']

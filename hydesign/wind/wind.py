@@ -330,7 +330,7 @@ class wpp_with_degradation(om.ExplicitComponent):
         wst = inputs['wst']
 
         wst_ext = expand_to_lifetime(
-            wst, life_y = self.life_y, weeks_per_season_per_year = self.weeks_per_season_per_year)
+            wst, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
         
         outputs['wind_t_ext_deg'] = self.wpp_efficiency*get_wind_ts_degradation(
             ws = ws, 

@@ -344,38 +344,38 @@ class ems_P2X_bidirectional(om.ExplicitComponent):
 
         # Extend (by repeating them and stacking) all variable to full lifetime 
         outputs['wind_t_ext'] = expand_to_lifetime(
-            wind_t, life_y = self.life_y)
+            wind_t, life_h = self.life_h)
         outputs['solar_t_ext'] = expand_to_lifetime(
-            solar_t, life_y = self.life_y)
+            solar_t, life_h = self.life_h)
         outputs['price_t_ext'] = expand_to_lifetime(
-            price_t, life_y = self.life_y)
+            price_t, life_h = self.life_h)
         outputs['hpp_t'] = expand_to_lifetime(
-            P_HPP_ts, life_y = self.life_y)
+            P_HPP_ts, life_h = self.life_h)
         outputs['hpp_curt_t'] = expand_to_lifetime(
-            P_curtailment_ts, life_y = self.life_y)
+            P_curtailment_ts, life_h = self.life_h)
         outputs['b_t'] = expand_to_lifetime(
-            P_charge_discharge_ts, life_y = self.life_y)
-        outputs['b_E_SOC_t'] = np.hstack([expand_to_lifetime(
-            E_SOC_ts[:-1], life_y = self.life_y), E_SOC_ts[-1]])
+            P_charge_discharge_ts, life_h = self.life_h)
+        outputs['b_E_SOC_t'] = expand_to_lifetime(
+            E_SOC_ts, life_h = self.life_h + 1)
         outputs['penalty_t'] = expand_to_lifetime(
-            penalty_ts, life_y = self.life_y)
+            penalty_ts, life_h = self.life_h)
         outputs['P_ptg_t'] = expand_to_lifetime(
-            P_ptg_ts, life_y = self.life_y)
+            P_ptg_ts, life_h = self.life_h)
         outputs['m_H2_t'] = expand_to_lifetime(
-            m_H2_ts, life_y = self.life_y)
+            m_H2_ts, life_h = self.life_h)
         outputs['m_H2_offtake_t'] = expand_to_lifetime(
-            m_H2_offtake_ts, life_y = self.life_y)
+            m_H2_offtake_ts, life_h = self.life_h)
         outputs['m_H2_storage_t'] = expand_to_lifetime(
-            m_H2_storage_ts, life_y = self.life_y)
+            m_H2_storage_ts, life_h = self.life_h)
         outputs['m_H2_grid_t'] = expand_to_lifetime(
-            m_H2_grid_ts, life_y = self.life_y)
+            m_H2_grid_ts, life_h = self.life_h)
         outputs['P_ptg_grid_t'] = expand_to_lifetime(
-            P_ptg_grid_ts, life_y = self.life_y)
+            P_ptg_grid_ts, life_h = self.life_h)
         outputs['LoS_H2_t'] = expand_to_lifetime(
-            LoS_H2_ts, life_y = self.life_y)
+            LoS_H2_ts, life_h = self.life_h)
         outputs['total_curtailment'] = outputs['hpp_curt_t'].sum()
         outputs['m_H2_demand_t_ext'] = expand_to_lifetime(
-            m_H2_demand_t, life_y = self.life_y)
+            m_H2_demand_t, life_h = self.life_h)
 
 def ems_cplex_P2X_bidirectional(
     wind_ts,
