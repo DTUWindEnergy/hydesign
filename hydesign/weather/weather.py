@@ -196,7 +196,7 @@ def extract_weather_for_HPP(
         varWD='WD')
 
     # Extract GWA scaling
-    ratio_gwa_era5_ds = xr.open_dataset(ratio_gwa_era5)
+    ratio_gwa_era5_ds = xr.open_dataset(ratio_gwa_era5, engine='h5netcdf')
     var_ratio = list(ratio_gwa_era5_ds.data_vars)[0]
 
     ratio_gwa_era5_ds_A = ratio_gwa_era5_ds.isel(height=0)

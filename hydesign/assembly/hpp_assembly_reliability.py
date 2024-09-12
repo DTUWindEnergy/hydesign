@@ -18,12 +18,7 @@ from hydesign.utils import sample_mean
 class ReliabilityModel(hpp_model):
     def __init__(self, 
                  reliability_hpp_model,        
-                 latitude,
-                 longitude,
-                 altitude=None,
-                 num_batteries = 10,
-                 sim_pars_fn = None,
-                 input_ts_fn = None,
+                 sim_pars_fn,
                  reliability_data_set_path=os.path.join(examples_filepath, 'reliability'),
                  battery_ds_fn='reliability_data_set_BESS.nc',
                  transformer_ds_fn='reliability_data_set_transformer.nc',
@@ -35,11 +30,7 @@ class ReliabilityModel(hpp_model):
                  **kwargs
                  ):
         self.hpp = reliability_hpp_model
-        self.latitude=latitude
-        self.longitude=longitude
-        self.altitude=altitude
         self.sim_pars_fn = sim_pars_fn
-        self.input_ts_fn = input_ts_fn
         self.reliability_data_set_path=reliability_data_set_path
         self.battery_ds_fn = battery_ds_fn
         self.transformer_ds_fn = transformer_ds_fn
@@ -49,11 +40,8 @@ class ReliabilityModel(hpp_model):
         self.n_seed = n_reliability_seed
         self.aggregation_method=aggregation_method
         self.kwargs = kwargs
-        hpp_model.__init__(self, latitude=latitude,
-                           longitude=longitude,
-                           altitude=altitude,
+        hpp_model.__init__(self,
                            sim_pars_fn=sim_pars_fn,
-                           input_ts_fn=input_ts_fn,
                            **kwargs
                            )
         self.list_out_vars += ['Inverter size nominal [kW]',
@@ -81,13 +69,13 @@ class ReliabilityModel(hpp_model):
         panel_size_real = inverter_size_real * 10 ** 3 / n_panels_per_inverter
         Nwt = int(Nwt)
         for i in range(self.n_seed):
-            with xr.open_dataset(os.path.join(self.reliability_data_set_path,self.battery_ds_fn)) as ds_batt:
+            with xr.open_dataset(os.path.join(self.reliability_data_set_path,self.battery_ds_fn), engine='h5netcdf') as ds_batt:
                 reliability_ts_battery = reliability_dataset_to_timeseries(ds_batt.sel(seed=i)).squeeze()
-            with xr.open_dataset(os.path.join(self.reliability_data_set_path, self.transformer_ds_fn)) as ds_tran:
+            with xr.open_dataset(os.path.join(self.reliability_data_set_path, self.transformer_ds_fn), engine='h5netcdf') as ds_tran:
                 reliability_ts_trans = reliability_dataset_to_timeseries(ds_tran.sel(seed=i)).squeeze()
-            with xr.open_dataset(os.path.join(self.reliability_data_set_path, self.WT_ds_fn)) as ds_wind:
+            with xr.open_dataset(os.path.join(self.reliability_data_set_path, self.WT_ds_fn), engine='h5netcdf') as ds_wind:
                 reliability_ts_wind = reliability_dataset_to_timeseries(ds_wind.sel(seed=i))[:,:Nwt].mean((1)).squeeze()
-            with xr.open_dataset(os.path.join(self.reliability_data_set_path, self.PV_ds_fn)) as ds_pv, xr.open_dataset(os.path.join(self.reliability_data_set_path, self.inverter_ds_fn)) as ds_inv:
+            with xr.open_dataset(os.path.join(self.reliability_data_set_path, self.PV_ds_fn), engine='h5netcdf') as ds_pv, xr.open_dataset(os.path.join(self.reliability_data_set_path, self.inverter_ds_fn), engine='h5netcdf') as ds_inv:
                 reliability_ts_pv = np.hstack([reliability_dataset_to_timeseries(ds_pv.sel(seed=i).sel(batch_no=batch)) for batch in ds_pv.batch_no.values])[:,:n_panels_per_inverter].mean((1)).squeeze()
                 reliability_ts_inverter = reliability_dataset_to_timeseries(ds_inv.sel(seed=i))[:,:n_inverters].mean((1)).squeeze()
                 reliability_ts_pv = reliability_ts_pv * reliability_ts_inverter
@@ -98,17 +86,13 @@ class ReliabilityModel(hpp_model):
                  # Energy storage & EMS price constrains
                  b_P, b_E_h, cost_of_batt_degr]
     
-            out = self.hpp(latitude=self.latitude,
-                            longitude=self.longitude,
-                            altitude=self.altitude,
-                            sim_pars_fn = self.sim_pars_fn,
-                            input_ts_fn = self.input_ts_fn,
-                            reliability_ts_battery=reliability_ts_battery,
-                            reliability_ts_trans=reliability_ts_trans,
-                            reliability_ts_wind=reliability_ts_wind,
-                            reliability_ts_pv=reliability_ts_pv,
-                            **self.kwargs
-                            ).evaluate(*x)
+            out = self.hpp(sim_pars_fn = self.sim_pars_fn,
+                           reliability_ts_battery=reliability_ts_battery,
+                           reliability_ts_trans=reliability_ts_trans,
+                           reliability_ts_wind=reliability_ts_wind,
+                           reliability_ts_pv=reliability_ts_pv,
+                           **self.kwargs
+                           ).evaluate(*x)
             out = np.hstack([out, [inverter_size,
                                    panel_size,
                                    n_inverters,
@@ -186,14 +170,14 @@ if __name__ == '__main__':
 
     # x=[41.99999999999999, 350.0, 6.0, 200.0, 7.0, 200.0, 25.0, 154.5050654737706, 1.0, 50.0, 6.0, 10.0, 1165.3385616121257, 183.41182263434803]
     RM = ReliabilityModel(hpp_model,
-               latitude=latitude,
-               longitude=longitude,
-               altitude=altitude,
-               num_batteries = 10,
-               sim_pars_fn = sim_pars_fn,
-               input_ts_fn = input_ts_fn,
-               n_reliability_seed=n_reliability_seed,
-               )
+                          latitude=latitude,
+                          longitude=longitude,
+                          altitude=altitude,
+                          num_batteries = 10,
+                          sim_pars_fn = sim_pars_fn,
+                          input_ts_fn = input_ts_fn,
+                          n_reliability_seed=n_reliability_seed,
+                          )
     
     start = time.time()
     outs = RM.evaluate(*x)

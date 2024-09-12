@@ -5,8 +5,8 @@ Created on 24/01/2023
 @author: jumu
 """
 import numpy as np
-import pandas as pd
-import pytest
+# import pandas as pd
+# import pytest
 import pickle
 
 from hydesign.tests.test_files import tfp
@@ -24,13 +24,19 @@ def load_ems():
         ems_out = pickle.load(f)
     return ems_out
 
+def update_test_ems():
+    ems_out = run_ems()
+    with open(tfp+'ems_output_ems.pickle','wb') as f:
+        pickle.dump(ems_out, f)
+    
+
 def test_ems():
     ems_out = run_ems()
     ems_out_data = load_ems()
+    # keys = ['P_HPP_ts', 'P_curtailment_ts', 'P_charge_discharge_ts', 'E_SOC_ts', 'penalty_ts']
     for i in range(len(ems_out)):
         np.testing.assert_allclose(ems_out[i], ems_out_data[i])
         #print(np.allclose(ems_out[i], ems_out_data[i]))
-
 # ------------------------------------------------------------------------------------------------
 def run_operation_with_deg():
     with open(tfp+'ems_input_ems_longterm.pickle', 'rb') as f:

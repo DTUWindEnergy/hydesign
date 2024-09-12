@@ -1036,15 +1036,16 @@ def ems_cplex(
     peak_hr_quantile = 0.9,
     cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
     n_full_power_hours_expected_per_day_at_peak_price = 3,    
-    batch_size = 1*23,
+    batch_size = 43,
 ):
     
     # split in batches, ussually a week
     batches_all = split_in_batch(list(range(len(wind_ts))), batch_size)
     # Make sure the last batch is not smaller than the others
     # instead append it to the previous last one
-    batches = batches_all[:-1]
-    batches[-1] = batches_all[-2]+batches_all[-1]
+    # batches = batches_all[:-1]
+    # batches[-1] = batches_all[-2]+batches_all[-1]
+    batches = batches_all
     
     # allocate vars
     P_HPP_ts = np.zeros(len(wind_ts))

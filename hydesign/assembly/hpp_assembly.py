@@ -1,22 +1,15 @@
 # %%
-import glob
 import os
-import time
 
 # basic libraries
 import numpy as np
-from numpy import newaxis as na
-import numpy_financial as npf
 import pandas as pd
-# import seaborn as sns
 import openmdao.api as om
 import yaml
-import scipy as sp
-from scipy import stats
 import xarray as xr
 
 from hydesign.weather.weather import extract_weather_for_HPP, ABL, select_years
-from hydesign.wind.wind import genericWT_surrogate, genericWake_surrogate, wpp, wpp_with_degradation, get_rotor_area, get_rotor_d
+from hydesign.wind.wind import genericWT_surrogate, genericWake_surrogate, wpp, wpp_with_degradation, get_rotor_d  # , get_rotor_area
 from hydesign.pv.pv import pvp, pvp_with_degradation
 from hydesign.ems.ems import ems, ems_long_term_operation
 from hydesign.battery_degradation import battery_degradation, battery_loss_in_capacity_due_to_temp
@@ -25,70 +18,49 @@ from hydesign.finance.finance import finance
 from hydesign.look_up_tables import lut_filepath
 from hydesign.reliability import battery_with_reliability, wpp_with_reliability, pvp_with_reliability
 
+class hpp_base:
+    def __init__(self,
+                 sim_pars_fn,
+                 defaults={},
+                 **kwargs
+                 ):
+        self.sim_pars_fn = sim_pars_fn
 
-class hpp_model:
-    """HPP design evaluator"""
-
-    def __init__(
-        self,
-        latitude,
-        longitude,
-        altitude=None,
-        sim_pars_fn=None,
-        work_dir = './',
-        max_num_batteries_allowed = 3,
-        factor_battery_cost = 1,
-        ems_type='cplex',
-        weeks_per_season_per_year = None,
-        seed=0, # For selecting random weeks pe season to reduce the computational time
-        input_ts_fn = None, # If None then it computes the weather
-        price_fn = None, # If input_ts_fn is given it should include Price column.
-        genWT_fn = lut_filepath+'genWT_v3.nc',
-        genWake_fn = lut_filepath+'genWake_v3.nc',
-        verbose = True,
-        name = '',
-        ppa_price=None,
-        reliability_ts_battery=None,
-        reliability_ts_trans=None,
-        reliability_ts_wind=None,
-        reliability_ts_pv=None,
-        **kwargs
-        ):
-        """Initialization of the hybrid power plant evaluator
-
-        Parameters
-        ----------
-        latitude : Latitude at chosen location
-        longitude : Longitude at chosen location
-        altitude : Altitude at chosen location, if not provided, elevation is calculated using elevation map datasets
-        sims_pars_fn : Case study input values of the HPP 
-        work_dir : Working directory path
-        max_num_batteries_allowed : Maximum number of batteries allowed including start and replacements
-        weeks_per_season_per_year: Number of weeks per season to select from the input data, to reduce computation time. Default is `None` which uses all the input time series
-        seed: seed number for week selection
-        ems_type : Energy management system optimization type: cplex solver or rule based
-        inputs_ts_fn : User provided weather timeseries, if not provided, the weather data is calculated using ERA5 datasets
-        price_fn : Price timeseries
-        era5_zarr : Location of wind speed renalysis
-        ratio_gwa_era5 : Location of mean wind speed correction factor
-        era5_ghi_zarr : Location of GHI renalysis
-        elevation_fn : Location of GHI renalysis
-        genWT_fn : Wind turbine power curve look-up tables
-        genWake_fn : Wind turbine wake look-up tables
-        """
-        work_dir = mkdir(work_dir)
+        # Extract simulation parameters:
+        # First gets default values, then updates with values provided in yml-file and finally updating with values provided in instantiation
+        sim_pars = self.get_defaults()
+        sim_pars.update(defaults)
+        with open(sim_pars_fn) as file:
+            sim_pars.update(yaml.load(file, Loader=yaml.FullLoader))
+        sim_pars.update(kwargs)
+        self.check_inputs(sim_pars)
         
-        # Extract simulation parameters
-        try:
-            with open(sim_pars_fn) as file:
-                sim_pars = yaml.load(file, Loader=yaml.FullLoader)
-        except:
-            raise(f'sim_pars_fn="{sim_pars_fn}" can not be read')
+        # Combine Wind farm surrogate directory and file paths
+        genWT_fn = os.path.join(sim_pars['gen_lut_dir'], sim_pars['genWT_fn'])
+        genWake_fn = os.path.join(sim_pars['gen_lut_dir'], sim_pars['genWake_fn'])
+        sim_pars['genWT_fn'] = genWT_fn
+        sim_pars['genWake_fn'] = genWake_fn
+
+        work_dir = sim_pars['work_dir']
+        altitude = sim_pars['altitude']
+        latitude = sim_pars['latitude']
+        longitude = sim_pars['longitude']
+        verbose = sim_pars['verbose']
+        input_ts_fn = sim_pars['input_ts_fn']
+        price_fn = sim_pars['price_fn']
+        name = sim_pars['name']
+        ppa_price = sim_pars['ppa_price']
+        weeks_per_season_per_year = sim_pars['weeks_per_season_per_year']
+        seed = sim_pars['seed']
+        genWT_fn = sim_pars['genWT_fn']
+        max_num_batteries_allowed = sim_pars['max_num_batteries_allowed']
+            
+        work_dir = mkdir(work_dir)
         
         if altitude == None:
             
             elevation_fn = sim_pars['elevation_fn'] # Altitude map for extracting altitude
-            elevation_ds = xr.open_dataset(elevation_fn)
+            elevation_ds = xr.open_dataset(elevation_fn, engine='h5netcdf')
             altitude = elevation_ds['elev'].interp(
                                 latitude=latitude,
                                 longitude=longitude,
@@ -112,24 +84,19 @@ class hpp_model:
             year_end = sim_pars['year_end']
         else:
             year_end = sim_pars['year']
-            
         N_life = sim_pars['N_life']
-        life_h = N_life*365*24
-        G_MW = sim_pars['G_MW']
-        battery_depth_of_discharge = sim_pars['battery_depth_of_discharge']
-        battery_charge_efficiency = sim_pars['battery_charge_efficiency']
-        min_LoH = sim_pars['min_LoH']
-        #pv_deg_per_year = sim_pars['pv_deg_per_year']
-        wpp_efficiency = sim_pars['wpp_efficiency']
-        land_use_per_solar_MW = sim_pars['land_use_per_solar_MW']
         
         if 'wind_deg' in sim_pars:
             wind_deg = sim_pars['wind_deg']
-            wind_deg_yr = sim_pars['wind_deg_yr']
-            share_WT_deg_types = sim_pars['share_WT_deg_types']
         else:
             wind_deg = [0, 0]
+        if 'wind_deg_yr' in sim_pars:
+            wind_deg_yr = sim_pars['wind_deg_yr']
+        else:
             wind_deg_yr = [0, 25]
+        if 'share_WT_deg_types' in sim_pars:
+            share_WT_deg_types = sim_pars['share_WT_deg_types']
+        else:
             share_WT_deg_types = 0.5
         
         # Extract weather timeseries
@@ -184,7 +151,7 @@ class hpp_model:
             weather = weather.iloc[:N_sel]
             
             input_ts_fn = f'{work_dir}input_ts_modified.csv'
-            print(f'\ninput_ts_fn length is not a complete number of years (hyDesign handles years as 365 days).')
+            print('\ninput_ts_fn length is not a complete number of years (hyDesign handles years as 365 days).')
             print(f'The file has been modified and stored in {input_ts_fn}')
             weather.to_csv(input_ts_fn)
             N_time = len(weather)
@@ -206,11 +173,135 @@ class hpp_model:
             input_ts_fn = f'{work_dir}input_ts_sel.csv'
             print(f'\n\nSelected input time series based on {weeks_per_season_per_year} weeks per season are stored in {input_ts_fn}')
             weather.to_csv(input_ts_fn)
-
         # extract number of ws in the look-up tables
-        with xr.open_dataset(genWT_fn) as ds: 
+        with xr.open_dataset(genWT_fn, engine='h5netcdf') as ds: 
             # number of points in the power curves
-            N_ws = len(ds.ws.values)
+            self.N_ws = len(ds.ws.values)
+        
+        self.N_time = N_time
+        self.sim_pars = sim_pars
+        self.wind_deg = wind_deg
+        self.wind_deg_yr = wind_deg_yr
+        self.share_WT_deg_types = share_WT_deg_types
+        self.N_life = N_life
+        self.price = price
+        self.wpp_efficiency = sim_pars['wpp_efficiency']
+        self.life_h = N_life*365*24
+        self.max_num_batteries_allowed = max_num_batteries_allowed
+        self.input_ts_fn = input_ts_fn
+        self.longitude = longitude
+        self.latitude = latitude
+        self.altitude = altitude
+        
+    def get_defaults(self):
+        return dict(work_dir = './',
+                    max_num_batteries_allowed = 3,
+                    ems_type='cplex',
+                    weeks_per_season_per_year = None,
+                    seed=0,
+                    input_ts_fn = None, 
+                    price_fn = None, 
+                    gen_lut_dir = lut_filepath,
+                    genWT_fn = 'genWT_v3.nc',
+                    genWake_fn = 'genWake_v3.nc',
+                    verbose = True,
+                    name = '',
+                    ppa_price=None,
+                    reliability_ts_battery=None,
+                    reliability_ts_trans=None,
+                    reliability_ts_wind=None,
+                    reliability_ts_pv=None,)
+    
+    def check_inputs(self, sim_pars):
+        req_vars = ['altitude', 'latitude', 'longitude']
+        for var in req_vars:
+            if var not in sim_pars:
+                raise ValueError(f"variable: '{var}' must be provided either in input yml file or when instantiating HPP model")
+            else:
+                if sim_pars[var] is None:
+                    raise ValueError(f"variable: '{var}' cannot be provided as None")
+    
+    def print_design(self, x_opt, outs):
+        print() 
+        print('Design:') 
+        print('---------------') 
+
+        for i_v, var in enumerate(self.list_vars):
+                print(f'{var}: {x_opt[i_v]:.3f}')
+        print()    
+        print()
+        for i_v, var in enumerate(self.list_out_vars):
+            print(f'{var}: {outs[i_v]:.3f}')
+        print()
+        
+    def evaluation_in_csv(self, name_file ,longitude, latitude, altitude, x_opt, outs):
+        design_df = pd.DataFrame(columns = ['longitude',
+                                            'latitude',
+                                            'altitude',] + self.list_vars + self.list_out_vars, index=range(1))
+        design_df.iloc[0] =  [longitude,latitude,altitude] + list(x_opt) + list(outs)
+        design_df.to_csv(f'{name_file}.csv')
+        
+
+
+class hpp_model(hpp_base):
+    """HPP design evaluator"""
+
+    def __init__(
+        self,
+        sim_pars_fn,
+        **kwargs
+        ):
+        """Initialization of the hybrid power plant evaluator
+
+        Parameters
+        ----------
+        latitude : Latitude at chosen location
+        longitude : Longitude at chosen location
+        altitude : Altitude at chosen location, if not provided, elevation is calculated using elevation map datasets
+        sims_pars_fn : Case study input values of the HPP 
+        work_dir : Working directory path
+        max_num_batteries_allowed : Maximum number of batteries allowed including start and replacements
+        weeks_per_season_per_year: Number of weeks per season to select from the input data, to reduce computation time. Default is `None` which uses all the input time series
+        seed: seed number for week selection
+        ems_type : Energy management system optimization type: cplex solver or rule based
+        inputs_ts_fn : User provided weather timeseries, if not provided, the weather data is calculated using ERA5 datasets
+        price_fn : Price timeseries
+        era5_zarr : Location of wind speed renalysis
+        ratio_gwa_era5 : Location of mean wind speed correction factor
+        era5_ghi_zarr : Location of GHI renalysis
+        elevation_fn : Location of GHI renalysis
+        genWT_fn : Wind turbine power curve look-up tables
+        genWake_fn : Wind turbine wake look-up tables
+        """
+        hpp_base.__init__(self,
+                          sim_pars_fn=sim_pars_fn,
+                          **kwargs
+                          )
+
+        N_time = self.N_time
+        N_ws = self.N_ws
+        wpp_efficiency = self.wpp_efficiency
+        sim_pars = self.sim_pars
+        life_h = self.life_h
+        wind_deg_yr = self.wind_deg_yr
+        wind_deg = self.wind_deg
+        share_WT_deg_types = self.share_WT_deg_types
+        N_life = self.N_life
+        price = self.price
+        
+        input_ts_fn = sim_pars['input_ts_fn']
+        genWT_fn = sim_pars['genWT_fn']
+        genWake_fn = sim_pars['genWake_fn']
+        latitude = sim_pars['latitude']
+        longitude = sim_pars['longitude']
+        altitude = sim_pars['altitude']
+        weeks_per_season_per_year = sim_pars['weeks_per_season_per_year']
+        ems_type = sim_pars['ems_type']
+        max_num_batteries_allowed = sim_pars['max_num_batteries_allowed']
+        reliability_ts_battery = sim_pars['reliability_ts_battery']
+        reliability_ts_trans = sim_pars['reliability_ts_trans']
+        reliability_ts_wind = sim_pars['reliability_ts_wind']
+        reliability_ts_pv = sim_pars['reliability_ts_pv']
         
         model = om.Group()
         
@@ -416,11 +507,11 @@ class hpp_model:
         model.add_subsystem(
             'battery_cost',
             battery_cost(
-                battery_energy_cost=factor_battery_cost*sim_pars['battery_energy_cost'],
-                battery_power_cost=factor_battery_cost*sim_pars['battery_power_cost'],
-                battery_BOP_installation_commissioning_cost=factor_battery_cost*sim_pars['battery_BOP_installation_commissioning_cost'],
-                battery_control_system_cost=factor_battery_cost*sim_pars['battery_control_system_cost'],
-                battery_energy_onm_cost=factor_battery_cost*sim_pars['battery_energy_onm_cost'],
+                battery_energy_cost=sim_pars['battery_energy_cost'],
+                battery_power_cost=sim_pars['battery_power_cost'],
+                battery_BOP_installation_commissioning_cost=sim_pars['battery_BOP_installation_commissioning_cost'],
+                battery_control_system_cost=sim_pars['battery_control_system_cost'],
+                battery_energy_onm_cost=sim_pars['battery_energy_onm_cost'],
                 N_life = N_life,
                 life_h = life_h
             ),
@@ -556,11 +647,7 @@ class hpp_model:
 
         
 
-        self.sim_pars = sim_pars
         self.prob = prob
-        self.max_num_batteries_allowed = max_num_batteries_allowed
-        self.input_ts_fn = input_ts_fn
-        self.altitude = altitude
     
         self.list_out_vars = [
             'NPV_over_CAPEX',
@@ -731,73 +818,7 @@ class hpp_model:
             prob['break_even_PPA_price'],
             cf_wind,
             ])
-    
-    def print_design(self, x_opt, outs):
-        print() 
-        print('Design:') 
-        print('---------------') 
 
-        for i_v, var in enumerate(self.list_vars):
-                print(f'{var}: {x_opt[i_v]:.3f}')
-        print()    
-        print()
-        for i_v, var in enumerate(self.list_out_vars):
-            print(f'{var}: {outs[i_v]:.3f}')
-        print()
-
-
-    def evaluation_in_csv(self, name_file ,longitude, latitude, altitude, x_opt, outs ):
-        design_df = pd.DataFrame(columns = ['longitude',
-                                            'latitude',
-                                            'altitude',
-                                            'clearance [m]',
-                                            'sp [W/m2]',
-                                            'p_rated [MW]',
-                                            'Nwt',
-                                            'wind_MW_per_km2 [MW/km2]',
-                                            'solar_MW [MW]',
-                                            'surface_tilt [deg]',
-                                            'surface_azimuth [deg]',
-                                            'DC_AC_ratio',
-                                            'b_P [MW]',
-                                            'b_E_h [h]',
-                                            'cost_of_battery_P_fluct_in_peak_price_ratio',
-                                            'NPV_over_CAPEX',
-                                            'NPV [MEuro]',
-                                            'IRR',
-                                            'LCOE [Euro/MWh]',
-                                            'Revenues [MEuro]',
-                                            'CAPEX [MEuro]',
-                                            'OPEX [MEuro]',
-                                            'Wind CAPEX [MEuro]',
-                                            'Wind OPEX [MEuro]',
-                                            'PV CAPEX [MEuro]',
-                                            'PV OPEX [MEuro]',
-                                            'Batt CAPEX [MEuro]',
-                                            'Batt OPEX [MEuro]',
-                                            'Shared CAPEX [MEuro]',
-                                            'Shared OPEX [MEuro]',
-                                            'penalty lifetime [MEuro]',
-                                            'AEP [GWh]',
-                                            'GUF',
-                                            'grid [MW]',
-                                            'wind [MW]',
-                                            'solar [MW]',
-                                            'Battery Energy [MWh]',
-                                            'Battery Power [MW]',
-                                            'Total curtailment [GWh]',
-                                            'Total curtailment with deg [GWh]',
-                                            'Awpp [km2]',
-                                            'Apvp [km2]',
-                                            'Plant area [km2]',
-                                            'Rotor diam [m]',
-                                            'Hub height [m]',
-                                            'Number of batteries used in lifetime',
-                                            'Break-even PPA price [Euro/MWh]',
-                                            'Capacity factor wind [-]'
-                                            ]  , index=range(1))
-        design_df.iloc[0] =  [longitude,latitude,altitude] + list(x_opt) + list(outs)
-        design_df.to_csv(f'{name_file}.csv')
         
     
 # -----------------------------------------------------------------------
@@ -817,3 +838,37 @@ def mkdir(dir_):
             pass
     return dir_
 
+if __name__ == '__main__':
+    
+    import time
+    from hydesign.examples import examples_filepath
+    
+    name = 'France_good_wind'
+    examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0, sep=';')
+    ex_site = examples_sites.loc[examples_sites.name == name]
+    
+    longitude = ex_site['longitude'].values[0]
+    latitude = ex_site['latitude'].values[0]
+    altitude = ex_site['altitude'].values[0]
+    
+    sim_pars_fn = examples_filepath+ex_site['sim_pars_fn'].values[0]
+    input_ts_fn = examples_filepath+ex_site['input_ts_fn'].values[0]
+    
+    hpp = hpp_model(latitude=latitude,
+                    longitude=longitude,
+                    altitude=altitude,
+                    sim_pars_fn=sim_pars_fn,
+                    input_ts_fn=input_ts_fn,)
+    
+    start = time.time()
+    
+    x=[55.0, 257.0, 10.000000000000002, 75.0, 5.916666666666667, 75.0, 28.125, 191.25, 1.4791666666666665, 27.0, 4.0, 8.75]
+    
+    outs = hpp.evaluate(*x)
+    
+    hpp.print_design(x, outs)
+    
+    end = time.time()
+    print('exec. time [min]:', (end - start)/60 )
+    
+    print(hpp.prob['NPV_over_CAPEX'])

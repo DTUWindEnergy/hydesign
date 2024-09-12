@@ -191,7 +191,7 @@ class existing_wpp(om.ExplicitComponent):
         # Calculation of the mode of wdt
         # mode_wdt = st.mode(wdt)
 
-        existing_wpp_power_curve_xr = xr.open_dataset(self.existing_wpp_power_curve_xr_fn)
+        existing_wpp_power_curve_xr = xr.open_dataset(self.existing_wpp_power_curve_xr_fn, engine='h5netcdf')
 
         xr_time = xr.Dataset()
         xr_time['wst'] = xr.DataArray( 
@@ -320,7 +320,7 @@ class existing_wpp_with_degradation(om.ExplicitComponent):
         life_h = self.life_h
         wpp_efficiency = self.wpp_efficiency
 
-        existing_wpp_power_curve_xr = xr.open_dataset(self.existing_wpp_power_curve_xr_fn)
+        existing_wpp_power_curve_xr = xr.open_dataset(self.existing_wpp_power_curve_xr_fn, engine='h5netcdf')
         
         # number of elements in WT degradation curve
         wind_deg_yr = self.wind_deg_yr

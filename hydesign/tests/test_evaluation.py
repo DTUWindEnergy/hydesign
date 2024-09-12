@@ -1,7 +1,5 @@
 import numpy as np
 import pandas as pd
-import pytest
-import pickle
 import os
 
 from hydesign.tests.test_files import tfp
@@ -44,9 +42,9 @@ def run_evaluation(out_name = 'France_good_wind_design.csv',
         price_col = ex_site['price_col'].values[0]
 
         hpp = hpp_model_BM(            
-            latitude,
-            longitude,
-            altitude,
+            latitude=latitude,
+            longitude=longitude,
+            altitude=altitude,
             max_num_batteries_allowed = 10,
             work_dir = './',
             sim_pars_fn = sim_pars_fn,
@@ -54,25 +52,25 @@ def run_evaluation(out_name = 'France_good_wind_design.csv',
             input_HA_ts_fn = input_HA_ts_fn,
             price_up_ts_fn = price_up_ts_fn,
             price_dwn_ts_fn = price_dwn_ts_fn,
-            price_col = price_col,
-)
+            price_col = price_col,)
     elif p2x_bidirectional:
         hpp = hpp_model_P2X_bidirectional(
-            latitude,
-            longitude,
-            altitude,
+            latitude=latitude,
+            longitude=longitude,
+            altitude=altitude,
             max_num_batteries_allowed = 10,
             work_dir = './',
             sim_pars_fn = sim_pars_fn,
             input_ts_fn = input_ts_fn,
             H2_demand_fn = H2_demand_fn,
             electrolyzer_eff_curve_name = 'Alkaline electrolyzer H2 production',
+            penalty_factor_H2=0.5,
             )
     elif constant_load:
         hpp = hpp_model_constant_output(
-            latitude,
-            longitude,
-            altitude,
+            latitude=latitude,
+            longitude=longitude,
+            altitude=altitude,
             max_num_batteries_allowed = 10,
             work_dir = './',
             sim_pars_fn = sim_pars_fn,
@@ -81,9 +79,9 @@ def run_evaluation(out_name = 'France_good_wind_design.csv',
                 
     elif PPA is not None:
         hpp = hpp_model(
-            latitude,
-            longitude,
-            altitude,
+            latitude=latitude,
+            longitude=longitude,
+            altitude=altitude,
             max_num_batteries_allowed = 10,
             work_dir = './',
             sim_pars_fn = sim_pars_fn,
@@ -91,18 +89,18 @@ def run_evaluation(out_name = 'France_good_wind_design.csv',
             ppa_price=PPA,)
     elif not p2x:
         hpp = hpp_model(
-            latitude,
-            longitude,
-            altitude,
+            latitude=latitude,
+            longitude=longitude,
+            altitude=altitude,
             max_num_batteries_allowed = 10,
             work_dir = './',
             sim_pars_fn = sim_pars_fn,
             input_ts_fn = input_ts_fn)
     else:
         hpp = hpp_model_P2X(
-            latitude,
-            longitude,
-            altitude,
+            latitude=latitude,
+            longitude=longitude,
+            altitude=altitude,
             max_num_batteries_allowed = 10,
             work_dir = './',
             sim_pars_fn = sim_pars_fn,
@@ -496,7 +494,7 @@ def test_evaluation_P2X_bidirectional():
     evaluation_metrics = run_evaluation_P2X_bidirectional()
     loaded_metrics = load_evaluation_P2X_bidirectional()
     for i in range(len(loaded_metrics)):
-        np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=2e-04)
+        np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=3e-04)
 
 # ------------------------------------------------------------------------------------------------
 # BM

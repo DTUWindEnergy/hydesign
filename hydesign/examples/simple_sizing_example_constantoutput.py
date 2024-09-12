@@ -19,9 +19,9 @@ H2_demand_fn = examples_filepath+ex_site['H2_demand_col'].values[0]
 
 PPA = 40 # Euro/MWh
 hpp = hpp_model(
-    latitude,
-    longitude,
-    altitude,
+    latitude=latitude,
+    longitude=longitude,
+    altitude=altitude,
     num_batteries = 1,
     battery_deg = False,
     work_dir = './',

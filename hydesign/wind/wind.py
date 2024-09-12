@@ -362,7 +362,7 @@ def get_WT_curves(genWT_fn, specific_power):
     pc : Power curve
     ct : Thrust coefficient curves
     """
-    genWT = xr.open_dataset(genWT_fn).interp(
+    genWT = xr.open_dataset(genWT_fn, engine='h5netcdf').interp(
         sp=specific_power, 
         kwargs={"fill_value": 0}
         )
@@ -400,7 +400,7 @@ def get_wake_affected_pc(
     -------
     wl : Wind plant wake losses curve
     """
-    ds = xr.open_dataset(genWake_fn)
+    ds = xr.open_dataset(genWake_fn, engine='h5netcdf')
     ds_sel = ds.sel(Nwt=2)
     ds_sel['wl'] = 0*ds_sel['wl']
     ds_sel['Nwt'] = 1

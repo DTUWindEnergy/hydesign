@@ -452,7 +452,7 @@ def ems_cplex_constantoutput(
     peak_hr_quantile = 0.9,
     cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
     n_full_power_hours_expected_per_day_at_peak_price = 3,    
-    batch_size = 2*24,
+    batch_size = 4*24,  # could be as large as 4*24 (note this EMS needs a whole number x 24 to work) but this don't improve performance
     load_min=3,
     load_min_penalty_factor=1e6,
 ):
@@ -461,8 +461,9 @@ def ems_cplex_constantoutput(
     batches_all = split_in_batch(list(range(len(wind_ts))), batch_size)
     # Make sure the last batch is not smaller than the others
     # instead append it to the previous last one
-    batches = batches_all[:-1]
-    batches[-1] = batches_all[-2]+batches_all[-1]
+    # batches = batches_all[:-1]
+    # batches[-1] = batches_all[-2]+batches_all[-1]
+    batches = batches_all
     
     # allocate vars
     P_HPP_ts = np.zeros(len(wind_ts))

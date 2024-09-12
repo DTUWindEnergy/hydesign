@@ -68,7 +68,9 @@ class ems_P2X(om.ExplicitComponent):
         eff_curve,
         life_h = 25*365*24, 
         ems_type='cplex',
-        load_min_penalty_factor=1e6):
+        load_min_penalty_factor=1e6,
+        electrolyzer_eff_curve_type='production',
+        ):
 
         super().__init__()
         self.N_time = int(N_time)
@@ -76,6 +78,7 @@ class ems_P2X(om.ExplicitComponent):
         self.ems_type = ems_type
         self.life_h = int(life_h)
         self.load_min_penalty_factor = load_min_penalty_factor
+        self.electrolyzer_eff_curve_type = electrolyzer_eff_curve_type
 
     def setup(self):
         self.add_input(
@@ -305,7 +308,8 @@ class ems_P2X(om.ExplicitComponent):
             load_min_penalty_factor = self.load_min_penalty_factor,
             peak_hr_quantile = peak_hr_quantile,
             cost_of_battery_P_fluct_in_peak_price_ratio = cost_of_battery_P_fluct_in_peak_price_ratio,
-            n_full_power_hours_expected_per_day_at_peak_price = n_full_power_hours_expected_per_day_at_peak_price
+            n_full_power_hours_expected_per_day_at_peak_price = n_full_power_hours_expected_per_day_at_peak_price,
+            electrolyzer_eff_curve_type = self.electrolyzer_eff_curve_type
         )
 
         # Extend (by repeating them and stacking) all variable to full lifetime 
@@ -364,15 +368,17 @@ def ems_cplex_P2X(
     peak_hr_quantile = 0.9,
     cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
     n_full_power_hours_expected_per_day_at_peak_price = 3,  
-    batch_size = 1*24,
-):
+    batch_size = 62,
+    electrolyzer_eff_curve_type='production',
+    ):
     
     # split in batches, ussually a week
     batches_all = split_in_batch(list(range(len(wind_ts))), batch_size)
     # Make sure the last batch is not smaller than the others
     # instead append it to the previous last one
-    batches = batches_all[:-1]
-    batches[-1] = batches_all[-2]+batches_all[-1]
+    # batches = batches_all[:-1]
+    # batches[-1] = batches_all[-2]+batches_all[-1]
+    batches = batches_all
     
     # allocate vars
     P_HPP_ts = np.zeros(len(wind_ts))
@@ -421,7 +427,8 @@ def ems_cplex_P2X(
             peak_hr_quantile = peak_hr_quantile,
             cost_of_battery_P_fluct_in_peak_price_ratio = cost_of_battery_P_fluct_in_peak_price_ratio,
             n_full_power_hours_expected_per_day_at_peak_price = n_full_power_hours_expected_per_day_at_peak_price,      
-        )
+            electrolyzer_eff_curve_type = electrolyzer_eff_curve_type,
+            )
         
         # print()
         # print()
@@ -478,7 +485,8 @@ def ems_cplex_parts_P2X(
     peak_hr_quantile = 0.9,
     cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
     n_full_power_hours_expected_per_day_at_peak_price = 3,
-):
+    electrolyzer_eff_curve_type = 'production',
+    ):
     """EMS solver implemented in cplex
 
     Parameters
@@ -590,11 +598,13 @@ def ems_cplex_parts_P2X(
     f3 = mdl.piecewise(1/storage_eff,[(0,0)],storage_eff)
         
     # Caclulating electrolyzer efficiency as a function of load (piecewise linear approximation)
-    # eff_curve_list = [(load * ptg_MW, load * ptg_MW * efficiency) for load, efficiency in eff_curve]
-    # PEM = mdl.piecewise(0, eff_curve_list, 0)
+    if electrolyzer_eff_curve_type == 'production':
+        H2_curve_list = [(load * ptg_MW, H2 * ptg_MW) for load, H2 in eff_curve]
+    elif electrolyzer_eff_curve_type == 'efficiency':
+        H2_curve_list = [(load * ptg_MW, load * ptg_MW * efficiency / hhv * 1000) for load, efficiency in eff_curve]
+    else:
+        raise ValueError(f'electrolyzer_eff_curve_type is: "{electrolyzer_eff_curve_type}". Available options are ["production", "efficiency"]')
 
-    # Caclulating Hydrogen production as a function of load (piecewise linear approximation)
-    H2_curve_list = [(load * ptg_MW, hydrogen * ptg_MW) for load, hydrogen in eff_curve]
     H2_prod = mdl.piecewise(0, H2_curve_list, 0)
 
     # # Piecewise linear representation of standby mode operation of electrolyzer

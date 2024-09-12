@@ -122,9 +122,9 @@ Initialize the HPP model (hpp_model class) with the coordinates and the necessar
 """
 
 hpp = hpp_model_P2X(
-        latitude,
-        longitude,
-        altitude,
+        latitude=latitude,
+        longitude=longitude,
+        altitude=altitude,
         num_batteries = 3,
         work_dir = './',
         sim_pars_fn = sim_pars_fn,

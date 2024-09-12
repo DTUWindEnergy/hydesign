@@ -76,7 +76,8 @@ class ems_P2X_bidirectional(om.ExplicitComponent):
         eff_curve,
         life_h = 25*365*24, 
         ems_type='cplex',
-        load_min_penalty_factor=1e6):
+        load_min_penalty_factor=1e6,
+        electrolyzer_eff_curve_type='production',):
 
         super().__init__()
         self.N_time = int(N_time)
@@ -84,6 +85,7 @@ class ems_P2X_bidirectional(om.ExplicitComponent):
         self.ems_type = ems_type
         self.life_h = int(life_h)
         self.load_min_penalty_factor = load_min_penalty_factor
+        self.electrolyzer_eff_curve_type = electrolyzer_eff_curve_type
 
     def setup(self):
         self.add_input(
@@ -159,12 +161,12 @@ class ems_P2X_bidirectional(om.ExplicitComponent):
         self.add_input(
             'min_power_standby',
             desc="Minimum percentage of rated electrolyzer power required to operate in standby mode")
-        self.add_input(
-            'ramp_up_limit',
-            desc="ramp-up limit of electrolyzer")
-        self.add_input(
-            'ramp_down_limit',
-            desc="ramp-down limit of electrolyzer")
+        # self.add_input(
+        #     'ramp_up_limit',
+        #     desc="ramp-up limit of electrolyzer")
+        # self.add_input(
+        #     'ramp_down_limit',
+        #     desc="ramp-down limit of electrolyzer")
         
         # ----------------------------------------------------------------------------------------------------------
         self.add_output(
@@ -287,8 +289,8 @@ class ems_P2X_bidirectional(om.ExplicitComponent):
         penalty_factor_H2 = inputs['penalty_factor_H2'][0]
         ptg_MW = inputs['ptg_MW'][0]
         min_power_standby = inputs['min_power_standby'][0]
-        ramp_up_limit = inputs['ramp_up_limit']
-        ramp_down_limit = inputs['ramp_down_limit']
+        # ramp_up_limit = inputs['ramp_up_limit']
+        # ramp_down_limit = inputs['ramp_down_limit']
         
         # Build a sintetic time to avoid problems with time sereis 
         # indexing in ems
@@ -305,8 +307,8 @@ class ems_P2X_bidirectional(om.ExplicitComponent):
         WSPr_df['E_batt_MWh_t'] = b_E[0]
         WSPr_df['H2_storage_t'] = HSS_kg[0]
         # WSPr_df['ptg_MW_t'] = np.ones_like(wind_t)*ptg_MW
-        WSPr_df['ramp_up_limit_t'] = ramp_up_limit[0]
-        WSPr_df['ramp_down_limit_t'] = ramp_down_limit[0]
+        # WSPr_df['ramp_up_limit_t'] = ramp_up_limit[0]
+        # WSPr_df['ramp_down_limit_t'] = ramp_down_limit[0]
         
         #print(WSPr_df.head())
 
@@ -330,13 +332,14 @@ class ems_P2X_bidirectional(om.ExplicitComponent):
             penalty_factor_H2 =penalty_factor_H2,
             eff_curve=self.eff_curve,
             min_power_standby = min_power_standby,
-            ramp_up_limit_t = WSPr_df.ramp_up_limit_t,
-            ramp_down_limit_t = WSPr_df.ramp_down_limit_t,
+            # ramp_up_limit_t = WSPr_df.ramp_up_limit_t,
+            # ramp_down_limit_t = WSPr_df.ramp_down_limit_t,
             load_min_penalty_factor = self.load_min_penalty_factor,
             peak_hr_quantile = peak_hr_quantile,
             cost_of_battery_P_fluct_in_peak_price_ratio = cost_of_battery_P_fluct_in_peak_price_ratio,
-            n_full_power_hours_expected_per_day_at_peak_price = n_full_power_hours_expected_per_day_at_peak_price
-        )
+            n_full_power_hours_expected_per_day_at_peak_price = n_full_power_hours_expected_per_day_at_peak_price,
+            electrolyzer_eff_curve_type = self.electrolyzer_eff_curve_type,
+            )
 
         # Extend (by repeating them and stacking) all variable to full lifetime 
         outputs['wind_t_ext'] = expand_to_lifetime(
@@ -393,21 +396,23 @@ def ems_cplex_P2X_bidirectional(
     penalty_factor_H2,
     eff_curve,
     min_power_standby,
-    ramp_up_limit_t,
-    ramp_down_limit_t,
+    # ramp_up_limit_t,
+    # ramp_down_limit_t,
     load_min_penalty_factor = 1e6,
     peak_hr_quantile = 0.9,
     cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
     n_full_power_hours_expected_per_day_at_peak_price = 3,  
-    batch_size = 12,
-):
+    batch_size = 45,
+    electrolyzer_eff_curve_type='production',
+    ):
     
     # split in batches, ussually a week
     batches_all = split_in_batch(list(range(len(wind_ts))), batch_size)
     # Make sure the last batch is not smaller than the others
     # instead append it to the previous last one
-    batches = batches_all[:-1]
-    batches[-1] = batches_all[-2]+batches_all[-1]
+    # batches = batches_all[:-1]
+    # batches[-1] = batches_all[-2]+batches_all[-1]
+    batches = batches_all
     
     # allocate vars
     P_HPP_ts = np.zeros(len(wind_ts))
@@ -430,10 +435,9 @@ def ems_cplex_P2X_bidirectional(
         E_batt_MWh_t_sel = E_batt_MWh_t.iloc[batch] 
         m_H2_demand_ts_sel = m_H2_demand_ts.iloc[batch]
         H2_storage_t_sel = H2_storage_t.iloc[batch]
-        ramp_up_limit_t_sel = ramp_up_limit_t.iloc[batch]
-        ramp_down_limit_t_sel = ramp_down_limit_t.iloc[batch]
+        # ramp_up_limit_t_sel = ramp_up_limit_t.iloc[batch]
+        # ramp_down_limit_t_sel = ramp_down_limit_t.iloc[batch]
             
-        #print(f'batch {ib+1} out of {len(batches)}')
         P_HPP_ts_batch, P_curtailment_ts_batch, P_charge_discharge_ts_batch, P_ptg_ts_batch,\
         E_SOC_ts_batch, m_H2_ts_batch, m_H2_offtake_ts_batch, m_H2_storage_ts_batch, m_H2_grid_ts_batch, P_ptg_grid_ts_batch, LoS_H2_ts_batch, penalty_batch = ems_cplex_parts_P2X_bidirectional(
             wind_ts = wind_ts_sel,
@@ -455,13 +459,14 @@ def ems_cplex_P2X_bidirectional(
             penalty_factor_H2 = penalty_factor_H2,
             eff_curve = eff_curve,
             min_power_standby = min_power_standby,
-            ramp_up_limit_t = ramp_up_limit_t_sel,
-            ramp_down_limit_t = ramp_down_limit_t_sel,
+            # ramp_up_limit_t = ramp_up_limit_t_sel,
+            # ramp_down_limit_t = ramp_down_limit_t_sel,
             load_min_penalty_factor = load_min_penalty_factor,
             peak_hr_quantile = peak_hr_quantile,
             cost_of_battery_P_fluct_in_peak_price_ratio = cost_of_battery_P_fluct_in_peak_price_ratio,
-            n_full_power_hours_expected_per_day_at_peak_price = n_full_power_hours_expected_per_day_at_peak_price,      
-        )
+            n_full_power_hours_expected_per_day_at_peak_price = n_full_power_hours_expected_per_day_at_peak_price,     
+            electrolyzer_eff_curve_type = electrolyzer_eff_curve_type,
+            )
         
         # print()
         # print()
@@ -515,13 +520,14 @@ def ems_cplex_parts_P2X_bidirectional(
     penalty_factor_H2,
     eff_curve,
     min_power_standby,
-    ramp_up_limit_t,
-    ramp_down_limit_t,
+    # ramp_up_limit_t,
+    # ramp_down_limit_t,
     load_min_penalty_factor = 1e6,
     peak_hr_quantile = 0.9,
     cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
     n_full_power_hours_expected_per_day_at_peak_price = 3,
-):
+    electrolyzer_eff_curve_type = 'production',
+    ):
     """EMS solver implemented in cplex
 
     Parameters
@@ -675,8 +681,8 @@ def ems_cplex_parts_P2X_bidirectional(
     mdl.add_constraint( LoS_H2_t[SOCtime[0]] == 0 )
     mdl.add_constraint( LoS_H2_t[SOCtime[-1]] == 0 )
 
-    mdl.add_constraint( P_ptg_t[SOCtime[0]] == 0 )
-    mdl.add_constraint( P_ptg_t[SOCtime[-1]] == 0 )
+    # mdl.add_constraint( P_ptg_t[SOCtime[0]] == 0 )
+    # mdl.add_constraint( P_ptg_t[SOCtime[-1]] == 0 )
 
 
     # piecewise linear representation of battery charge vs dischrage effciency 
@@ -688,11 +694,14 @@ def ems_cplex_parts_P2X_bidirectional(
     f4 = mdl.piecewise(0, [(0,0)],1)
 
     # # Caclulating Hydrogen production as a function of load (piecewise linear approximation)
-    H2_curve_list = [(load * ptg_MW, H2 * ptg_MW) for load, H2 in eff_curve]
+    if electrolyzer_eff_curve_type == 'production':
+        H2_curve_list = [(load * ptg_MW, H2 * ptg_MW) for load, H2 in eff_curve]
+    elif electrolyzer_eff_curve_type == 'efficiency':
+        H2_curve_list = [(load * ptg_MW, load * ptg_MW * efficiency / hhv * 1000) for load, efficiency in eff_curve]
+    else:
+        raise ValueError(f'electrolyzer_eff_curve_type is: "{electrolyzer_eff_curve_type}". Available options are ["production", "efficiency"]')
+            
     H2_prod = mdl.piecewise(0, H2_curve_list, 0)
-    # # Caclulating electrolyzer efficiency as a function of load (piecewise linear approximation)
-    # eff_curve_list = [(load * ptg_MW, load * ptg_MW * efficiency) for load, efficiency in eff_curve]
-    # PEM = mdl.piecewise(0, eff_curve_list, 0)
 
     # Caclulating power from grid as a function of m_H2_grid (piecewise linear approximation)
     P_ptg_grid_curve_list = [(H2 * ptg_MW, load * ptg_MW) for load, H2 in eff_curve]
@@ -737,8 +746,8 @@ def ems_cplex_parts_P2X_bidirectional(
         
         # Constraints on ramp up and ramp down of electrolyzer
 
-        mdl.add_constraint(P_ptg_t[tt]-P_ptg_t[t] <= ramp_up_limit_t[t])
-        mdl.add_constraint(P_ptg_t[tt]-P_ptg_t[t] >= -ramp_down_limit_t[t])
+        # mdl.add_constraint(P_ptg_t[tt]-P_ptg_t[t] <= ramp_up_limit_t[t])
+        # mdl.add_constraint(P_ptg_t[tt]-P_ptg_t[t] >= -ramp_down_limit_t[t])
 
         # Constraining hydrogen offtake as per the demand time series and level of storage
         mdl.add_constraint(LoS_H2_t[t] <= H2_storage_t[t])

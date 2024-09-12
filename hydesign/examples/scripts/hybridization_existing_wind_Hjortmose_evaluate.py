@@ -18,9 +18,9 @@ input_ts_fn = examples_filepath+ex_site['input_ts_fn'].values[0]
 
 
 hpp = hpp_model(
-latitude,
-longitude,
-altitude,
+latitude=latitude,
+longitude=longitude,
+altitude=altitude,
 num_batteries = 10,
 work_dir = './',
 sim_pars_fn = sim_pars_fn,
