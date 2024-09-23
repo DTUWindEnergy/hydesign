@@ -56,8 +56,14 @@ class pvp(om.ExplicitComponent):
             index_col=0,
             parse_dates=True)
 
+        weather = weather.rename(columns={'GHI': 'ghi',
+                                  'DNI': 'dni',
+                                  'DHI': 'dhi',
+                                  })
         weather['temp_air'] = weather['temp_air_1'] - 273.15  # Celcium
-        weather['wind_speed'] = weather['WS_1']
+        heights = [int(x.split('WS_')[-1]) for x in list(weather) if x.startswith('WS_')]
+        min_key = f'WS_{int(np.min(heights))}'
+        weather['wind_speed'] = weather[min_key]
 
         self.weather = weather
         self.pvloc = pvloc
@@ -145,7 +151,9 @@ class pvp_with_degradation(om.ExplicitComponent):
         """ 
         super().__init__()
         self.life_y = life_y
-        self.life_h = life_y*365*24
+        self.life_h = 365 * 24 * life_y
+        self.life_intervals = self.life_h * intervals_per_hour
+        self.intervals_per_hour = intervals_per_hour
         
         # PV degradation curve
         self.pv_deg_yr = pv_deg_yr
@@ -156,18 +164,19 @@ class pvp_with_degradation(om.ExplicitComponent):
             'solar_t_ext', 
             desc="PVP power time series", 
             units='MW',
-            shape=[self.life_h])
+            shape=[self.life_intervals])
         
         self.add_output(
             'solar_t_ext_deg', 
             desc="PVP power time series with degradation", 
             units='MW',
-            shape=[self.life_h])   
+            shape=[self.life_intervals])   
 
     def compute(self, inputs, outputs):
 
         solar_t_ext = inputs['solar_t_ext']
-        t_over_year = np.arange(self.life_h)/(365*24)
+        # t_over_year = np.arange(self.life_h)/(365*24)
+        t_over_year = np.arange(self.life_intervals)/(365*24*self.intervals_per_hour)
         degradation = np.interp(t_over_year, self.pv_deg_yr, self.pv_deg)
 
         outputs['solar_t_ext_deg'] = (1-degradation)*solar_t_ext
@@ -177,7 +186,10 @@ class pvp_degradation_linear(om.ExplicitComponent):
     PV degradation model providing the PV degradation time series throughout the lifetime of the plant, 
     considering a fixed linear degradation of the PV panels
     """
-    def __init__(self, life_h=25*365*24):
+    def __init__(self,
+                 life_y = 25,
+                 intervals_per_hour=1,
+                 ):
         """Initialization of the PV degradation model
 
         Parameters
@@ -186,7 +198,10 @@ class pvp_degradation_linear(om.ExplicitComponent):
 
         """ 
         super().__init__()
-        self.life_h = life_h
+        self.life_y = life_y
+        self.life_h = 365 * 24 * life_y
+        self.life_intervals = self.life_h * intervals_per_hour
+        self.intervals_per_hour = intervals_per_hour
         
     def setup(self):
         self.add_input('pv_deg_per_year', desc="PV degradation per year", val=0.5 / 100)
@@ -194,7 +209,7 @@ class pvp_degradation_linear(om.ExplicitComponent):
 
     def compute(self, inputs, outputs):
         pv_deg_per_year = inputs['pv_deg_per_year']
-        outputs['SoH_pv'] = get_linear_solar_degradation(pv_deg_per_year, self.life_h)   
+        outputs['SoH_pv'] = get_linear_solar_degradation(pv_deg_per_year, self.life_intervals, self.intervals_per_hour)   
 
 class shadow(om.ExplicitComponent):
     """pv loss model due to shadows of wt"""
@@ -316,20 +331,20 @@ def get_solar_time_series(
     solar_t[solar_t<0] = 0
     return solar_MW * solar_t.fillna(0.0)
 
-def get_linear_solar_degradation(pv_deg_per_year, life_h):
+def get_linear_solar_degradation(pv_deg_per_year, life, intervals_per_hour):
     """ 
     Computes the PV degradation
 
     Parameters
     ----------
     pv_deg_per_year : fixed yearly degradation of PV panels
-    life_h : lifetime of the plant in hours
+    life : lifetime of the plant in intervals
 
     Returns
     -------
     SoH_pv : degradation of the PV plant throughout the lifetime
     """
-    t_over_year = np.arange(life_h)/(365*24)
+    t_over_year = np.arange(life)/(365*24*intervals_per_hour)
     degradation = pv_deg_per_year * t_over_year
 
     y = 1 - degradation

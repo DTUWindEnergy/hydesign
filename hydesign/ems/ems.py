@@ -52,7 +52,8 @@ class ems(om.ExplicitComponent):
     def __init__(
         self, 
         N_time, 
-        life_h = 25*365*24, 
+        life_y = 25,
+        intervals_per_hour = 1,
         weeks_per_season_per_year = None,
         ems_type='cplex'):
 
@@ -60,7 +61,9 @@ class ems(om.ExplicitComponent):
         self.weeks_per_season_per_year = weeks_per_season_per_year
         self.N_time = int(N_time)
         self.ems_type = ems_type
-        self.life_h = int(life_h)
+        self.life_y = life_y
+        self.life_h = 365 * 24 * life_y
+        self.life_intervals = self.life_h * intervals_per_hour
         
     def setup(self):
         self.add_input(
@@ -262,14 +265,18 @@ class ems_long_term_operation(om.ExplicitComponent):
         self, 
         N_time,
         num_batteries = 1,
-        life_h = 25*365*24, 
+        life_y = 25,
+        intervals_per_hour = 1,
         ems_type='energy_penalty',
         load_min_penalty_factor=1e6,
         ):
 
         super().__init__()
         self.N_time = N_time
-        self.life_h = life_h
+        self.intervals_per_hour = intervals_per_hour
+        self.life_y = life_y
+        self.life_h = 365 * 24 * life_y
+        self.life_intervals = self.life_h * intervals_per_hour
         self.ems_type = ems_type
         self.load_min_penalty_factor = load_min_penalty_factor
 
@@ -277,31 +284,31 @@ class ems_long_term_operation(om.ExplicitComponent):
         self.add_input(
             'SoH',
             desc="Battery state of health at discretization levels",
-            shape=[self.life_h])
+            shape=[self.life_intervals])
         self.add_input(
             'wind_t_ext_deg',
             desc="Wind time series including degradation",
             units='MW',
-            shape=[self.life_h]) 
+            shape=[self.life_intervals]) 
         self.add_input(
             'solar_t_ext_deg',
             desc="PV time series including degradation",
             units='MW',
-            shape=[self.life_h]) 
+            shape=[self.life_intervals]) 
         self.add_input(
             'wind_t_ext',
             desc="WPP power time series",
             units='MW',
-            shape=[self.life_h])
+            shape=[self.life_intervals])
         self.add_input(
             'solar_t_ext',
             desc="PVP power time series",
             units='MW',
-            shape=[self.life_h])
+            shape=[self.life_intervals])
         self.add_input(
             'price_t_ext',
             desc="Electricity price time series",
-            shape=[self.life_h])
+            shape=[self.life_intervals])
         self.add_input(
             'b_P',
             desc="Battery power capacity",
@@ -324,16 +331,16 @@ class ems_long_term_operation(om.ExplicitComponent):
             'hpp_curt_t',
             desc="HPP curtailed power time series",
             units='MW',
-            shape=[self.life_h])
+            shape=[self.life_intervals])
         self.add_input(
             'b_t',
             desc="Battery charge/discharge power time series",
             units='MW',
-            shape=[self.life_h])
+            shape=[self.life_intervals])
         self.add_input(
             'b_E_SOC_t',
             desc="Battery energy SOC time series",
-            shape=[self.life_h + 1])
+            shape=[self.life_intervals + 1])
         self.add_input(
             'peak_hr_quantile',
             desc="Quantile of price tim sereis to define peak price hours (above this quantile).\n"+
@@ -353,25 +360,25 @@ class ems_long_term_operation(om.ExplicitComponent):
             'hpp_t_with_deg',
             desc="HPP power time series",
             units='MW',
-            shape=[self.life_h])
+            shape=[self.life_intervals])
         self.add_output(
             'hpp_curt_t_with_deg',
             desc="HPP curtailed power time series",
             units='MW',
-            shape=[self.life_h])
+            shape=[self.life_intervals])
         self.add_output(
             'b_t_with_deg',
             desc="Battery charge/discharge power time series",
             units='MW',
-            shape=[self.life_h])
+            shape=[self.life_intervals])
         self.add_output(
             'b_E_SOC_t_with_deg',
             desc="Battery energy SOC time series",
-            shape=[self.life_h + 1])
+            shape=[self.life_intervals + 1])
         self.add_output(
             'penalty_t_with_deg',
             desc="penalty for not reaching expected energy productin at peak hours",
-            shape=[self.life_h])   
+            shape=[self.life_intervals])   
         self.add_output(
             'total_curtailment_with_deg',
             desc="total curtailment in the lifetime after degradation",
@@ -414,7 +421,10 @@ class ems_long_term_operation(om.ExplicitComponent):
         else:
             raise Warning("This class should only be used for energy_penalty")
 
-
+        if self.intervals_per_hour == 1:
+            freq = '1h'
+        else:
+            freq = f'{60 / self.intervals_per_hour:.0f}min'
 
         args = dict(wind_t_deg = wind_t_ext_deg,
                 solar_t_deg = solar_t_ext_deg,
@@ -431,7 +441,8 @@ class ems_long_term_operation(om.ExplicitComponent):
                 b_E_SOC_0 = None,
                 price_ts = price_t_ext,
                 peak_hr_quantile = peak_hr_quantile,
-            n_full_power_hours_expected_per_day_at_peak_price = n_full_power_hours_expected_per_day_at_peak_price,)
+            n_full_power_hours_expected_per_day_at_peak_price = n_full_power_hours_expected_per_day_at_peak_price,
+            freq=freq,)
 
         Hpp_deg, P_curt_deg, b_t_sat, b_E_SOC_t_sat, penalty_t_with_deg = ems_longterm(**args)
         
@@ -447,7 +458,7 @@ class ems_long_term_operation(om.ExplicitComponent):
 # Auxiliar functions for ems modelling
 # -----------------------------------------------------------------------
 
-def expand_to_lifetime(x, life_h = 25*365*24, weeks_per_season_per_year=None):
+def expand_to_lifetime(x, life = 25*365*24, intervals_per_hour=1, weeks_per_season_per_year=None):
     """
     Expands (by repeating) a given variable to match an expected lifetime length.
     
@@ -456,7 +467,7 @@ def expand_to_lifetime(x, life_h = 25*365*24, weeks_per_season_per_year=None):
     Parameters
     ----------
     x: input variable
-    life_h: lifetime in hours.
+    life: lifetime in no .
     weeks_per_season_per_year: None or int.
 
     Returns
@@ -467,21 +478,21 @@ def expand_to_lifetime(x, life_h = 25*365*24, weeks_per_season_per_year=None):
         
         # Extend the data to match the expected lifetime
         len_x = len(x)
-        N_repeats = int(np.ceil(life_h/len_x))
+        N_repeats = int(np.ceil(life/len_x))
     
     else:
         x_ext = np.array([])
     
         # extend selected weeks into a year: 4 season of 13 weeks + one extra day.
-        for x_batch in split_in_batch(x,weeks_per_season_per_year*7*24):
-            x_ext = np.append( x_ext, np.tile(x_batch,20)[:24*7*13] )
-        x_ext = np.append( x_ext, x_batch[-24:] )    
+        for x_batch in split_in_batch(x,weeks_per_season_per_year*7*24*intervals_per_hour):
+            x_ext = np.append( x_ext, np.tile(x_batch,20)[:24*7*13*intervals_per_hour] )
+        x_ext = np.append( x_ext, x_batch[-24*intervals_per_hour:] )    
         
         # extend the constructed year to match the expected lifetime
         x = x_ext    
-        N_repeats = int(np.ceil(life_h/365*24))
+        N_repeats = int(np.ceil(life/(365*24*intervals_per_hour)))
     
-    return np.tile(x,N_repeats)[:life_h]
+    return np.tile(x,N_repeats)[:life]
 
 
 def ems_cplex(
@@ -1424,6 +1435,7 @@ def operation_solar_batt_deg(
     b_E_SOC_0 = None,
     peak_hr_quantile = 0.9,
     n_full_power_hours_expected_per_day_at_peak_price = 3,
+    freq='1h',
 ):
 
     """EMS operation for degraded PV and battery based on an existing EMS.
@@ -1524,7 +1536,8 @@ def operation_solar_batt_deg(
         index=pd.date_range(
         start='01-01-1991 00:00',
         periods=len(Hpp_deg),
-        freq='1h')
+        freq=freq,
+        )
     )
     H_df['price_t_ext'] = price_ts
     price_peak = np.quantile(H_df['price_t_ext'],peak_hr_quantile)

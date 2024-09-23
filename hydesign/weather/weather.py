@@ -65,7 +65,7 @@ class ABL(om.ExplicitComponent):
         ds_interpolated = self.precompute(inputs['hh'])
         self.ds_interpolated = ds_interpolated
 
-        outputs['wst'] = ds_interpolated.WS.values.flatten()
+        outputs['wst'] = np.nan_to_num(ds_interpolated.WS.values.flatten())
 
     def compute_partials(self, inputs, partials):
 

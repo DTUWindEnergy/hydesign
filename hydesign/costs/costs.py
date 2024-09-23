@@ -35,6 +35,7 @@ class wpp_cost(om.ExplicitComponent):
                  hh_ref,
                  p_rated_ref,
                  N_time,
+                 intervals_per_hour=1,
                  ):
 
         """Initialization of the wind power plant cost model
@@ -60,6 +61,7 @@ class wpp_cost(om.ExplicitComponent):
         self.hh_ref = hh_ref
         self.p_rated_ref = p_rated_ref
         self.N_time= N_time
+        self.intervals_per_hour = intervals_per_hour
 
     def setup(self):
         #self.add_discrete_input(
@@ -152,7 +154,7 @@ class wpp_cost(om.ExplicitComponent):
             crane = True,  
             )*1e-6
         scale = (WT_cost/p_rated)/(WT_cost_ref/p_rated_ref)
-        mean_aep_wind = wind_t.mean()*365*24
+        mean_aep_wind = wind_t.mean()*365*24*self.intervals_per_hour
         
         #print(WT_cost)
         #print(WT_cost_ref)
@@ -294,9 +296,10 @@ class battery_cost(om.ExplicitComponent):
         self.battery_BOP_installation_commissioning_cost = battery_BOP_installation_commissioning_cost
         self.battery_control_system_cost = battery_control_system_cost
         self.battery_energy_onm_cost = battery_energy_onm_cost
-        self.N_life = life_y
+        # self.N_life = life_y
         self.life_h = life_y * 365 * 24
         self.yearly_intervals = 365 * 24 * intervals_per_hour
+        self.life_intervals = life_y * self.yearly_intervals
         # print(life_y, self.life_h)
 
 
@@ -309,7 +312,7 @@ class battery_cost(om.ExplicitComponent):
         self.add_input(
             'SoH',
             desc="Battery state of health at discretization levels",
-            shape=[self.life_h])
+            shape=[self.life_intervals])
         self.add_input('battery_price_reduction_per_year',
                        desc="Factor of battery price reduction per year")
 
@@ -341,9 +344,9 @@ class battery_cost(om.ExplicitComponent):
         OPEX_b : OPEX of the storage unit [Eur/year]
         """
         
-        N_life = self.N_life
-        life_h = self.life_h
-        age = np.arange(life_h)/self.yearly_intervals
+        # N_life = self.N_life
+        life_intervals = self.life_intervals
+        age = np.arange(life_intervals)/self.yearly_intervals
         
         b_E = inputs['b_E']
         b_P = inputs['b_P']
@@ -500,6 +503,7 @@ class ptg_cost(om.ExplicitComponent):
         self.N_time = N_time
         self.life_h = 365 * 24 * life_y * intervals_per_hour
         self.yearly_intervals = 365 * 24 * intervals_per_hour
+        self.life_intervals = self.yearly_intervals * life_y
 
     def setup(self):
 
@@ -509,18 +513,18 @@ class ptg_cost(om.ExplicitComponent):
         self.add_input('m_H2_t',
                         desc = "Produced hydrogen",
                         units = "kg",
-                        shape=[self.life_h])
+                        shape=[self.life_intervals])
         self.add_input('HSS_kg',
                         desc = "Installed capacity of Hydrogen storage",
                         units = 'kg')
         self.add_input('m_H2_demand_t_ext',
                         desc = "Hydrogen demand",
                         units = "kg",
-                        shape=[self.life_h])
+                        shape=[self.life_intervals])
         self.add_input('m_H2_offtake_t',
                         desc = "Offtake hydrogen",
                         units = "kg",
-                        shape=[self.life_h])
+                        shape=[self.life_intervals])
 
         
         #Creating outputs:

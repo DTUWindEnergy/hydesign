@@ -154,6 +154,57 @@ def scenario_generation(simulation_dict, SM_price_cleared, BM_dw_price_cleared, 
        reg_forecast = Reg_price_cleared 
     return probability, BP_up_forecast, BP_dw_forecast, reg_forecast
 
+def _revenue_calculation(parameter_dict,
+                         P_HPP_SM_t_opt,
+                         P_HPP_RT_ts,
+                         P_HPP_RT_refs,
+                         SM_price_cleared,
+                         BM_dw_price_cleared,
+                         BM_up_price_cleared,
+                         P_HPP_UP_bid_ts,
+                         P_HPP_DW_bid_ts,
+                         s_UP_t,
+                         s_DW_t,
+                         BI,):
+    DI = parameter_dict["dispatch_interval"]
+    DI_num = int(1/DI)    
+    
+    SI = parameter_dict["settlement_interval"]
+    SI_num = int(1/SI)
+
+    # Spot market revenue
+    SM_price_cleared_DI = SM_price_cleared.repeat(DI_num)
+    SM_revenue = (P_HPP_SM_t_opt.squeeze()*SM_price_cleared_DI*DI)
+
+    # Regulation revenue
+    BM_up_price_cleared_DI = BM_up_price_cleared.repeat(DI_num)
+    BM_dw_price_cleared_DI = BM_dw_price_cleared.repeat(DI_num)
+   
+    s_UP_t = pd.Series(s_UP_t)
+    s_DW_t = pd.Series(s_DW_t)
+
+    reg_revenue = (s_UP_t*P_HPP_UP_bid_ts.squeeze()*DI*BM_up_price_cleared_DI) - (s_DW_t*P_HPP_DW_bid_ts.squeeze()*BI*BM_dw_price_cleared_DI) 
+    
+    # Imbalance revenue
+    BM_up_price_cleared_SI = BM_up_price_cleared.repeat(SI_num)
+    BM_dw_price_cleared_SI = BM_dw_price_cleared.repeat(SI_num)
+    P_HPP_RT_ts_15min = f_xmin_to_ymin(P_HPP_RT_ts, DI, 1/4)    
+    P_HPP_RT_refs_15min = f_xmin_to_ymin(P_HPP_RT_refs, DI, 1/4)
+    
+    power_imbalance = pd.Series((P_HPP_RT_ts_15min.values -P_HPP_RT_refs_15min.values)[:,0])
+
+    pos_imbalance = power_imbalance.apply(lambda x: x if x > 0 else 0)
+    neg_imbalance = power_imbalance.apply(lambda x: x if x < 0 else 0)
+
+    im_revenue = np.asarray(pos_imbalance*SI*BM_dw_price_cleared_SI) + np.asarray(neg_imbalance*SI*BM_up_price_cleared_SI)
+    
+    # imbalance fee
+
+    im_power_cost_DK1 = (abs(power_imbalance*SI)*parameter_dict['imbalance_fee'])
+
+    # Balancing market revenue    
+    BM_revenue = reg_revenue + im_revenue - im_power_cost_DK1 
+    return SM_revenue, reg_revenue, im_revenue, BM_revenue, im_power_cost_DK1
 
 def Revenue_calculation(parameter_dict,
                         P_HPP_SM_t_opt,
@@ -167,47 +218,22 @@ def Revenue_calculation(parameter_dict,
                         s_UP_t,
                         s_DW_t,
                         BI=1,
-                        ):    
-    DI = parameter_dict["dispatch_interval"]
-    DI_num = int(1/DI)    
-    
-    SI = parameter_dict["settlement_interval"]
-    SI_num = int(1/SI)
-
-    # Spot market revenue
-    SM_price_cleared_DI = SM_price_cleared.repeat(DI_num)
-    SM_revenue = (P_HPP_SM_t_opt.squeeze()*SM_price_cleared_DI*DI).sum()
-
-    # Regulation revenue
-    BM_up_price_cleared_DI = BM_up_price_cleared.repeat(DI_num)
-    BM_dw_price_cleared_DI = BM_dw_price_cleared.repeat(DI_num)
+                        ):
+    SM_revenue, reg_revenue, im_revenue, BM_revenue, im_power_cost_DK1 = _revenue_calculation(parameter_dict,
+                         P_HPP_SM_t_opt,
+                         P_HPP_RT_ts,
+                         P_HPP_RT_refs,
+                         SM_price_cleared,
+                         BM_dw_price_cleared,
+                         BM_up_price_cleared,
+                         P_HPP_UP_bid_ts,
+                         P_HPP_DW_bid_ts,
+                         s_UP_t,
+                         s_DW_t,
+                         BI,
+                         )    
    
-    s_UP_t = pd.Series(s_UP_t)
-    s_DW_t = pd.Series(s_DW_t)
-
-    reg_revenue = (s_UP_t*P_HPP_UP_bid_ts.squeeze()*DI*BM_up_price_cleared_DI).sum() - (s_DW_t*P_HPP_DW_bid_ts.squeeze()*BI*BM_dw_price_cleared_DI).sum() 
-    
-    # Imbalance revenue
-    BM_up_price_cleared_SI = BM_up_price_cleared.repeat(SI_num)
-    BM_dw_price_cleared_SI = BM_dw_price_cleared.repeat(SI_num)
-    P_HPP_RT_ts_15min = f_xmin_to_ymin(P_HPP_RT_ts, DI, 1/4)    
-    P_HPP_RT_refs_15min = f_xmin_to_ymin(P_HPP_RT_refs, DI, 1/4)
-    
-    power_imbalance = pd.Series((P_HPP_RT_ts_15min.values -P_HPP_RT_refs_15min.values)[:,0])
-
-    pos_imbalance = power_imbalance.apply(lambda x: x if x > 0 else 0)
-    neg_imbalance = power_imbalance.apply(lambda x: x if x < 0 else 0)
-
-    im_revenue = np.sum(pos_imbalance*SI*BM_dw_price_cleared_SI) + np.sum(neg_imbalance*SI*BM_up_price_cleared_SI)
-    
-    # imbalance fee
-
-    im_power_cost_DK1 = (abs(power_imbalance*SI)*parameter_dict['imbalance_fee']).sum()
-
-    # Balancing market revenue    
-    BM_revenue = reg_revenue + im_revenue - im_power_cost_DK1 
-   
-    return SM_revenue, reg_revenue, im_revenue, BM_revenue, im_power_cost_DK1
+    return SM_revenue.sum(), reg_revenue.sum(), im_revenue.sum(), BM_revenue.sum(), im_power_cost_DK1.sum()
 
 
 def get_var_value_from_sol(x, sol):

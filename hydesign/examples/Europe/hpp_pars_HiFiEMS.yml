@@ -2,8 +2,11 @@
 # HPP Global
 # --------------------------------------------------------------------------------------------
 G_MW: 100 # Grid capacity
-year: '2012' # Single representative year
+year: '2021' # Single representative year
 N_life: 25
+longitude: 8.594398
+latitude: 56.227322
+altitude: 85
 
 # --------------------------------------------------------------------------------------------
 # Wind
@@ -141,6 +144,7 @@ elevation_fn: '/groups/INP/era5/SRTMv3_plus_ViewFinder_coarsen.nc' # Altitude ma
 # HiFiEMS
 # --------------------------------------------------------------------------------------------
 
+
 ## PARAMETER KEYS
 
 # hpp battery parameters
@@ -149,6 +153,7 @@ battery_initial_SoC: 0.1
 battery_hour_discharge_efficiency: 0.985  #
 battery_hour_charge_efficiency: 0.975
 battery_self_discharge_efficiency: 0
+
 # hpp battery degradation parameters
 battery_marginal_degradation_cost: 142_000 # in EUR/MWh
 battery_capital_cost: 142_000 # in EUR/MWh
@@ -165,11 +170,12 @@ settlement_interval: 0.25
 
 imbalance_fee: 0.13  # DK: 0.13 €/MWh, other Nordic countries: , others: 0.001
 
+
 ## SIMULATION KEYS
-start_date: '1/1/22'
+
+start_date: '1/1/21'
 number_of_run_day: 50   # 
 out_dir: './test/'
-
 DA_wind: 'DA'   #DA, Measurement
 HA_wind: 'HA'  #HA, Measurement
 FMA_wind: 'RT'  #5min_ahead, Measurement
@@ -181,13 +187,13 @@ RP: 'reg_forecast' #reg_cleared;reg_forecast_pre
 BP: 1 #1:forecast value 2: perfect value
 
 # Data
-wind_fn: '../HiFiEMS_inputs/Winddata2021_15min.csv'
-solar_fn: '../HiFiEMS_inputs/Solardata2021_15min.csv'
-market_fn: '../HiFiEMS_inputs/Market2021.csv'
+data_dir: null
+input_ts_da: 'HiFiEMS_inputs/Weather/input_ts_DA.csv'
+input_ts_ha: 'HiFiEMS_inputs/Weather/input_ts_HA.csv'
+input_ts_rt: 'HiFiEMS_inputs/Weather/input_ts_RT.csv'
+input_ts_measurement: 'HiFiEMS_inputs/Weather/input_ts_measurement.csv'
+market_fn: 'HiFiEMS_inputs/Market/Market2021.csv'
 
-# for DDEMS (spot market) -- Historical data
-history_wind_fn: '../HiFiEMS_inputs/Winddata2022_15min.csv'
-history_market_fn: '../HiFiEMS_inputs/Market2021.csv'
 
 
 

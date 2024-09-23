@@ -25,17 +25,32 @@ def ReadData(day_num, exten_num, DI_num, T, PsMax, PwMax, simulation_dict):
     datetime_str = simulation_dict["start_date"]
     day_num_start = datetime.strptime(datetime_str, '%m/%d/%y').timetuple().tm_yday
 
-    skips1 = range(1, ((day_num - 1 + day_num_start - 1) * T)%(359*T) + 1)
-    skips2 = range(1, ((day_num - 1 + day_num_start - 1) * 24)%(359*24) + 1)
+    # skips1 = range(1, ((day_num - 1 + day_num_start - 1) * T)%(359*T) + 1)
+    # skips2 = range(1, ((day_num - 1 + day_num_start - 1) * 24)%(359*24) + 1)
 
-    Wind_data = pd.read_csv(simulation_dict["wind_fn"], skiprows = skips1, nrows=T+exten_num)
-    Solar_data = pd.read_csv(simulation_dict["solar_fn"], skiprows = skips1, nrows=T+exten_num)
-    Market_data = pd.read_csv(simulation_dict["market_fn"], skiprows = skips2, nrows=int(T/DI_num)+int(exten_num/DI_num))
+    skips1 = ((day_num - 1 + day_num_start - 1) * T)%(359*T)
+    skips2 = ((day_num - 1 + day_num_start - 1) * 24)%(359*24)
+
+    # Wind_data = pd.read_csv(simulation_dict["wind_fn"], skiprows = skips1, nrows=T+exten_num)
+    # Solar_data = pd.read_csv(simulation_dict["solar_fn"], skiprows = skips1, nrows=T+exten_num)
+    # Market_data = pd.read_csv(simulation_dict["market_fn"], skiprows = skips2, nrows=int(T/DI_num)+int(exten_num/DI_num))
     
+    Wind_data = simulation_dict["wind_df"].iloc[skips1: skips1+T+exten_num]
+    Solar_data = simulation_dict["solar_df"].iloc[skips1: skips1+T+exten_num]
+    Market_data = simulation_dict["market_df"].iloc[skips2: skips2 + int(T/DI_num)+int(exten_num/DI_num)]
     
+    Wind_data.reset_index(inplace=True)
+    Solar_data.reset_index(inplace=True)
+    Market_data.reset_index(inplace=True)
     
-    Wind_measurement = Wind_data['Measurement'] * PwMax
-    Solar_measurement = Solar_data['Measurement'] * PsMax
+    if 'Measurement' in Wind_data:
+        Wind_measurement = Wind_data['Measurement'] * PwMax
+    else:
+        Wind_measurement = None
+    if 'Measurement' in Solar_data:
+        Solar_measurement = Solar_data['Measurement'] * PsMax
+    else:
+        Solar_measurement = None
 
 
     DA_wind_forecast = Wind_data[simulation_dict["DA_wind"]] * PwMax
