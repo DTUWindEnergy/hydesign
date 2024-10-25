@@ -16,6 +16,11 @@ import pickle
 import smt
 smt_version = smt.__version__.split('.')
 major, minor = smt_version[:2]
+major = int(major)
+minor = int(minor)
+
+if (major >= 2 and minor>= 6) or major >=3:
+    major, minor = 2, 6
 
 def get_test_sm():
     nt = 100

@@ -63,9 +63,9 @@ class ReliabilityModel(hpp_model):
                  inverter_size, panel_size
                  ):
         outs =[]
-        n_inverters = int(solar_MW * 10 ** 3 / inverter_size)
+        n_inverters = np.max((int(solar_MW * 10 ** 3 / inverter_size), 1)) #  ensure that there is at least 1 inverter
         inverter_size_real = solar_MW * 10 ** 3 / n_inverters
-        n_panels_per_inverter = int(inverter_size_real * 10 ** 3 / panel_size)
+        n_panels_per_inverter = np.max((int(inverter_size_real * 10 ** 3 / panel_size), 1)) #  ensure that there is at least 1 inverter
         panel_size_real = inverter_size_real * 10 ** 3 / n_panels_per_inverter
         Nwt = int(Nwt)
         for i in range(self.n_seed):
