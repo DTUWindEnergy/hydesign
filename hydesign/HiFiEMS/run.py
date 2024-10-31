@@ -55,12 +55,20 @@ parameter_dict = {
         'imbalance_fee': 0.13,  # DK: 0.13 €/MWh, other Nordic countries: , others: 0.001
     }
 
+dic = {'wind_fn': examples_filepath + "HiFiEMS_inputs/Power/Winddata2021_15min.csv",
+       'solar_fn': examples_filepath + "HiFiEMS_inputs/Power/Solardata2021_15min.csv",
+       'market_fn': examples_filepath + "HiFiEMS_inputs/Market/Market2021.csv",}
+
+Wind_data = pd.read_csv(dic["wind_fn"])
+Solar_data = pd.read_csv(dic["solar_fn"])
+Market_data = pd.read_csv(dic["market_fn"])
+
 simulation_dict = {
         'wind_as_component': 1,
         'solar_as_component': 1,  # The code does not support for solar power plant
         'battery_as_component': 1,
-        'start_date': '1/1/22',
-        'number_of_run_day': 360,   # 
+        'start_date': '1/1/21',
+        'number_of_run_day': 50,   # 
         'out_dir':"./test/",
 
         'DA_wind': "DA",   #DA, Measurement
@@ -74,9 +82,9 @@ simulation_dict = {
         'BP': 1, #1:forecast value 2: perfect value
         
         # Data
-        'wind_fn': examples_filepath + "HiFiEMS_inputs/Winddata2021_15min.csv",
-        'solar_fn': examples_filepath + "HiFiEMS_inputs/Solardata2021_15min.csv",
-        'market_fn': examples_filepath + "HiFiEMS_inputs/Market2021.csv",
+        'wind_df': Wind_data,
+        'solar_df': Solar_data,
+        'market_df': Market_data,
         
         # for DDEMS (spot market) -- Historical data
         'history_wind_fn': examples_filepath + "HiFiEMS_inputs/Winddata2022_15min.csv",
@@ -116,10 +124,30 @@ res = utils.run(
         BM_model=False,
         RD_model=False
        )   # run EMS with only spot market optimization
-    
-for k, r in zip(out_keys, res):
-    print(k, r.shape)
 
+lst = []
+for k, r in zip(out_keys, res):
+    lst.append({'key': k, 'sum': r.sum(), 'mean': r.mean(), 'size':r.size})
+df = pd.DataFrame(lst)
+
+'''
+                    key           sum          mean  size
+0        P_HPP_SM_t_opt  4.938688e+03  5.144467e+01    96
+1      SM_price_cleared  1.144810e+03  4.770042e+01    24
+2   BM_dw_price_cleared  1.018550e+03  4.243958e+01    24
+3   BM_up_price_cleared  1.144810e+03  4.770042e+01    24
+4           P_HPP_RT_ts  2.782215e+03  2.898141e+01    96
+5         P_HPP_RT_refs  4.938688e+03  5.144467e+01    96
+6       P_HPP_UP_bid_ts  0.000000e+00  0.000000e+00    96
+7       P_HPP_DW_bid_ts  0.000000e+00  0.000000e+00    96
+8                s_UP_t  0.000000e+00  0.000000e+00    96
+9                s_DW_t  0.000000e+00  0.000000e+00    96
+10   residual_imbalance -1.325445e+03 -1.380672e+01    96
+11        RES_RT_cur_ts  1.776357e-15  1.850372e-17    96
+12          P_dis_RT_ts  5.555268e+02  5.786738e+00    96
+13          P_cha_RT_ts  1.799773e+02  1.874764e+00    96
+14               SoC_ts  2.664831e+01  2.775866e-01    96
+'''
 #EMS.run_SM_RD(
 #        parameter_dict = parameter_dict,
 #        simulation_dict = simulation_dict

@@ -128,9 +128,9 @@ df_RT = df_merged.copy()
 df_RT[:] = np.roll(df_merged.to_numpy(), 1, axis=0)
 
 #%% Save and plot
-df_merged.to_csv('input_ts_HA.csv')
-df_merged.to_csv('input_ts_DA.csv')
-df_merged_DA.to_csv('input_ts_RT.csv')
+df_merged_DA.to_csv('input_ts_HA.csv')
+df_merged_DA.to_csv('input_ts_DA.csv')
+df_merged.to_csv('input_ts_RT.csv')
 df_RT.to_csv('input_ts_Measurement.csv')
 
 plt.figure()

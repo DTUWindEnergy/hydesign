@@ -172,7 +172,7 @@ class ems(om.ExplicitComponent):
         self.add_output('SM_price_cleared',desc='',shape=[self.life_h],)
         self.add_output('BM_dw_price_cleared',desc='',shape=[self.life_h],)
         self.add_output('BM_up_price_cleared',desc='',shape=[self.life_h],)
-        self.add_output('P_HPP_RT_ts',desc='',shape=[self.life_intervals],)
+        # self.add_output('P_HPP_RT_ts',desc='',shape=[self.life_intervals],)
         self.add_output('P_HPP_RT_refs',desc='',shape=[self.life_intervals],)
         self.add_output('P_HPP_UP_bid_ts',desc='',shape=[self.life_intervals],)
         self.add_output('P_HPP_DW_bid_ts',desc='',shape=[self.life_intervals],)
@@ -241,6 +241,7 @@ class ems(om.ExplicitComponent):
             'market_df': Market_data,
             })
         
+
         (P_HPP_SM_t_opt,
          SM_price_cleared,
          BM_dw_price_cleared,
@@ -252,7 +253,6 @@ class ems(om.ExplicitComponent):
          s_UP_t,
          s_DW_t,
          residual_imbalance,
-         P_HPP_ts,
          P_curtailment_ts,
          P_charge_discharge_ts, 
          E_SOC_ts) = ems_cplex(parameter_dict=parameter_dict,
@@ -278,7 +278,7 @@ class ems(om.ExplicitComponent):
             BM_up_price_cleared,
             life = self.life_h, intervals_per_hour=1
             )
-        outputs['P_HPP_RT_ts']=expand_to_lifetime(
+        outputs['P_HPP_ts']=expand_to_lifetime(
             P_HPP_RT_ts,
             life = self.life_intervals, intervals_per_hour=self.intervals_per_hour
             )
@@ -306,10 +306,6 @@ class ems(om.ExplicitComponent):
             residual_imbalance,
             life = self.life_intervals, intervals_per_hour=self.intervals_per_hour
             )
-        outputs['P_HPP_ts']=expand_to_lifetime(
-            P_HPP_ts,
-            life = self.life_intervals, intervals_per_hour=self.intervals_per_hour
-            )
         outputs['P_curtailment_ts']=expand_to_lifetime(
             P_curtailment_ts,
             life = self.life_intervals, intervals_per_hour=self.intervals_per_hour
@@ -329,19 +325,7 @@ def ems_cplex(
     simulation_dict,
     BM_model=False,
     RD_model=False,):
-    # from contextlib import redirect_stdout
 
-    # with open(r"C:\Sandbox\Test\hydesign\hifiems\failing.txt", 'w') as f:
-    #     with redirect_stdout(f):
-    #         for k,v in sorted(parameter_dict.items()):
-    #             print(k, v)
-    #         for k,v in sorted(simulation_dict.items()):
-    #             if k in ['wind_df', 'solar_df']:
-    #                 print(k, v.describe())
-    #             else:
-    #                 print(k, v)
-    #         print(EMS,
-    #               BM_model)
     (P_HPP_SM_t_opt,
      SM_price_cleared,
      BM_dw_price_cleared,
@@ -362,10 +346,7 @@ def ems_cplex(
                    EMStype="DEMS",
                    BM_model=BM_model,)
   
-    P_HPP_ts = P_HPP_RT_ts
-    P_curtailment_ts = RES_RT_cur_ts
     P_charge_discharge_ts = P_dis_RT_ts - P_cha_RT_ts
-    E_SOC_ts = SoC_ts
 
     return (P_HPP_SM_t_opt,
             SM_price_cleared,
@@ -378,10 +359,9 @@ def ems_cplex(
             s_UP_t,
             s_DW_t,
             residual_imbalance,
-            P_HPP_ts,
-            P_curtailment_ts,
+            RES_RT_cur_ts,
             P_charge_discharge_ts, 
-            E_SOC_ts,)
+            SoC_ts,)
 
 if __name__ == '__main__':
     from hydesign.examples import examples_filepath
@@ -392,9 +372,41 @@ if __name__ == '__main__':
            'market_fn': examples_filepath + "HiFiEMS_inputs/Market/Market2021.csv",}
 
     Wind_data = pd.read_csv(dic["wind_fn"])
+    '''
+            Measurement            DA            HA            RT
+    count  35040.000000  35040.000000  35040.000000  35040.000000
+    mean       0.216720      0.227055      0.227055      0.216712
+    std        0.235418      0.260050      0.260050      0.235421
+    min        0.000000      0.000000      0.000000      0.000000
+    25%        0.019800      0.011134      0.011134      0.019800
+    50%        0.145600      0.143825      0.143825      0.145550
+    75%        0.327600      0.337928      0.337928      0.327600
+    max        1.000000      1.000000      1.000000      1.000000
+    '''
     Solar_data = pd.read_csv(dic["solar_fn"])
+    '''
+            Measurement            DA            HA            RT
+    count  35040.000000  35040.000000  35040.000000  35040.000000
+    mean       0.119284      0.120088      0.120088      0.119284
+    std        0.193897      0.207201      0.207201      0.193897
+    min        0.000000      0.000000      0.000000      0.000000
+    25%        0.000000      0.000000      0.000000      0.000000
+    50%        0.000000      0.000000      0.000000      0.000000
+    75%        0.182231      0.158699      0.158699      0.182231
+    max        0.829113      0.929321      0.929321      0.829113
+    '''
     Market_data = pd.read_csv(dic["market_fn"])
-
+    '''
+           SM_forecast  SM_forecast_LEAR  ...  reg_vol_Down  Unnamed: 12
+    count  8760.000000       8760.000000  ...   8748.000000  1186.000000
+    mean     83.018918         81.873855  ...    -43.144719    50.795430
+    std      55.870573         53.748445  ...    155.466878    20.359182
+    min     -20.693764         -3.388899  ...  -2162.000000    -2.210000
+    25%      45.520623         46.838872  ...     -0.250000    37.860000
+    50%      68.482143         68.039038  ...      0.000000    48.335000
+    75%     101.689932        101.055036  ...      0.000000    60.840000
+    max     553.576660        480.578725  ...      0.000000   147.480000
+    '''
     
     parameter_dict = {
             
@@ -484,21 +496,41 @@ if __name__ == '__main__':
                 'SM_price_cleared',
                 'BM_dw_price_cleared',
                 'BM_up_price_cleared',
-                'P_HPP_RT_ts',
+                'P_HPP_ts',
                 'P_HPP_RT_refs',
                 'P_HPP_UP_bid_ts',
                 'P_HPP_DW_bid_ts',
                 's_UP_t',
                 's_DW_t',
                 'residual_imbalance',
-                'P_HPP_ts',
                 'P_curtailment_ts',
-                'P_charge_discharge_ts', 
+                'P_charge_discharge_ts',
                 'E_SOC_ts',]
+    
         
     res = ems_cplex(parameter_dict, simulation_dict)
+    lst = []
     for k, r in zip(out_keys, res):
-        print(k, r.shape)    
+        lst.append({'key': k, 'sum': r.sum(), 'mean': r.mean(), 'size':r.size})
+    df = pd.DataFrame(lst)
+    '''
+                      key           sum          mean  size
+    0          P_HPP_SM_t_opt  4.938688e+03  5.144467e+01    96
+    1        SM_price_cleared  1.144810e+03  4.770042e+01    24
+    2     BM_dw_price_cleared  1.018550e+03  4.243958e+01    24
+    3     BM_up_price_cleared  1.144810e+03  4.770042e+01    24
+    4             P_HPP_RT_ts  2.782215e+03  2.898141e+01    96
+    5           P_HPP_RT_refs  4.938688e+03  5.144467e+01    96
+    6         P_HPP_UP_bid_ts  0.000000e+00  0.000000e+00    96
+    7         P_HPP_DW_bid_ts  0.000000e+00  0.000000e+00    96
+    8                  s_UP_t  0.000000e+00  0.000000e+00    96
+    9                  s_DW_t  0.000000e+00  0.000000e+00    96
+    10     residual_imbalance -1.325445e+03 -1.380672e+01    96
+    11               P_HPP_ts  2.782215e+03  2.898141e+01    96
+    12       P_curtailment_ts  1.776357e-15  1.850372e-17    96
+    13  P_charge_discharge_ts  3.755495e+02  3.911974e+00    96
+    14               E_SOC_ts  2.664831e+01  2.775866e-01    96
+    '''
 
 
     outputs = {}
@@ -518,10 +550,10 @@ if __name__ == '__main__':
     outputs['BM_up_price_cleared']=expand_to_lifetime(
         res[out_keys.index('BM_up_price_cleared')],
         life=life_h)
-    outputs['P_HPP_RT_ts']=expand_to_lifetime(
-        res[out_keys.index('P_HPP_RT_ts')],
-        life=life_intervals
-        )
+    # outputs['P_HPP_RT_ts']=expand_to_lifetime(
+    #     res[out_keys.index('P_HPP_RT_ts')],
+    #     life=life_intervals
+    #     )
     outputs['P_HPP_RT_refs']=expand_to_lifetime(
         res[out_keys.index('P_HPP_RT_refs')],
         life=life_intervals
@@ -569,7 +601,7 @@ if __name__ == '__main__':
     from hydesign.HiFiEMS.utils import Revenue_calculation
     SM_revenue, _, _, BM_revenue, _ = Revenue_calculation(parameter_dict,
                         outputs['P_HPP_SM_t_opt'],
-                        outputs['P_HPP_RT_ts'],
+                        outputs['P_HPP_ts'],
                         outputs['P_HPP_RT_refs'],
                         outputs['SM_price_cleared'],
                         outputs['BM_dw_price_cleared'],
