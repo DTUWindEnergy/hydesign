@@ -29,7 +29,7 @@ class pvp_with_degradation(om.ExplicitComponent):
     def __init__(
             self,
             N_limit,
-            N_life,
+            life_y,
             life_h,
             pv_deg=[0, 25 * 1 / 100],
     ):
@@ -43,7 +43,7 @@ class pvp_with_degradation(om.ExplicitComponent):
         super().__init__()
 
         self.N_limit = N_limit
-        self.N_life = N_life
+        self.life_y = life_y
         self.life_h = life_h
 
         # PV degradation curve
@@ -68,7 +68,7 @@ class pvp_with_degradation(om.ExplicitComponent):
 
     def compute(self, inputs, outputs):
         N_limit = self.N_limit
-        N_life = self.N_life
+        life_y = self.life_y
         pv_deg = self.pv_deg
 
         delta_life = inputs['delta_life']
@@ -76,7 +76,7 @@ class pvp_with_degradation(om.ExplicitComponent):
 
         t_over_year = np.arange(self.life_h) / (365 * 24)
         pv_deg_yr = [0, int(delta_life), int(delta_life) + 0.0001, int(delta_life) + 25, int(delta_life) + 25.0001,
-                     int(N_life) + int(+N_limit)]
+                     int(life_y) + int(+N_limit)]
         degradation = np.interp(t_over_year, pv_deg_yr, pv_deg)
 
         outputs['solar_t_ext_deg'] = (1 - degradation) * solar_t_ext

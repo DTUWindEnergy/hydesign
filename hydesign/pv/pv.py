@@ -331,7 +331,7 @@ def get_solar_time_series(
     solar_t[solar_t<0] = 0
     return solar_MW * solar_t.fillna(0.0)
 
-def get_linear_solar_degradation(pv_deg_per_year, life, intervals_per_hour):
+def get_linear_solar_degradation(pv_deg_per_year, life, intervals_per_hour=1):
     """ 
     Computes the PV degradation
 

@@ -62,7 +62,8 @@ class ems_long_term_operation(om.ExplicitComponent):
 
         super().__init__()
         self.N_time = N_time
-        self.life_h = 365 * 24 * life_y * intervals_per_hour
+        self.life_h = 365 * 24 * life_y
+        self.life_intervals = self.life_h * intervals_per_hour
         self.ems_type = ems_type
         self.load_min_penalty_factor = load_min_penalty_factor
 
@@ -276,7 +277,8 @@ class ems_constantoutput(om.ExplicitComponent):
         self.weeks_per_season_per_year = weeks_per_season_per_year
         self.N_time = int(N_time)
         self.ems_type = ems_type
-        self.life_h = int(365 * 24 * life_y * intervals_per_hour)
+        self.life_h = int(365 * 24 * life_y)
+        self.life_intervals = int(self.life_h * intervals_per_hour)
         self.load_min_penalty_factor = load_min_penalty_factor
         
     def setup(self):
@@ -426,21 +428,21 @@ class ems_constantoutput(om.ExplicitComponent):
 
         # Extend (by repeating them and stacking) all variable to full lifetime 
         outputs['wind_t_ext'] = expand_to_lifetime(
-            wind_t, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
+            wind_t, life = self.life_intervals, weeks_per_season_per_year = self.weeks_per_season_per_year)
         outputs['solar_t_ext'] = expand_to_lifetime(
-            solar_t, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
+            solar_t, life = self.life_intervals, weeks_per_season_per_year = self.weeks_per_season_per_year)
         outputs['price_t_ext'] = expand_to_lifetime(
-            price_t, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
+            price_t, life = self.life_intervals, weeks_per_season_per_year = self.weeks_per_season_per_year)
         outputs['hpp_t'] = expand_to_lifetime(
-            P_HPP_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
+            P_HPP_ts, life = self.life_intervals, weeks_per_season_per_year = self.weeks_per_season_per_year)
         outputs['hpp_curt_t'] = expand_to_lifetime(
-            P_curtailment_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
+            P_curtailment_ts, life = self.life_intervals, weeks_per_season_per_year = self.weeks_per_season_per_year)
         outputs['b_t'] = expand_to_lifetime(
-            P_charge_discharge_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
+            P_charge_discharge_ts, life = self.life_intervals, weeks_per_season_per_year = self.weeks_per_season_per_year)
         outputs['b_E_SOC_t'] = expand_to_lifetime(
-            E_SOC_ts, life_h = self.life_h + 1, weeks_per_season_per_year = self.weeks_per_season_per_year)
+            E_SOC_ts, life = self.life_intervals + 1, weeks_per_season_per_year = self.weeks_per_season_per_year)
         outputs['penalty_t'] = expand_to_lifetime(
-            penalty_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)        
+            penalty_ts, life = self.life_intervals, weeks_per_season_per_year = self.weeks_per_season_per_year)        
 
 def ems_cplex_constantoutput(
     wind_ts,

@@ -28,7 +28,7 @@ class finance(om.ExplicitComponent):
     def __init__(
             self,
             N_limit,
-            N_life,
+            life_y,
             N_time,
             life_h,
 
@@ -52,7 +52,7 @@ class finance(om.ExplicitComponent):
         Parameters
         ----------
         N_limit : Maximum number of year of delta_life (15 years)
-        N_life : Number in years of the lifetime of each plant (25 years)
+        life_y : Number in years of the lifetime of each plant (25 years)
         N_time : Number of hours in the representative dataset
         life_h : Lifetime of the plant in hours
         depre_rate : straight line depreciation rate
@@ -62,7 +62,7 @@ class finance(om.ExplicitComponent):
         """
         super().__init__()
         self.N_limit = int(N_limit)
-        self.N_life = int(N_life)
+        self.life_y = int(life_y)
         self.N_time = int(N_time)
         self.life_h = int(life_h)
 
@@ -211,7 +211,7 @@ class finance(om.ExplicitComponent):
         delta_life = int(inputs['delta_life'])
 
         N_limit = int(self.N_limit)
-        N_life = int(self.N_life)
+        life_y = int(self.life_y)
         N_time = int(self.N_time)
         life_h = self.life_h
         life_yr = int(np.ceil(life_h / N_time))
@@ -248,7 +248,7 @@ class finance(om.ExplicitComponent):
         OPEX = OPEX_only_wind + OPEX_pv  # Total OPEX
 
         OPEX_vec = np.concatenate((np.zeros(1), np.ones(delta_life) * OPEX_only_wind,
-                                   np.ones(N_life - delta_life) * OPEX,
+                                   np.ones(life_y - delta_life) * OPEX,
                                    np.ones(delta_life) * OPEX_pv, np.zeros(N_limit-delta_life)))
 
         # Construction of the CAPEX vector along the lifetime
@@ -270,11 +270,11 @@ class finance(om.ExplicitComponent):
 
         # Definition of the CAPEX vector to calculate the depreciation (batteries are depreciated just the first 25 years)
         CAPEX_for_depre = np.insert(np.concatenate((np.ones(delta_life) * CAPEX_only_wind,
-                                         np.ones(N_life - delta_life) * CAPEX,
+                                         np.ones(life_y - delta_life) * CAPEX,
                                          np.ones(delta_life) * CAPEX_pv, np.zeros(N_limit-delta_life))),0,0)
 
         # Definition of the decommissioning cost vector
-        decommissioning_vec = np.concatenate((np.zeros(N_life), np.ones(1) * inputs['decommissioning_cost_tot_w'], np.zeros(N_limit)))
+        decommissioning_vec = np.concatenate((np.zeros(life_y), np.ones(1) * inputs['decommissioning_cost_tot_w'], np.zeros(N_limit)))
                         
 
         hpp_discount_factor = inputs['hpp_WACC']

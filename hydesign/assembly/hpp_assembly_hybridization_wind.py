@@ -46,7 +46,7 @@ class hpp_model(hpp_base):
         wind_deg_yr = self.wind_deg_yr
         wind_deg = self.wind_deg
         share_WT_deg_types = self.share_WT_deg_types
-        N_life = self.N_life
+        life_y = self.life_y
         price = self.price
         
         input_ts_fn = sim_pars['input_ts_fn']
@@ -59,7 +59,7 @@ class hpp_model(hpp_base):
 
         
         existing_wpp_power_curve_xr_fn = os.path.join(os.path.dirname(sim_pars_fn), sim_pars['existing_wpp_power_curve_xr_fn'])
-        life_h = (self.N_life+N_limit)*365*24
+        life_h = (self.life_y+N_limit)*365*24
         self.life_h = life_h
         
         model = om.Group()
@@ -101,7 +101,8 @@ class hpp_model(hpp_base):
         model.add_subsystem(
             'ems', 
             ems(
-                life_h = life_h,
+                # life_h = life_h,
+                life_y = life_y + N_limit,
                 N_time = N_time,
                 weeks_per_season_per_year = weeks_per_season_per_year,
                 ems_type=ems_type),
@@ -120,7 +121,8 @@ class hpp_model(hpp_base):
         model.add_subsystem(
             'battery_degradation', 
             battery_degradation(
-                life_h = life_h,
+                # life_h = life_h,
+                life_y = life_y + N_limit,
                 weather_fn = input_ts_fn, # for extracting temperature
                 num_batteries = max_num_batteries_allowed,
                 weeks_per_season_per_year = weeks_per_season_per_year,
@@ -133,7 +135,7 @@ class hpp_model(hpp_base):
             'hybridization_shifted',
             hybridization_shifted(
                 N_limit=N_limit,
-                N_life=N_life,
+                life_y=life_y,
                 N_time=N_time,
                 life_h=life_h,
             ),
@@ -144,7 +146,8 @@ class hpp_model(hpp_base):
         model.add_subsystem(
             'battery_loss_in_capacity_due_to_temp', 
             battery_loss_in_capacity_due_to_temp(
-                life_h = life_h,
+                # life_h = life_h,
+                life_y = life_y + N_limit,
                 weather_fn = input_ts_fn, # for extracting temperature
                 weeks_per_season_per_year = weeks_per_season_per_year,
             ),
@@ -167,7 +170,7 @@ class hpp_model(hpp_base):
         model.add_subsystem(
             'pvp_with_degradation',
             pvp_with_degradation(
-                N_life = N_life,
+                life_y = life_y,
                 N_limit = N_limit,
                 life_h = life_h,
                 pv_deg = sim_pars['pv_deg'],
@@ -180,7 +183,8 @@ class hpp_model(hpp_base):
             'ems_long_term_operation', 
             ems_long_term_operation(
                 N_time = N_time,
-                life_h = life_h,
+                life_y = life_y + N_limit,
+                # life_h = life_h,
             ),
             promotes_inputs=[
                 'b_P',
@@ -228,14 +232,14 @@ class hpp_model(hpp_base):
         model.add_subsystem(
             'battery_cost',
             battery_cost(
-                life_h = life_h,
+                # life_h = life_h,
                 # batt_reduction=batt_reduction,
                 battery_energy_cost=sim_pars['battery_energy_cost'],
                 battery_power_cost=sim_pars['battery_power_cost'],
                 battery_BOP_installation_commissioning_cost=sim_pars['battery_BOP_installation_commissioning_cost'],
                 battery_control_system_cost=sim_pars['battery_control_system_cost'],
                 battery_energy_onm_cost=sim_pars['battery_energy_onm_cost'],
-                N_life = N_life,
+                life_y = life_y + N_limit,
             ),
             promotes_inputs=[
                 'b_P',
@@ -275,7 +279,7 @@ class hpp_model(hpp_base):
             'finance', 
             finance(
                 N_limit = N_limit,
-                N_life = N_life,
+                life_y = life_y,
                 life_h = life_h,
                 N_time = N_time,
                 # Depreciation curve

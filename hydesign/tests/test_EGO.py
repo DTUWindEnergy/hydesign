@@ -6,21 +6,17 @@ Created on Fri Nov 25 14:43:04 2022
 """
 import numpy as np
 from hydesign.Parallel_EGO import (
-    get_sm, LCB, EI, KStd, KB, eval_sm, #opt_sm,
+    get_sm, LCB, EI, KStd, KB, eval_sm, smt_major, smt_minor, #opt_sm,
     get_candiate_points, get_mixint_context)
 from hydesign.tests.test_files import tfp
 import pandas as pd
 import pytest
 import pickle
 
-import smt
-smt_version = smt.__version__.split('.')
-major, minor = smt_version[:2]
-major = int(major)
-minor = int(minor)
+# import smt
+# smt_version = smt.__version__.split('.')
+# major, minor = smt_version[:2]
 
-if (major >= 2 and minor>= 6) or major >=3:
-    major, minor = 2, 6
 
 def get_test_sm():
     nt = 100
@@ -31,11 +27,11 @@ def get_test_sm():
 
 def save_sm():
     sm = get_test_sm()
-    with open(tfp + f'sm_{major}_{minor}.pkl','wb') as f:
+    with open(tfp + f'sm_{smt_major}_{smt_minor}.pkl','wb') as f:
          pickle.dump(sm, f)
 
 def load_sm():
-    with open(tfp + f'sm_{major}_{minor}.pkl','rb') as f:
+    with open(tfp + f'sm_{smt_major}_{smt_minor}.pkl','rb') as f:
         sm = pickle.load(f)
     return sm
 
@@ -46,7 +42,7 @@ point = np.array([10, 1, 0, 142, 2, 10, 0, 0, 1]).reshape((1, 9)) # analytical: 
 
 
 def get_data1():
-    df = pd.read_csv(tfp + f'test_surrogate_models_{major}_{minor}.csv', sep=';')
+    df = pd.read_csv(tfp + f'test_surrogate_models_{smt_major}_{smt_minor}.csv', sep=';')
     return df
 
 def generate_data1():
@@ -55,10 +51,10 @@ def generate_data1():
                   'KStd': float(KStd(sm, point)),
                   'KB': float(KB(sm, point)),
                   }, index=[0])
-    df.to_csv(tfp + f'test_surrogate_models_{major}_{minor}.csv', sep=';', index=False)
+    df.to_csv(tfp + f'test_surrogate_models_{smt_major}_{smt_minor}.csv', sep=';', index=False)
 
 def get_data2(fmin):
-    data2 = pd.read_csv(tfp + f'sm_pred_test_data_{major}_{minor}.csv', sep=';').values
+    data2 = pd.read_csv(tfp + f'sm_pred_test_data_{smt_major}_{smt_minor}.csv', sep=';').values
     n = fmins.index(fmin)
     a = data2[n * 5: n * 5 + 5, :9]
     b = data2[n * 5: n * 5 + 5, 9]
@@ -71,7 +67,7 @@ def generate_data2():
         new_data[n*5:n*5+5,:9] = a
         new_data[n*5:n*5+5,9] = b.ravel()
     df = pd.DataFrame(new_data, columns=[f'x{i + 1}' for i in range(9)] + ['y'])
-    df.to_csv(tfp + f'sm_pred_test_data_{major}_{minor}.csv', sep=';', index=False)
+    df.to_csv(tfp + f'sm_pred_test_data_{smt_major}_{smt_minor}.csv', sep=';', index=False)
 
 df = get_data1()
 
@@ -147,7 +143,8 @@ def test_eval_sm(fmin):
     np.testing.assert_allclose(a, a_ref)
     np.testing.assert_allclose(b.ravel(), b_ref, rtol=1e-6)
 
-def test_get_candidate_points():
+# def test_get_candidate_points():
+if 1:
     xpred, ypred_LB = eval_sm(sm, mixint, npred=5, fmin=1e3)
     print(xpred, ypred_LB)
     xnew = get_candiate_points(

@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans
-#import time
-# from datetime import datetime
 import os
 from hydesign.HiFiEMS import Deg_Calculation as DegCal
 import math
@@ -10,9 +8,7 @@ from docplex.mp.model import Model
 from tqdm import tqdm
 
 def ReadHistoricalData(PsMax, PwMax, T, DI_num, demension): 
-    #T0 = 96
     History_wind = pd.read_csv('../Data/probabilistic_forecast2022.csv')
-    #History_price = pd.read_csv('./Data/Market2030.csv')  
     History_price = pd.read_csv('../Data/Market2021.csv')  
     mean_wind_DA_error = (History_wind['DA'] - History_wind['Measurement']).mean() * PwMax
     mean_wind_HA_error = (History_wind['HA'] - History_wind['Measurement']).mean() * PwMax
@@ -56,11 +52,9 @@ def f_xmin_to_ymin(x,reso_x, reso_y):  #x: dataframe reso: in hour
                 a = 0
             else:                       
                 a = a + x[ii]    
-        # y.index = range(int(len(x)/num))
     else:
         y = pd.DataFrame(np.repeat(x,int(reso_x/reso_y)))
         num = int(reso_x/reso_y)
-        # y.index = range(int(24/reso_y))
     y.index = range(int(len(x)/num))
     return y
 
@@ -130,24 +124,6 @@ def scenario_generation(simulation_dict, SM_price_cleared, BM_dw_price_cleared, 
            BP_up_forecast[j] = SM_price_cleared[j] 
            BP_dw_forecast[j] = reg_forecast[j]        
     
-#    BP_up_scenario = np.empty([4, 24])
-#    BP_dw_scenario = np.empty([4, 24])
-#    for i in range(4):
-#        for j in range(24):
-#            if scenarios[i,j] >= SM_price_cleared.iloc[j]:
-#               BP_up_scenario[i,j] = scenarios[i,j] 
-#               BP_dw_scenario[i,j] = SM_price_cleared[j]
-#            else:
-#               BP_up_scenario[i,j] = SM_price_cleared[j] 
-#               BP_dw_scenario[i,j] = scenarios[i,j]      
-#    
-#    BP_up_scenario = np.repeat(BP_up_scenario,int(T/24),axis=1)
-#    BP_dw_scenario = np.repeat(BP_dw_scenario,int(T/24),axis=1)
-#    BP_up_forecast = np.zeros([24,1])
-#    BP_dw_forecast = np.zeros([24,1])
-#    for j in range(24):
-#        BP_up_forecast[j] = sum(probability[i]*BP_up_scenario[i,j] for i in range(4))
-#        BP_dw_forecast[j] = sum(probability[i]*BP_dw_scenario[i,j] for i in range(4))
     if simulation_dict['BP'] == 2:
        BP_up_forecast = BM_up_price_cleared.to_numpy()
        BP_dw_forecast = BM_dw_price_cleared.to_numpy()

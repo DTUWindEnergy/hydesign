@@ -10,7 +10,7 @@ from numpy import newaxis as na
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import KMeans
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+# from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from scipy import optimize
 from scipy.stats import norm
 from multiprocessing import Pool
@@ -37,6 +37,7 @@ from openmdao.core.driver import Driver
 import smt
 smt_version = smt.__version__.split('.')
 smt_major, smt_minor = smt_version[:2]
+import platform
 
 def LCB(sm, point):
     """
@@ -191,7 +192,6 @@ def get_candiate_points(
     clusters them in n clusters (n_clusters) and returns the best input location (x) per
     cluster for acutal model evaluation
     '''
-
     yq = np.quantile(y, quantile)
     ind_up = np.where(y<yq)[0]
     xup = x[ind_up]
@@ -357,7 +357,14 @@ def model_evaluation(inputs): # Evaluates the model
     	return np.array(
         kwargs['opt_sign']*hpp_m.evaluate(*x_eval[0,:])[kwargs['op_var_index']])
     except:
+        print('\n')
+        print('\n')
         print('x=['+', '.join(map(str, x_eval[0,:]))+']')
+        print(x)
+        print(kwargs['hpp_model'])
+        import pprint
+        pprint.pp(kwargs)
+        
     
 
 

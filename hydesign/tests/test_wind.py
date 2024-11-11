@@ -25,7 +25,8 @@ def load_get_WT_curves():
     output_df = pd.read_csv(
         tfp+'wind_get_WT_curves_output.csv',
         index_col=0, 
-        parse_dates = True)
+        # parse_dates = True
+        )
     return output_df.ws.values, output_df.pc.values, output_df.ct.values
 
 def test_get_WT_curves():
@@ -60,7 +61,8 @@ def load_get_wake_affected_pc():
     output_df = pd.read_csv(
         tfp+'wind_get_wake_affected_pc_output.csv',
         index_col=0, 
-        parse_dates = True)
+        # parse_dates = True
+        )
     return output_df.ws.values, output_df.pcw.values
 
 def test_get_wake_affected_pc():

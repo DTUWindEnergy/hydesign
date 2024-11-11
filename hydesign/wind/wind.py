@@ -1,13 +1,13 @@
 # %%
-import glob
-import os
-import time
+# import glob
+# import os
+# import time
 
 # basic libraries
 import numpy as np
-from numpy import newaxis as na
+# from numpy import newaxis as na
 import scipy as sp
-import pandas as pd
+# import pandas as pd
 import xarray as xr
 import openmdao.api as om
 
@@ -52,13 +52,16 @@ class genericWT_surrogate(om.ExplicitComponent):
     def setup(self):
         self.add_input('hh',
                        desc="Turbine's hub height",
-                       units='m')
+                       units='m',
+                       shape=1)
         self.add_input('d',
                        desc="Turbine's diameter",
-                       units='m')
+                       units='m',
+                       shape=1)
         self.add_input('p_rated',
                        desc="Turbine's rated power",
-                       units='MW')
+                       units='MW',
+                       shape=1)
 
         self.add_output('ws',
                         desc="Turbine's ws",
@@ -77,8 +80,8 @@ class genericWT_surrogate(om.ExplicitComponent):
 
     def compute(self, inputs, outputs):
         
-        p_rated = inputs['p_rated']
-        A = get_rotor_area(inputs['d'])
+        p_rated = inputs['p_rated'][0]  
+        A = get_rotor_area(inputs['d'][0])  
         sp = p_rated*1e6/A
         
         ws, pc, ct = get_WT_curves(
@@ -170,11 +173,11 @@ class genericWake_surrogate(om.ExplicitComponent):
     def compute(self, inputs, outputs):#, discrete_inputs, discrete_outputs):
         ws = inputs['ws']
         pc = inputs['pc']
-        Nwt = inputs['Nwt']
+        Nwt = inputs['Nwt'][0]
         #Nwt = discrete_inputs['Nwt']
-        Awpp = inputs['Awpp']  # in km2
-        d = inputs['d']  # in m
-        p_rated = inputs['p_rated']
+        Awpp = inputs['Awpp'][0]  # in km2
+        d = inputs['d'][0]  # in m
+        p_rated = inputs['p_rated'][0]
         
         A = get_rotor_area(d)
         sp = p_rated*1e6/A
@@ -455,7 +458,7 @@ def get_prated_end(ws,pc,tol=1e-6):
     if np.max(pc)>0:
         pc = pc/np.max(pc)
         ind = np.where( (np.diff(pc)<=tol)&(pc[:-1]>=1-tol) )[0]
-        ind_sel = [ind[0], ind[-1]]
+        # ind_sel = [ind[0], ind[-1]]
         return ind[-1]
     return -3
 

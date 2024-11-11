@@ -1,15 +1,8 @@
-import glob
-import os
-import time
-
 # basic libraries
 import numpy as np
-from numpy import newaxis as na
 import numpy_financial as npf
 import pandas as pd
-# import seaborn as sns
 import openmdao.api as om
-import yaml
 import scipy as sp
 from hydesign.HiFiEMS.utils import _revenue_calculation
 
@@ -52,7 +45,6 @@ class finance(om.ExplicitComponent):
         """ 
         super().__init__()
         self.parameter_dict = parameter_dict
-        # self.N_time = int(N_time)
         self.life_y = life_y
         self.intervals_per_hour = intervals_per_hour
         self.life_h = 365 * 24 * life_y
@@ -145,7 +137,6 @@ class finance(om.ExplicitComponent):
         self.add_input('SM_price_cleared',desc='',shape=[self.life_h],)
         self.add_input('BM_dw_price_cleared',desc='',shape=[self.life_h],)
         self.add_input('BM_up_price_cleared',desc='',shape=[self.life_h],)
-        self.add_input('P_HPP_RT_ts',desc='',shape=[self.life_intervals],)
         self.add_input('P_HPP_RT_refs',desc='',shape=[self.life_intervals],)
         self.add_input('P_HPP_UP_bid_ts',desc='',shape=[self.life_intervals],)
         self.add_input('P_HPP_DW_bid_ts',desc='',shape=[self.life_intervals],)
@@ -242,9 +233,6 @@ class finance(om.ExplicitComponent):
             'battery_minimum_SoC': 1 - float(inputs['battery_depth_of_discharge']),
             })
        
-        # N_time = self.N_time
-        # life_h = self.life_h
-        # life_yr = int(np.ceil(life_h/N_time))
         intervals_per_year = 365 * 24 * self.intervals_per_hour
         life_intervals = self.life_y * intervals_per_year
         life_yr = self.life_y
@@ -262,30 +250,12 @@ class finance(om.ExplicitComponent):
         df = pd.DataFrame()
         
         df['hpp_t'] = inputs['hpp_t_with_deg']
-        # df['price_t'] = inputs['price_t_ext']
-        # df['penalty_t'] = inputs['penalty_t']
-        # df['revenue'] = df['hpp_t'] * df['price_t'] - df['penalty_t']
         
         df['i_year'] = np.hstack([np.array([ii]*intervals_per_year) for ii in range(life_yr)])[:life_intervals]
 
-        # Compute yearly revenues and cashflow
-        # revenues = calculate_revenues(inputs['price_t_ext'], df)
-        # SM_revenue, _, _, BM_revenue, _ = Revenue_calculation(self.parameter_dict,
-        #                                                       inputs['P_HPP_SM_t_opt'],
-        #                                                       inputs['P_HPP_RT_ts'],
-        #                                                       inputs['P_HPP_RT_refs'],
-        #                                                       inputs['SM_price_cleared'],
-        #                                                       inputs['BM_dw_price_cleared'],
-        #                                                       inputs['BM_up_price_cleared'],
-        #                                                       inputs['P_HPP_UP_bid_ts'],
-        #                                                       inputs['P_HPP_DW_bid_ts'],
-        #                                                       inputs['s_UP_t'],
-        #                                                       inputs['s_DW_t'],
-        #                                                       BI=1,
-        #                                                       )
         revenues = calculate_revenues(self.parameter_dict,
                                       inputs['P_HPP_SM_t_opt'],
-                                      inputs['P_HPP_RT_ts'],
+                                      inputs['P_HPP_ts'],
                                       inputs['P_HPP_RT_refs'],
                                       inputs['SM_price_cleared'],
                                       inputs['BM_dw_price_cleared'],
@@ -373,7 +343,7 @@ class finance(om.ExplicitComponent):
                 inflation_index = inflation_index,
                 parameter_dict = self.parameter_dict,
                 P_HPP_SM_t_opt = inputs['P_HPP_SM_t_opt'],
-                P_HPP_RT_ts = inputs['P_HPP_RT_ts'],
+                P_HPP_ts = inputs['P_HPP_ts'],
                 P_HPP_RT_refs = inputs['P_HPP_RT_refs'],
                 SM_price_cleared = inputs['SM_price_cleared'],
                 BM_dw_price_cleared = inputs['BM_dw_price_cleared'],
@@ -501,7 +471,7 @@ def calculate_WACC(
 
 def calculate_revenues(parameter_dict,
                        P_HPP_SM_t_opt,
-                       P_HPP_RT_ts,
+                       P_HPP_ts,
                        P_HPP_RT_refs,
                        SM_price_cleared,
                        BM_dw_price_cleared,
@@ -513,7 +483,7 @@ def calculate_revenues(parameter_dict,
                        df):
     SM_revenue, _, _, BM_revenue, _ = _revenue_calculation(parameter_dict,
                                                           P_HPP_SM_t_opt,
-                                                          P_HPP_RT_ts,
+                                                          P_HPP_ts,
                                                           P_HPP_RT_refs,
                                                           SM_price_cleared,
                                                           BM_dw_price_cleared,
@@ -532,7 +502,7 @@ def calculate_revenues(parameter_dict,
 def calculate_break_even_PPA_price(df, CAPEX, OPEX, tax_rate, discount_rate,
                                    depreciation_yr, depreciation, DEVEX, inflation_index, parameter_dict,
                                                           P_HPP_SM_t_opt,
-                                                          P_HPP_RT_ts,
+                                                          P_HPP_ts,
                                                           P_HPP_RT_refs,
                                                           SM_price_cleared,
                                                           BM_dw_price_cleared,
@@ -544,7 +514,7 @@ def calculate_break_even_PPA_price(df, CAPEX, OPEX, tax_rate, discount_rate,
     def fun(price_el):
         revenues = calculate_revenues(parameter_dict,
                                P_HPP_SM_t_opt,
-                               P_HPP_RT_ts,
+                               P_HPP_ts,
                                P_HPP_RT_refs,
                                price_el * np.ones_like(SM_price_cleared),
                                BM_dw_price_cleared,
