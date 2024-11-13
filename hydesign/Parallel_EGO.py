@@ -357,13 +357,8 @@ def model_evaluation(inputs): # Evaluates the model
     	return np.array(
         kwargs['opt_sign']*hpp_m.evaluate(*x_eval[0,:])[kwargs['op_var_index']])
     except:
-        print('\n')
-        print('\n')
+        print('There was an error with this case (or potentially memory error): ')
         print('x=['+', '.join(map(str, x_eval[0,:]))+']')
-        print(x)
-        print(kwargs['hpp_model'])
-        import pprint
-        pprint.pp(kwargs)
         
     
 
