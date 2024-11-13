@@ -73,6 +73,7 @@ setup(name='hydesign',
           'ortools',
           'NREL-PySAM',
           'chaospy',
+          'pypandoc',
           ],
       extras_require={
         'test': [
