@@ -42,8 +42,9 @@ class hpp_model_P2X_bidirectional(hpp_base):
         N_ws = self.N_ws
         wpp_efficiency = self.wpp_efficiency
         sim_pars = self.sim_pars
-        life_h = self.life_h
-        N_life = self.N_life
+        # life_h = self.life_h
+        # N_life = self.N_life
+        life_y = self.life_y
         price = self.price
         
         input_ts_fn = sim_pars['input_ts_fn']
@@ -126,7 +127,7 @@ class hpp_model_P2X_bidirectional(hpp_base):
             ems(
                 N_time = N_time,
                 eff_curve=eff_curve,
-                life_h = life_h, 
+                # life_h = life_h, 
                 ems_type=ems_type,
                 electrolyzer_eff_curve_type=electrolyzer_eff_curve_type,
                 ),
@@ -190,8 +191,9 @@ class hpp_model_P2X_bidirectional(hpp_base):
                 battery_BOP_installation_commissioning_cost=sim_pars['battery_BOP_installation_commissioning_cost'],
                 battery_control_system_cost=sim_pars['battery_control_system_cost'],
                 battery_energy_onm_cost=sim_pars['battery_energy_onm_cost'],
-                N_life = N_life,
-                life_h = life_h
+                # N_life = N_life,
+                # life_h = life_h
+                life_y = life_y,
             ),
             promotes_inputs=[
                 'b_P',
@@ -223,7 +225,7 @@ class hpp_model_P2X_bidirectional(hpp_base):
                 transportation_cost = sim_pars['H2_transportation_cost'],
                 transportation_distance = sim_pars['H2_transportation_distance'],
                 N_time = N_time,
-                life_h = life_h,
+                # life_h = life_h,
                 ),
             promotes_inputs=[
             'ptg_MW',
@@ -243,7 +245,8 @@ class hpp_model_P2X_bidirectional(hpp_base):
                 # Early paying or CAPEX Phasing
                 phasing_yr = sim_pars['phasing_yr'],
                 phasing_CAPEX = sim_pars['phasing_CAPEX'],
-                life_h = life_h),
+                # life_h = life_h
+                ),
             promotes_inputs=['price_H2',
                              'wind_WACC',
                              'solar_WACC', 

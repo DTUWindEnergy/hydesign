@@ -38,7 +38,7 @@ class finance_P2X(om.ExplicitComponent):
         # Early paying or CAPEX Phasing
         phasing_yr,
         phasing_CAPEX,
-        life_h = 25*365*24,
+        life_y = 25,
         ):
         """Initialization of the HPP finance model
 
@@ -49,7 +49,7 @@ class finance_P2X(om.ExplicitComponent):
         """ 
         super().__init__()
         self.N_time = int(N_time)
-        self.life_h = int(life_h)
+        self.life_h = int(life_y*365*24)
          
         # Depreciation curve
         self.depreciation_yr = depreciation_yr

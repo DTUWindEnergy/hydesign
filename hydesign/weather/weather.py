@@ -65,7 +65,7 @@ class ABL(om.ExplicitComponent):
         ds_interpolated = self.precompute(inputs['hh'])
         self.ds_interpolated = ds_interpolated
 
-        outputs['wst'] = ds_interpolated.WS.values.flatten()
+        outputs['wst'] = np.nan_to_num(ds_interpolated.WS.values.flatten())
 
     def compute_partials(self, inputs, partials):
 
@@ -99,7 +99,7 @@ def interpolate_WS_loglog(weather, hh):
     """
     ws_vars = [var for var in weather.columns if 'WS_' in var]
     heights = np.array([float(var.split('_')[-1]) for var in ws_vars])
-
+    weather[ws_vars] = weather[ws_vars].clip(lower=1e-6)  # to avoid log from throwing error if wind speed is zero
 
     ds_all = xr.Dataset(
         data_vars = {

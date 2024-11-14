@@ -1,13 +1,13 @@
 # %%
-import glob
-import os
-import time
+# import glob
+# import os
+# import time
 
 # basic libraries
 import numpy as np
-from numpy import newaxis as na
+# from numpy import newaxis as na
 import scipy as sp
-import pandas as pd
+# import pandas as pd
 import xarray as xr
 import openmdao.api as om
 
@@ -52,13 +52,16 @@ class genericWT_surrogate(om.ExplicitComponent):
     def setup(self):
         self.add_input('hh',
                        desc="Turbine's hub height",
-                       units='m')
+                       units='m',
+                       shape=1)
         self.add_input('d',
                        desc="Turbine's diameter",
-                       units='m')
+                       units='m',
+                       shape=1)
         self.add_input('p_rated',
                        desc="Turbine's rated power",
-                       units='MW')
+                       units='MW',
+                       shape=1)
 
         self.add_output('ws',
                         desc="Turbine's ws",
@@ -77,8 +80,8 @@ class genericWT_surrogate(om.ExplicitComponent):
 
     def compute(self, inputs, outputs):
         
-        p_rated = inputs['p_rated']
-        A = get_rotor_area(inputs['d'])
+        p_rated = inputs['p_rated'][0]  
+        A = get_rotor_area(inputs['d'][0])  
         sp = p_rated*1e6/A
         
         ws, pc, ct = get_WT_curves(
@@ -170,11 +173,11 @@ class genericWake_surrogate(om.ExplicitComponent):
     def compute(self, inputs, outputs):#, discrete_inputs, discrete_outputs):
         ws = inputs['ws']
         pc = inputs['pc']
-        Nwt = inputs['Nwt']
+        Nwt = inputs['Nwt'][0]
         #Nwt = discrete_inputs['Nwt']
-        Awpp = inputs['Awpp']  # in km2
-        d = inputs['d']  # in m
-        p_rated = inputs['p_rated']
+        Awpp = inputs['Awpp'][0]  # in km2
+        d = inputs['d'][0]  # in m
+        p_rated = inputs['p_rated'][0]
         
         A = get_rotor_area(d)
         sp = p_rated*1e6/A
@@ -282,7 +285,8 @@ class wpp_with_degradation(om.ExplicitComponent):
         N_time,
         N_ws = 51,
         wpp_efficiency = 0.95,
-        life_h = 25*365*24,
+        life_y = 25,
+        intervals_per_hour=1,
         wind_deg_yr = [0, 25],
         wind_deg = [0, 25*1/100],
         share_WT_deg_types = 0.5,
@@ -290,7 +294,10 @@ class wpp_with_degradation(om.ExplicitComponent):
         ):
         super().__init__()
         self.N_time = N_time
-        self.life_h = life_h
+        self.life_y = life_y
+        self.life_h = life_y*365*24
+        self.life_intervals = self.life_h * intervals_per_hour
+        self.intervals_per_hour = intervals_per_hour
         # number of points in the power curves
         self.N_ws = N_ws
         self.wpp_efficiency = wpp_efficiency
@@ -319,7 +326,7 @@ class wpp_with_degradation(om.ExplicitComponent):
         self.add_output('wind_t_ext_deg',
                         desc="power time series with degradation",
                         units='MW',
-                        shape=[self.life_h])
+                        shape=[self.life_intervals])
 
 
     def compute(self, inputs, outputs):
@@ -329,7 +336,7 @@ class wpp_with_degradation(om.ExplicitComponent):
         wst = inputs['wst']
 
         wst_ext = expand_to_lifetime(
-            wst, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
+            wst, life = self.life_intervals)
         
         outputs['wind_t_ext_deg'] = self.wpp_efficiency*get_wind_ts_degradation(
             ws = ws, 
@@ -337,8 +344,9 @@ class wpp_with_degradation(om.ExplicitComponent):
             ws_ts = wst_ext, 
             yr = self.wind_deg_yr, 
             wind_deg=self.wind_deg, 
-            life_h = self.life_h, 
-            share = self.share_WT_deg_types)
+            life = self.life_intervals, 
+            share = self.share_WT_deg_types,
+            intervals_per_hour=self.intervals_per_hour)
 
 # -----------------------------------------------------------------------
 # Auxiliar functions 
@@ -450,7 +458,7 @@ def get_prated_end(ws,pc,tol=1e-6):
     if np.max(pc)>0:
         pc = pc/np.max(pc)
         ind = np.where( (np.diff(pc)<=tol)&(pc[:-1]>=1-tol) )[0]
-        ind_sel = [ind[0], ind[-1]]
+        # ind_sel = [ind[0], ind[-1]]
         return ind[-1]
     return -3
 
@@ -487,9 +495,9 @@ def get_Dws(ws, pc, ws_ts, wind_deg_end):
     else:
         return 0.0
     
-def get_wind_ts_degradation(ws, pc, ws_ts, yr, wind_deg, life_h, share=0.5):
+def get_wind_ts_degradation(ws, pc, ws_ts, yr, wind_deg, life, share=0.5, intervals_per_hour=1):
     
-    t_over_year = np.arange(life_h)/(365*24)
+    t_over_year = np.arange(life)/(365*24*intervals_per_hour)
     #degradation = wind_deg_per_year * t_over_year
     degradation = np.interp(t_over_year, yr, wind_deg)
 

@@ -15,15 +15,16 @@ class battery_with_reliability(om.ExplicitComponent):
     """
     """
     def __init__(
-        self, 
-        life_h = 25*365*24,
+        self,
+        life_y = 25,
+        intervals_per_hour = 1,
         reliability_ts_battery=None,
         reliability_ts_trans=None,
         ):
         """
         """ 
         super().__init__()
-        self.life_h = life_h
+        self.life_intervals = life_y * 365 * 24 * intervals_per_hour
         self.reliability_ts_battery = reliability_ts_battery
         self.reliability_ts_trans = reliability_ts_trans
         
@@ -32,19 +33,19 @@ class battery_with_reliability(om.ExplicitComponent):
             'b_t',
             desc="Battery charge/discharge power time series w/o reliability",
             units='MW',
-            shape=[self.life_h])
+            shape=[self.life_intervals])
 
         self.add_output(
             'b_t_rel',
             desc="Battery charge/discharge power time series with reliability",
             units='MW',
-            shape=[self.life_h])
+            shape=[self.life_intervals])
 
     def compute(self, inputs, outputs):
         if ((self.reliability_ts_battery is None) or (self.reliability_ts_trans is None)):
             outputs['b_t_rel'] = inputs['b_t']
             return
-        outputs['b_t_rel'] = inputs['b_t'] * self.reliability_ts_battery[:self.life_h] * self.reliability_ts_trans[:self.life_h]
+        outputs['b_t_rel'] = inputs['b_t'] * self.reliability_ts_battery[:self.life_intervals] * self.reliability_ts_trans[:self.life_intervals]
     
 
 class wpp_with_reliability(om.ExplicitComponent):
@@ -52,14 +53,15 @@ class wpp_with_reliability(om.ExplicitComponent):
     """
     def __init__(
         self, 
-        life_h = 25*365*24,
+        life_y = 25,
+        intervals_per_hour = 1,
         reliability_ts_wind=None,
         reliability_ts_trans=None,
         ):
         """
         """ 
         super().__init__()
-        self.life_h = life_h
+        self.life_intervals = life_y * 365 * 24 * intervals_per_hour
         self.reliability_ts_wind = reliability_ts_wind
         self.reliability_ts_trans = reliability_ts_trans
         
@@ -68,18 +70,18 @@ class wpp_with_reliability(om.ExplicitComponent):
             'wind_t',
             desc="WPP power time series w/o reliability",
             units='MW',
-            shape=[self.life_h])
+            shape=[self.life_intervals])
         self.add_output(
             'wind_t_rel',
             desc="WPP power time series with reliability",
             units='MW',
-            shape=[self.life_h])
+            shape=[self.life_intervals])
 
     def compute(self, inputs, outputs):
         if ((self.reliability_ts_wind is None) or (self.reliability_ts_trans is None)):
             outputs['wind_t_rel'] = inputs['wind_t']
             return
-        outputs['wind_t_rel'] = inputs['wind_t'] * self.reliability_ts_wind[:self.life_h] * self.reliability_ts_trans[:self.life_h]
+        outputs['wind_t_rel'] = inputs['wind_t'] * self.reliability_ts_wind[:self.life_intervals] * self.reliability_ts_trans[:self.life_intervals]
     
 
 class pvp_with_reliability(om.ExplicitComponent):
@@ -87,14 +89,15 @@ class pvp_with_reliability(om.ExplicitComponent):
     """
     def __init__(
         self, 
-        life_h = 25*365*24,
+        life_y = 25,
+        intervals_per_hour = 1,
         reliability_ts_pv=None,
         reliability_ts_trans=None,
         ):
         """
         """ 
         super().__init__()
-        self.life_h = life_h
+        self.life_intervals = life_y * 365 * 24 * intervals_per_hour
         self.reliability_ts_pv = reliability_ts_pv
         self.reliability_ts_trans = reliability_ts_trans
         
@@ -103,18 +106,18 @@ class pvp_with_reliability(om.ExplicitComponent):
             'solar_t',
             desc="PVP power time series w/o reliability",
             units='MW',
-            shape=[self.life_h])
+            shape=[self.life_intervals])
         self.add_output(
             'solar_t_rel',
             desc="PVP power time series with reliability",
             units='MW',
-            shape=[self.life_h])
+            shape=[self.life_intervals])
 
     def compute(self, inputs, outputs):
         if ((self.reliability_ts_pv is None) or (self.reliability_ts_trans is None)):
             outputs['solar_t_rel'] = inputs['solar_t']
             return
-        outputs['solar_t_rel'] = inputs['solar_t'] * self.reliability_ts_pv[:self.life_h] * self.reliability_ts_trans[:self.life_h]
+        outputs['solar_t_rel'] = inputs['solar_t'] * self.reliability_ts_pv[:self.life_intervals] * self.reliability_ts_trans[:self.life_intervals]
 
 
 def availability_data_set(pdf_TTF, pdf_TTR, N_components, seed, ts_start, ts_end, ts_freq, sampling_const, component_name, **kwargs):

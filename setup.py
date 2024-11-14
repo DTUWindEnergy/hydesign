@@ -73,6 +73,8 @@ setup(name='hydesign',
           'ortools',
           'NREL-PySAM',
           'chaospy',
+          'tqdm',
+          'openpyxl',
           ],
       extras_require={
         'test': [

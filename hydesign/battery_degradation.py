@@ -38,13 +38,16 @@ class battery_degradation(om.ExplicitComponent):
         self, 
         weather_fn,
         num_batteries = 1,
-        life_h = 25*365*24,
+        life_y = 25,
+        intervals_per_hour = 1,
         weeks_per_season_per_year = None,
         battery_deg = True,
     ):
 
         super().__init__()
-        self.life_h = life_h
+        self.life_h = 365 * 24 * life_y
+        self.life_intervals = self.life_h * intervals_per_hour
+        self.yearly_intervals = 365 * 24 * intervals_per_hour
         self.num_batteries = num_batteries
         self.weather_fn = weather_fn
         self.battery_deg = battery_deg
@@ -57,16 +60,17 @@ class battery_degradation(om.ExplicitComponent):
 
         air_temp_K_t = expand_to_lifetime(
             weather.temp_air_1.values, 
-            life_h = life_h, 
+            life = self.life_intervals,
             weeks_per_season_per_year = weeks_per_season_per_year)
 
         self.air_temp_K_t = air_temp_K_t
+        # print(life_y, self.life_h)
 
     def setup(self):
         self.add_input(
             'b_E_SOC_t',
             desc="Battery energy SOC time series",
-            shape=[self.life_h + 1])
+            shape=[self.life_intervals + 1])
         self.add_input(
             'min_LoH',
             desc="minimum level of health before death of battery")
@@ -76,7 +80,7 @@ class battery_degradation(om.ExplicitComponent):
         self.add_output(
             'SoH',
             desc="Battery state of health at discretization levels",
-            shape=[self.life_h])
+            shape=[self.life_intervals])
         self.add_output(
             'n_batteries',
             desc="Number of batteries used.",
@@ -85,7 +89,7 @@ class battery_degradation(om.ExplicitComponent):
     def compute(self, inputs, outputs):
 
         num_batteries = self.num_batteries
-        life_h = self.life_h
+        life_intervals = self.life_intervals
 
         b_E_SOC_t = inputs['b_E_SOC_t']
         min_LoH = inputs['min_LoH'][0]
@@ -94,7 +98,7 @@ class battery_degradation(om.ExplicitComponent):
         
         if self.battery_deg:
             if np.max(b_E_SOC_t) == 0 or num_batteries==0:
-                outputs['SoH'] = np.zeros(self.life_h)
+                outputs['SoH'] = np.zeros(life_intervals)
                 outputs['n_batteries'] = 0
             else:
                 SoC = b_E_SOC_t/np.max(b_E_SOC_t)
@@ -112,13 +116,13 @@ class battery_degradation(om.ExplicitComponent):
                         break         
 
                 SoH_all = np.interp( 
-                    x = np.arange(life_h)/(24*365),
-                    xp = np.array(rf_i_start)/(24*365),
+                    x = np.arange(life_intervals)/self.yearly_intervals,
+                    xp = np.array(rf_i_start)/self.yearly_intervals,
                     fp = 1-LoC )
                 outputs['SoH'] = SoH_all
                 outputs['n_batteries'] = n_batteries
         else:
-            outputs['SoH'] = np.ones(self.life_h)
+            outputs['SoH'] = np.ones(self.life_intervals)
             outputs['n_batteries'] = 1
             
 
@@ -139,13 +143,16 @@ class battery_loss_in_capacity_due_to_temp(om.ExplicitComponent):
         self, 
         weather_fn,
         num_batteries = 1,
-        life_h = 25*365*24,
+        life_y = 25,
+        intervals_per_hour = 1,
         weeks_per_season_per_year = None,
         battery_deg = True,
     ):
 
         super().__init__()
-        self.life_h = life_h
+        self.life_h = 365 * 24 * life_y
+        self.yearly_intervals = 365 * 24 * intervals_per_hour
+        self.life_intervals = self.life_h * intervals_per_hour
         self.num_batteries = num_batteries
         self.weather_fn = weather_fn
         self.battery_deg = battery_deg
@@ -157,7 +164,7 @@ class battery_loss_in_capacity_due_to_temp(om.ExplicitComponent):
 
         air_temp_C_t = expand_to_lifetime(
             (weather.temp_air_1 - 273.15).values, 
-            life_h = life_h, 
+            life=self.life_intervals,
             weeks_per_season_per_year = weeks_per_season_per_year)
 
         self.air_temp_C_t = air_temp_C_t
@@ -166,18 +173,18 @@ class battery_loss_in_capacity_due_to_temp(om.ExplicitComponent):
         self.add_input(
             'SoH',
             desc="Battery state of health at discretization levels",
-            shape=[self.life_h])
+            shape=[self.life_intervals])
         
         # -------------------------------------------------------
 
         self.add_output(
             'SoH_all',
             desc="Battery state of health at discretization levels",
-            shape=[self.life_h])
+            shape=[self.life_intervals])
 
     def compute(self, inputs, outputs):
         
-        life_h = self.life_h
+        # life_h = self.life_h
         air_temp_C_t = self.air_temp_C_t
 
         B_E_loss_due_to_low_temp = thermal_loss_of_storage(air_temp_C_t)
@@ -185,24 +192,24 @@ class battery_loss_in_capacity_due_to_temp(om.ExplicitComponent):
         if self.battery_deg:
             outputs['SoH_all'] = B_E_loss_due_to_low_temp * inputs['SoH']
         else:
-            outputs['SoH_all'] = np.ones(self.life_h)
+            outputs['SoH_all'] = np.ones(self.life_intervals)
          
 
 # -----------------------------------------------------------------------
 # Auxiliar functions for bat_deg modelling
 # -----------------------------------------------------------------------
 
-def incerase_resolution(ii_time, SoH, life_h, nn):
+def incerase_resolution(ii_time, SoH, life, nn, hourly_intervals=1):
     iis = 1
     n_obtained = len(ii_time)
     while nn > n_obtained:
-        ii_add = range(life_h - 24*iis, life_h, 24)
+        ii_add = range(life - 24*iis*hourly_intervals, life, 24*hourly_intervals)
         ii_time_new = np.unique( np.sort( np.append( ii_time, ii_add) ) )
         n_obtained = len(ii_time_new)
         iis += 1
         #print(nn, n_obtained)
     
-    ii_time_interp = np.append(ii_time,life_h)
+    ii_time_interp = np.append(ii_time,life)
     SoH_new = sp.interpolate.interp1d(
         x=0.5*ii_time_interp[1:] + 0.5*ii_time_interp[:-1],
         y=SoH,

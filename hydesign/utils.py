@@ -69,14 +69,14 @@ class hybridization_shifted(om.ExplicitComponent):
     def __init__(
             self,
             N_limit,
-            N_life,
+            life_y,
             N_time,
             life_h,
 
     ):
         super().__init__()
         self.N_limit = N_limit
-        self.N_life = N_life
+        self.life_y = life_y
         self.life_h = life_h
         self.N_time = N_time
 
@@ -99,13 +99,13 @@ class hybridization_shifted(om.ExplicitComponent):
     def compute(self, inputs, outputs):
 
         N_limit = self.N_limit
-        N_life = self.N_life
+        life_y = self.life_y
         # life_h = self.life_h
 
         SoH = inputs['SoH']
         delta_life = int(inputs['delta_life'])
 
-        outputs['SoH_shifted'] = np.concatenate((np.zeros(delta_life * 365 * 24), SoH[0:N_life * 365 * 24], np.zeros((N_limit-delta_life) * 365 * 24)))
+        outputs['SoH_shifted'] = np.concatenate((np.zeros(delta_life * 365 * 24), SoH[0:life_y * 365 * 24], np.zeros((N_limit-delta_life) * 365 * 24)))
 
 def sample_mean(outs):
     return np.mean(outs, axis=0)

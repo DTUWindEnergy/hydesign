@@ -1,20 +1,20 @@
 # %%
-import glob
-import os
-import time
+# import glob
+# import os
+# import time
 
 # basic libraries
 import numpy as np
-from numpy import newaxis as na
-import numpy_financial as npf
-import pandas as pd
+# from numpy import newaxis as na
+# import numpy_financial as npf
+# import pandas as pd
 # import seaborn as sns
 import openmdao.api as om
-import yaml
-import scipy as sp
-from statsmodels.distributions.empirical_distribution import ECDF, monotone_fn_inverter
-from scipy import stats
-import xarray as xr
+# import yaml
+# import scipy as sp
+# from statsmodels.distributions.empirical_distribution import ECDF, monotone_fn_inverter
+# from scipy import stats
+# import xarray as xr
 
 #Wisdem
 from hydesign.nrel_csm_wrapper import wt_cost
@@ -35,6 +35,7 @@ class wpp_cost(om.ExplicitComponent):
                  hh_ref,
                  p_rated_ref,
                  N_time,
+                 intervals_per_hour=1,
                  ):
 
         """Initialization of the wind power plant cost model
@@ -60,6 +61,7 @@ class wpp_cost(om.ExplicitComponent):
         self.hh_ref = hh_ref
         self.p_rated_ref = p_rated_ref
         self.N_time= N_time
+        self.intervals_per_hour = intervals_per_hour
 
     def setup(self):
         #self.add_discrete_input(
@@ -91,7 +93,10 @@ class wpp_cost(om.ExplicitComponent):
                         desc="OPEX wpp")
 
     def setup_partials(self):
-        self.declare_partials('*', '*', method='fd')
+        self.declare_partials('*', '*', dependent=False, val=0)
+
+    def compute_partials(self, inputs, partials):
+        pass        
 
     def compute(self, inputs, outputs):#, discrete_inputs, discrete_outputs):
         """ Computing the CAPEX and OPEX of the wind power plant.
@@ -112,11 +117,11 @@ class wpp_cost(om.ExplicitComponent):
         """
         
         #Nwt = discrete_inputs['Nwt']
-        Nwt = inputs['Nwt']
-        Awpp = inputs['Awpp']
-        hh = inputs['hh']
-        d = inputs['d']
-        p_rated = inputs['p_rated']
+        Nwt = inputs['Nwt'][0]
+        # Awpp = inputs['Awpp'][0]
+        hh = inputs['hh'][0]
+        d = inputs['d'][0]
+        p_rated = inputs['p_rated'][0]
         wind_t= inputs['wind_t']
         wind_turbine_cost = self.wind_turbine_cost
         wind_civil_works_cost = self.wind_civil_works_cost
@@ -149,7 +154,7 @@ class wpp_cost(om.ExplicitComponent):
             crane = True,  
             )*1e-6
         scale = (WT_cost/p_rated)/(WT_cost_ref/p_rated_ref)
-        mean_aep_wind = wind_t.mean()*365*24
+        mean_aep_wind = wind_t.mean()*365*24*self.intervals_per_hour
         
         #print(WT_cost)
         #print(WT_cost_ref)
@@ -210,7 +215,10 @@ class pvp_cost(om.ExplicitComponent):
                         desc="OPEX solar pvp")
 
     def setup_partials(self):
-        self.declare_partials('*', '*', method='fd')
+        self.declare_partials('*', '*', dependent=False, val=0)
+
+    # def compute_partials(self, inputs, partials):
+    #     pass        
 
     def compute(self, inputs, outputs):
         """ Computing the CAPEX and OPEX of the solar power plant.
@@ -226,8 +234,8 @@ class pvp_cost(om.ExplicitComponent):
         OPEX_s : OPEX of the PV power plant [Eur/year]
         """
         
-        solar_MW = inputs['solar_MW']
-        DC_AC_ratio = inputs['DC_AC_ratio']
+        solar_MW = inputs['solar_MW'][0]
+        DC_AC_ratio = inputs['DC_AC_ratio'][0]
         solar_PV_cost = self.solar_PV_cost
         solar_hardware_installation_cost = self.solar_hardware_installation_cost
         solar_inverter_cost= self.solar_inverter_cost
@@ -238,8 +246,8 @@ class pvp_cost(om.ExplicitComponent):
         outputs['OPEX_s'] = solar_fixed_onm_cost * solar_MW * DC_AC_ratio
 
     def compute_partials(self, inputs, partials):
-        solar_MW = inputs['solar_MW']
-        DC_AC_ratio = inputs['DC_AC_ratio']
+        solar_MW = inputs['solar_MW'][0]
+        DC_AC_ratio = inputs['DC_AC_ratio'][0]
         DC_AC_ratio_tech_ref =  1.25
         solar_PV_cost = self.solar_PV_cost
         solar_hardware_installation_cost = self.solar_hardware_installation_cost
@@ -263,8 +271,10 @@ class battery_cost(om.ExplicitComponent):
                  battery_BOP_installation_commissioning_cost,
                  battery_control_system_cost,
                  battery_energy_onm_cost,
-                 N_life = 25,
-                 life_h = 25*365*24):
+                 life_y = 25,
+                 # life_h = 25*365*24
+                 intervals_per_hour = 1,
+                 ):
         """Initialization of the battery cost model
 
         Parameters
@@ -286,8 +296,11 @@ class battery_cost(om.ExplicitComponent):
         self.battery_BOP_installation_commissioning_cost = battery_BOP_installation_commissioning_cost
         self.battery_control_system_cost = battery_control_system_cost
         self.battery_energy_onm_cost = battery_energy_onm_cost
-        self.N_life = N_life
-        self.life_h = life_h
+        # self.N_life = life_y
+        self.life_h = life_y * 365 * 24
+        self.yearly_intervals = 365 * 24 * intervals_per_hour
+        self.life_intervals = life_y * self.yearly_intervals
+        # print(life_y, self.life_h)
 
 
     def setup(self):
@@ -299,7 +312,7 @@ class battery_cost(om.ExplicitComponent):
         self.add_input(
             'SoH',
             desc="Battery state of health at discretization levels",
-            shape=[self.life_h])
+            shape=[self.life_intervals])
         self.add_input('battery_price_reduction_per_year',
                        desc="Factor of battery price reduction per year")
 
@@ -309,7 +322,10 @@ class battery_cost(om.ExplicitComponent):
                         desc="OPEX battery")
 
     def setup_partials(self):
-        self.declare_partials('*', '*', method='fd')
+        self.declare_partials('*', '*', dependent=False, val=0)
+
+    def compute_partials(self, inputs, partials):
+        pass        
 
     def compute(self, inputs, outputs):
         """ Computing the CAPEX and OPEX of battery.
@@ -328,14 +344,14 @@ class battery_cost(om.ExplicitComponent):
         OPEX_b : OPEX of the storage unit [Eur/year]
         """
         
-        N_life = self.N_life
-        life_h = self.life_h
-        age = np.arange(life_h)/(24*365)
+        # N_life = self.N_life
+        life_intervals = self.life_intervals
+        age = np.arange(life_intervals)/self.yearly_intervals
         
-        b_E = inputs['b_E']
-        b_P = inputs['b_P']
+        b_E = inputs['b_E'][0]
+        b_P = inputs['b_P'][0]
         SoH = inputs['SoH']
-        battery_price_reduction_per_year = inputs['battery_price_reduction_per_year']
+        battery_price_reduction_per_year = inputs['battery_price_reduction_per_year'][0]
 
         battery_energy_cost = self.battery_energy_cost
         battery_power_cost = self.battery_power_cost
@@ -398,7 +414,10 @@ class shared_cost(om.ExplicitComponent):
                         desc="OPEX electrical infrastructure/ land rent")
 
     def setup_partials(self):
-        self.declare_partials('*', '*', method='fd')
+        self.declare_partials('*', '*', dependent=False, val=0)
+
+    # def compute_partials(self, inputs, partials):
+    #     pass        
 
     def compute(self, inputs, outputs):
         """ Computing the CAPEX and OPEX of the shared land and infrastructure.
@@ -414,9 +433,9 @@ class shared_cost(om.ExplicitComponent):
         CAPEX_sh : CAPEX electrical infrastructure/ land rent [Eur]
         OPEX_sh : OPEX electrical infrastructure/ land rent [Eur/year]
         """
-        G_MW = inputs['G_MW']
-        Awpp = inputs['Awpp']
-        Apvp = inputs['Apvp']
+        G_MW = inputs['G_MW'][0]
+        Awpp = inputs['Awpp'][0]
+        Apvp = inputs['Apvp'][0]
         land_cost = self.land_cost
         hpp_BOS_soft_cost = self.hpp_BOS_soft_cost
         hpp_grid_connection_cost = self.hpp_grid_connection_cost
@@ -432,9 +451,9 @@ class shared_cost(om.ExplicitComponent):
         outputs['OPEX_sh'] = 0
 
     def compute_partials(self, inputs, partials):
-        G_MW = inputs['G_MW']
-        Awpp = inputs['Awpp']
-        Apvp = inputs['Apvp']
+        # G_MW = inputs['G_MW']
+        Awpp = inputs['Awpp'][0]
+        Apvp = inputs['Apvp'][0]
         land_cost = self.land_cost
         hpp_BOS_soft_cost = self.hpp_BOS_soft_cost
         hpp_grid_connection_cost = self.hpp_grid_connection_cost
@@ -466,7 +485,9 @@ class ptg_cost(om.ExplicitComponent):
                  transportation_cost,
                  transportation_distance,
                  N_time,
-                 life_h = 25*365*24,):
+                 life_y = 25,
+                 intervals_per_hour = 1,
+                 ):
 
         super().__init__()
         self.electrolyzer_capex_cost = electrolyzer_capex_cost
@@ -480,7 +501,9 @@ class ptg_cost(om.ExplicitComponent):
         self.transportation_cost = transportation_cost
         self.transportation_distance = transportation_distance
         self.N_time = N_time
-        self.life_h = life_h
+        self.life_h = 365 * 24 * life_y * intervals_per_hour
+        self.yearly_intervals = 365 * 24 * intervals_per_hour
+        self.life_intervals = self.yearly_intervals * life_y
 
     def setup(self):
 
@@ -490,18 +513,18 @@ class ptg_cost(om.ExplicitComponent):
         self.add_input('m_H2_t',
                         desc = "Produced hydrogen",
                         units = "kg",
-                        shape=[self.life_h])
+                        shape=[self.life_intervals])
         self.add_input('HSS_kg',
                         desc = "Installed capacity of Hydrogen storage",
                         units = 'kg')
         self.add_input('m_H2_demand_t_ext',
                         desc = "Hydrogen demand",
                         units = "kg",
-                        shape=[self.life_h])
+                        shape=[self.life_intervals])
         self.add_input('m_H2_offtake_t',
                         desc = "Offtake hydrogen",
                         units = "kg",
-                        shape=[self.life_h])
+                        shape=[self.life_intervals])
 
         
         #Creating outputs:
@@ -516,10 +539,10 @@ class ptg_cost(om.ExplicitComponent):
     def compute(self, inputs, outputs):
 
        
-        ptg_MW = inputs['ptg_MW']
-        m_H2_t = inputs['m_H2_t']
-        HSS_kg = inputs['HSS_kg']
-        m_H2_demand_t = inputs['m_H2_demand_t_ext']
+        ptg_MW = inputs['ptg_MW'][0]
+        # m_H2_t = inputs['m_H2_t']
+        HSS_kg = inputs['HSS_kg'][0]
+        # m_H2_demand_t = inputs['m_H2_demand_t_ext']
         m_H2_offtake_t = inputs['m_H2_offtake_t']
 
         electrolyzer_capex_cost = self.electrolyzer_capex_cost
@@ -534,9 +557,9 @@ class ptg_cost(om.ExplicitComponent):
         transportation_distance = self.transportation_distance
 
         outputs['CAPEX_ptg'] = ptg_MW * (electrolyzer_capex_cost + electrolyzer_power_electronics_cost) + storage_capex_cost * HSS_kg + \
-                               (m_H2_offtake_t.mean()*365*24 * transportation_cost * transportation_distance) 
+                               (m_H2_offtake_t.mean()*self.yearly_intervals * transportation_cost * transportation_distance) 
         outputs['OPEX_ptg'] = ptg_MW * (electrolyzer_opex_cost) + storage_opex_cost * HSS_kg
-        outputs['water_consumption_cost'] = (m_H2_offtake_t.mean()*365*24 * water_consumption * (water_cost + water_treatment_cost)/1000) # annual mean water consumption to produce hydrogen over an year
+        outputs['water_consumption_cost'] = (m_H2_offtake_t.mean()*self.yearly_intervals * water_consumption * (water_cost + water_treatment_cost)/1000) # annual mean water consumption to produce hydrogen over an year
 
 
        

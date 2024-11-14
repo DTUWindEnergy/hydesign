@@ -41,7 +41,7 @@ class wpp_with_degradation(om.ExplicitComponent):
     def __init__(
         self,
         N_limit,
-        N_life,
+        life_y,
         N_time,
         life_h,
         N_ws = 51,
@@ -52,7 +52,7 @@ class wpp_with_degradation(om.ExplicitComponent):
         ):
         super().__init__()
         self.N_limit = N_limit
-        self.N_life = N_life
+        self.life_y = life_y
         self.N_time = N_time
         self.life_h = life_h
         # number of points in the power curves
@@ -96,13 +96,13 @@ class wpp_with_degradation(om.ExplicitComponent):
         delta_life = inputs['delta_life']
 
         N_limit = self.N_limit
-        N_life = self.N_life
+        life_y = self.life_y
 
         wind_deg_yr = [0, int(delta_life), int(delta_life) + 0.0001, int(delta_life) + 25, int(delta_life) + 25.0001,
-                     int(N_life) + int(+N_limit)]
+                     int(life_y) + int(+N_limit)]
 
         wst_ext = expand_to_lifetime(
-            wst, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
+            wst, life = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
         
         outputs['wind_t_ext_deg'] = self.wpp_efficiency*get_wind_ts_degradation(
             ws = ws, 
@@ -332,11 +332,11 @@ class existing_wpp_with_degradation(om.ExplicitComponent):
         
         wst = inputs['wst']
         wst_ext = expand_to_lifetime(
-            wst, life_h = life_h, weeks_per_season_per_year = weeks_per_season_per_year)
+            wst, life = life_h, weeks_per_season_per_year = weeks_per_season_per_year)
 
         wdt = inputs['wdt']
         wdt_ext = expand_to_lifetime(
-            wdt, life_h = life_h, weeks_per_season_per_year = weeks_per_season_per_year)
+            wdt, life = life_h, weeks_per_season_per_year = weeks_per_season_per_year)
 
         xr_time = xr.Dataset()
         xr_time['wst'] = xr.DataArray( 
@@ -350,7 +350,7 @@ class existing_wpp_with_degradation(om.ExplicitComponent):
 
         wake_losses_eff_t = existing_wpp_power_curve_xr.wake_losses_eff.interp(ws=xr_time.wst, wd=xr_time.wdt).values
         wake_losses_eff_t_ext = expand_to_lifetime(
-            wake_losses_eff_t, life_h = life_h, weeks_per_season_per_year = weeks_per_season_per_year)
+            wake_losses_eff_t, life = life_h, weeks_per_season_per_year = weeks_per_season_per_year)
 
         ws = existing_wpp_power_curve_xr.ws.values
         pcw = existing_wpp_power_curve_xr.P_no_wake.values
