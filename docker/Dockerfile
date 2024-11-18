@@ -2,7 +2,7 @@ FROM continuumio/anaconda3:latest
 MAINTAINER Mikkel Friis-Møller <mikf@dtu.dk>
 
 # build: 
-# docker build . -t dtuwindenergy/hydesign:0.0.11
+# docker build . -t dtuwindenergy/hydesign:0.0.12
 # tag:
 # docker tag dtuwindenergy/hydesign dtuwindenergy/hydesign:latest (if needed)
 # docker tag dtuwindenergy/hydesign dtuwindenergy/hydesign:<version number>
@@ -10,7 +10,10 @@ MAINTAINER Mikkel Friis-Møller <mikf@dtu.dk>
 # docker login
 # docker push --all-tags dtuwindenergy/hydesign
 
-RUN apt-get -y update
+RUN apt-get update && \
+    apt-get install make && \
+    apt-get install libgl1-mesa-glx -y && \
+    apt-get install gcc gfortran -y
 RUN apt-get -y install make pandoc graphviz
 
 RUN /opt/conda/bin/conda create -y -n hydesign_env python=3.11

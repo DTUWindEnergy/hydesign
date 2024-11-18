@@ -12,8 +12,6 @@ import xarray as xr
 
 
 class battery_with_reliability(om.ExplicitComponent):
-    """
-    """
     def __init__(
         self,
         life_y = 25,
@@ -22,7 +20,22 @@ class battery_with_reliability(om.ExplicitComponent):
         reliability_ts_trans=None,
         ):
         """
-        """ 
+        Parameters
+        ----------
+        life_y : int, optional
+            lifetime in years. The default is 25.
+        intervals_per_hour : int, optional
+            intervals per hour. The default is 1.
+        reliability_ts_battery : array-like, optional
+            battery reliability time series. The default is None.
+        reliability_ts_trans : array-like, optional
+            transformer reliability time series. The default is None.
+
+        Returns
+        -------
+        None.
+        """
+
         super().__init__()
         self.life_intervals = life_y * 365 * 24 * intervals_per_hour
         self.reliability_ts_battery = reliability_ts_battery
@@ -49,8 +62,6 @@ class battery_with_reliability(om.ExplicitComponent):
     
 
 class wpp_with_reliability(om.ExplicitComponent):
-    """
-    """
     def __init__(
         self, 
         life_y = 25,
@@ -59,7 +70,22 @@ class wpp_with_reliability(om.ExplicitComponent):
         reliability_ts_trans=None,
         ):
         """
-        """ 
+        Parameters
+        ----------
+        life_y : int, optional
+            lifetime in years. The default is 25.
+        intervals_per_hour : int, optional
+            intervals per hour. The default is 1.
+        reliability_ts_wind : array-like, optional
+            wind farm reliability time series. The default is None.
+        reliability_ts_trans : array-like, optional
+            transformer reliability time series. The default is None.
+
+        Returns
+        -------
+        None.
+        """
+
         super().__init__()
         self.life_intervals = life_y * 365 * 24 * intervals_per_hour
         self.reliability_ts_wind = reliability_ts_wind
@@ -85,8 +111,6 @@ class wpp_with_reliability(om.ExplicitComponent):
     
 
 class pvp_with_reliability(om.ExplicitComponent):
-    """
-    """
     def __init__(
         self, 
         life_y = 25,
@@ -95,7 +119,22 @@ class pvp_with_reliability(om.ExplicitComponent):
         reliability_ts_trans=None,
         ):
         """
-        """ 
+        Parameters
+        ----------
+        life_y : int, optional
+            lifetime in years. The default is 25.
+        intervals_per_hour : int, optional
+            intervals per hour. The default is 1.
+        reliability_ts_pv : array-like, optional
+            solar farm reliability time series. The default is None.
+        reliability_ts_trans : array-like, optional
+            transformer reliability time series. The default is None.
+
+        Returns
+        -------
+        None.
+        """
+
         super().__init__()
         self.life_intervals = life_y * 365 * 24 * intervals_per_hour
         self.reliability_ts_pv = reliability_ts_pv
@@ -139,19 +178,16 @@ def availability_data_set(pdf_TTF, pdf_TTR, N_components, seed, ts_start, ts_end
     ts_freq : str
         time series frequency in the format: '1h'
     sampling_const : INTEGER
-        It is another constant that is introduced to estimate the required samples for well-converged 
-        result.
+        It is another constant that is introduced to estimate the required samples for well-converged result.
     component_name : STRING
         Name of the component, so it can be printed on the plot figure.
 
     Returns
     -------
     availability_ds : Dataset
-        xarray dataset with the time to failure and time to repair indices (not the actual timeseries).
-        The reasoning for omiting saving the full time series ond only the indices where failure or "back online" occurs is that 
-        this only takes up a fraction of the space, and the construction of the timeseries is very fast when the sampling has already been pre processed.
-
+        xarray dataset with the time to failure and time to repair indices (not the actual timeseries). The reasoning for omiting saving the full time series ond only the indices where failure or "back online" occurs is that this only takes up a fraction of the space, and the construction of the timeseries is very fast when the sampling has already been pre processed.
     """
+
     ts_indices = pd.date_range(ts_start, ts_end, freq=ts_freq)
     N_components = int(N_components)
     N_ts = len(ts_indices)                                                  # get the length of time series
@@ -222,53 +258,51 @@ def generate_availability_ensamble(ts_start='2030-01-01 00:00',
     sampling_const : INTEGER
         It is another constant that is introduced to estimate the required samples for well-converged 
     pdf : probability distribution method
-        probability distribution method
-        result.
+        probability distribution method result.
 
     Returns
     -------
     availability_ds : Dataset
         xarray dataset with the time to failure and time to repair indices (not the actual timeseries) for all seeds
-        for data sets with number of components >= 400 it will look like this:
-            
-            <xarray.Dataset> Size: 129kB
-            Dimensions:          (sample: 20, component: 200, seed: 2)
-            Coordinates:
-              * sample           (sample) int32 80B 0 1 2 3 4 5 6 7 ... 13 14 15 16 17 18 19
-              * component        (component) int32 800B 0 1 2 3 4 5 ... 195 196 197 198 199
-                N_components     int32 4B 200
-                ts_start         <U16 64B '2030-01-01 00:00'
-                ts_end           <U16 64B '2054-12-31 23:00'
-                ts_freq          <U2 8B '1h'
-                N_sample         int32 4B 100407
-                N_sample_needed  (seed) int32 8B 20 17
-                component_name   <U2 8B 'WT'
-              * seed             (seed) int32 8B 0 1
-            Data variables:
-                TTF_indices      (seed, sample, component) float64 64kB 8.754e+03 ... nan
-                TTR_indices      (seed, sample, component) float64 64kB 8.914e+03 ... nan     
-                
-        for data sets with number of components > 400 it will look like this:
-            
-            <xarray.Dataset> Size: 258kB
-            Dimensions:          (sample: 10, component: 400, batch_no: 2, seed: 2)
-            Coordinates:
-              * sample           (sample) int32 40B 0 1 2 3 4 5 6 7 8 9
-              * component        (component) int32 2kB 0 1 2 3 4 5 ... 395 396 397 398 399
-              * batch_no         (batch_no) int32 8B 0 1
-                N_components     int32 4B 400
-                ts_start         <U16 64B '2030-01-01 00:00'
-                ts_end           <U16 64B '2054-12-31 23:00'
-                ts_freq          <U2 8B '1h'
-                N_sample         int32 4B 100524
-                N_sample_needed  (seed, batch_no) int32 16B 10 8 8 7
-                component_name   <U2 8B 'PV'
-              * seed             (seed) int32 8B 0 1
-            Data variables:
-                TTF_indices      (seed, batch_no, sample, component) float64 128kB 3.742e...
-                TTR_indices      (seed, batch_no, sample, component) float64 128kB 3.809e...
-                final_seed       (seed, batch_no) int32 16B 1000 2000 1001 2001            
+
+    for data sets with number of components >= 400 it will look like this:
+    <xarray.Dataset> Size: 129kB
+    Dimensions:          (sample: 20, component: 200, seed: 2)
+    Coordinates:
+      * sample           (sample) int32 80B 0 1 2 3 4 5 6 7 ... 13 14 15 16 17 18 19
+      * component        (component) int32 800B 0 1 2 3 4 5 ... 195 196 197 198 199
+        N_components     int32 4B 200
+        ts_start         <U16 64B '2030-01-01 00:00'
+        ts_end           <U16 64B '2054-12-31 23:00'
+        ts_freq          <U2 8B '1h'
+        N_sample         int32 4B 100407
+        N_sample_needed  (seed) int32 8B 20 17
+        component_name   <U2 8B 'WT'
+      * seed             (seed) int32 8B 0 1
+    Data variables:
+        TTF_indices      (seed, sample, component) float64 64kB 8.754e+03 ... nan
+        TTR_indices      (seed, sample, component) float64 64kB 8.914e+03 ... nan     
+    for data sets with number of components > 400 it will look like this:
+    <xarray.Dataset> Size: 258kB
+    Dimensions:          (sample: 10, component: 400, batch_no: 2, seed: 2)
+    Coordinates:
+      * sample           (sample) int32 40B 0 1 2 3 4 5 6 7 8 9
+      * component        (component) int32 2kB 0 1 2 3 4 5 ... 395 396 397 398 399
+      * batch_no         (batch_no) int32 8B 0 1
+        N_components     int32 4B 400
+        ts_start         <U16 64B '2030-01-01 00:00'
+        ts_end           <U16 64B '2054-12-31 23:00'
+        ts_freq          <U2 8B '1h'
+        N_sample         int32 4B 100524
+        N_sample_needed  (seed, batch_no) int32 16B 10 8 8 7
+        component_name   <U2 8B 'PV'
+      * seed             (seed) int32 8B 0 1
+    Data variables:
+        TTF_indices      (seed, batch_no, sample, component) float64 128kB 3.742e...
+        TTR_indices      (seed, batch_no, sample, component) float64 128kB 3.809e...
+        final_seed       (seed, batch_no) int32 16B 1000 2000 1001 2001            
     """
+
     dss = []
     for seed in seeds:
         if N_components > 400:

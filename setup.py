@@ -85,7 +85,7 @@ setup(name='hydesign',
             'finitediff',],
         'docs': [
             'pypandoc',
-            'sphinx',
+            'sphinx<=7.3.7',
             'nbsphinx',
             'nbconvert',
             'sphinx_rtd_theme',

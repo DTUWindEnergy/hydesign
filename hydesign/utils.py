@@ -4,29 +4,33 @@ import openmdao.api as om
 
 def get_weights(grid, xtgt, maxorder):
     """
+
     Populates weights for finite difference formulas for derivatives of various orders.
 
-    Parameters:
-    px: Target x value where derivatives are approximated
-    x: Array of x values
-    maxorder: Maximum order of derivative
+    Parameters
+    ----------
+    grid : array-like
+        Target x value where derivatives are approximated
+    xtgt : int
+        Array of x values
+    maxorder : int
+        Maximum order of derivative
 
     Returns:
-    c: Array of weights
-    
-    
-    ```
+    c : array-like
+        Array of weights
+
     @article{fornberg_generation_1988,
-      title={Generation of finite difference formulas on arbitrarily spaced grids},
-      author={Fornberg, Bengt},
-      journal={Mathematics of computation},
-      volume={51},
-      number={184},
-      pages={699--706},
-      year={1988}
-      doi={10.1090/S0025-5718-1988-0935077-0}
-    }
-    ```
+             title={Generation of finite difference formulas on arbitrarily spaced grids},
+             author={Fornberg, Bengt},
+             journal={Mathematics of computation},
+             volume={51},
+             number={184},
+             pages={699--706},
+             year={1988}
+             doi={10.1090/S0025-5718-1988-0935077-0}
+             }
+
     """
     x = grid
     z = xtgt
@@ -57,23 +61,30 @@ def get_weights(grid, xtgt, maxorder):
         c1 = c2
     return c
 
-class hybridization_shifted(om.ExplicitComponent):
-    """The hybridization_shifted model is used to shift the battery activity, in order to make them work starting from the chosen year (delta_life)
-    input: same inputs as the long term
-    output: inputs necessary for the ems_long_term changing the names with shifted
-    - LINES TO BE CHANGED: 418,419,420
-    - use the 'connect' instead of promote because I can change the name
-    - Don't forget to conncet the SOH shifted to the cost model
-    """
 
-    def __init__(
-            self,
+class hybridization_shifted(om.ExplicitComponent):
+    def __init__(self,
             N_limit,
             life_y,
             N_time,
-            life_h,
+            life_h,):
+        """
+        The hybridization_shifted model is used to shift the battery activity, in order to make them work starting from the chosen year (delta_life)
 
-    ):
+        Parameters
+        ----------
+        N_limit : int
+            maximum number of years after start of operation at which the plant can be hybridized.
+        life_y : int
+            life time in years.
+        life_h : int
+            life time in hours.
+
+        Returns
+        -------
+        None.
+
+        """
         super().__init__()
         self.N_limit = N_limit
         self.life_y = life_y

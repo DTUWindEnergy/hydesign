@@ -125,20 +125,18 @@ class existing_wpp(om.ExplicitComponent):
     N_time : Number of time-steps in weather simulation
     existing_wpp_power_curve_xr_fn: File name of a netcdf xarray. 
             
-            The xarray should include 'P_no_wake' as function of 'ws' and 'wake_losses' as a function of 'ws' and 'wd'.
-            Note that the wd must include both 0 and 360, and a large WS (for interpolation). 
-            Resolution of ws and wd is flexible.
-            
-            '''
-            <xarray.Dataset>
-            Dimensions:          (ws: 53, wd: 361)
-            Coordinates:
-              * ws               (ws) float64 0.0 0.5 1.0 1.5 2.0 ... 24.5 25.0 25.0 100.0
-              * wd               (wd) float64 0.0 1.0 2.0 3.0 ... 357.0 358.0 359.0 360.0
-            Data variables:
-                wake_losses_eff  (ws, wd) float64 0.0 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0 0.0
-                P_no_wake        (ws) float64 0.0 0.0 0.0 0.0 0.0 ... 100.0 100.0 0.0 0.0
-            '''
+    The xarray should include 'P_no_wake' as function of 'ws' and 'wake_losses' as a function of 'ws' and 'wd'.
+    Note that the wd must include both 0 and 360, and a large WS (for interpolation). 
+    Resolution of ws and wd is flexible.
+    
+    <xarray.Dataset>
+    Dimensions:          (ws: 53, wd: 361)
+    Coordinates:
+      * ws               (ws) float64 0.0 0.5 1.0 1.5 2.0 ... 24.5 25.0 25.0 100.0
+      * wd               (wd) float64 0.0 1.0 2.0 3.0 ... 357.0 358.0 359.0 360.0
+    Data variables:
+        wake_losses_eff  (ws, wd) float64 0.0 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0 0.0
+        P_no_wake        (ws) float64 0.0 0.0 0.0 0.0 0.0 ... 100.0 100.0 0.0 0.0
             
     wpp_efficiency : WPP efficiency
     wst : wind speed time series at the hub height
@@ -223,31 +221,30 @@ class existing_wpp(om.ExplicitComponent):
 
 class existing_wpp_with_degradation(om.ExplicitComponent):
     """
-    Wind power plant model for an existing layout
+    
 
+    Wind power plant model for an existing layout
     Provides the wind power time series using wake affected power curve and the wind speed time series.
 
     Parameters
     ----------
     N_time : Number of time-steps in weather simulation
     life_h : lifetime in hours
-    existing_wpp_power_curve_xr_fn: File name of a netcdf xarray. 
-            
-            The xarray should include 'P_no_wake' as function of 'ws' and 'wake_losses' as a function of 'ws' and 'wd'.
-            Note that the wd must include both 0 and 360, and a large WS (for interpolation). 
-            Resolution of ws and wd is flexible.
-            
-            '''
-            <xarray.Dataset>
-            Dimensions:          (ws: 53, wd: 361)
-            Coordinates:
-              * ws               (ws) float64 0.0 0.5 1.0 1.5 2.0 ... 24.5 25.0 25.0 100.0
-              * wd               (wd) float64 0.0 1.0 2.0 3.0 ... 357.0 358.0 359.0 360.0
-            Data variables:
-                wake_losses_eff  (ws, wd) float64 0.0 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0 0.0
-                P_no_wake        (ws) float64 0.0 0.0 0.0 0.0 0.0 ... 100.0 100.0 0.0 0.0           
-            '''
-            
+    existing_wpp_power_curve_xr_fn : File name of a netcdf xarray. 
+
+    The xarray should include 'P_no_wake' as function of 'ws' and 'wake_losses' as a function of 'ws' and 'wd'.
+    Note that the wd must include both 0 and 360, and a large WS (for interpolation). 
+    Resolution of ws and wd is flexible.
+
+    <xarray.Dataset>
+    Dimensions:          (ws: 53, wd: 361)
+    Coordinates:
+      * ws               (ws) float64 0.0 0.5 1.0 1.5 2.0 ... 24.5 25.0 25.0 100.0
+      * wd               (wd) float64 0.0 1.0 2.0 3.0 ... 357.0 358.0 359.0 360.0
+    Data variables:
+        wake_losses_eff  (ws, wd) float64 0.0 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0 0.0
+        P_no_wake        (ws) float64 0.0 0.0 0.0 0.0 0.0 ... 100.0 100.0 0.0 0.0           
+
     wpp_efficiency : WPP efficiency
     wind_deg_yr : year list for providing WT degradation curve
     wind_deg : degradation losses at yr
@@ -376,6 +373,32 @@ class existing_wpp_with_degradation(om.ExplicitComponent):
 # -----------------------------------------------------------------------        
 
 def get_wind_ts_degradation(ws, pc, ws_ts, yr, wind_deg, life_h, share=0.5):
+    """
+    
+
+    Parameters
+    ----------
+    ws : array-like
+        wind speed.
+    pc : array-like
+        power curve.
+    ws_ts : array-like
+        wind speed time series.
+    yr : array-like
+        year.
+    wind_deg : array-like
+        degradation values for each year in the yr array.
+    life_h : int
+        lifetime in hours.
+    share : float, optional
+        share ratio between two degradation mechanism (0: only shift in power curve, 1: degradation as a loss factor ) . The default is 0.5.
+
+    Returns
+    -------
+    p_ts_deg_partial_factor : array
+        power time series after degradation.
+
+    """
     
     t_over_year = np.arange(life_h)/(365*24)
     #degradation = wind_deg_per_year * t_over_year
