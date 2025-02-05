@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools", "wheel", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hydesign"
+dynamic = ["version"]
+description = "A tool for design and control of utility-scale wind-solar-storage based hybrid power plant."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "DTU Wind Energy", email = "mikf@dtu.dk" }]
+dependencies = [
+    "dask",
+    "numpy<2.0",
+    "pandas",
+    "scikit-learn",
+    "scipy",
+    "h5netcdf",
+    "netcdf4",
+    "xarray",
+    "openmdao",
+    "smt<=2.6",
+    "cplex",
+    "docplex",
+    "numpy-financial",
+    "pvlib",
+    "statsmodels",
+    "rainflow",
+    "pyyaml",
+    "matplotlib",
+    "zarr",
+    "ortools",
+    "NREL-PySAM",
+    "chaospy",
+    "tqdm",
+    "openpyxl",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+optional = ["seaborn", "jupyterlab", "finitediff"]
+docs = [
+    "pypandoc",
+    "sphinx<=7.3.7",
+    "nbsphinx",
+    "nbconvert",
+    "sphinx_rtd_theme",
+    "sphinx-autoapi",
+    "sphinx-tags",
+]
+
+[project.urls]
+Documentation = "https://topfarm.pages.windenergy.dtu.dk/hydesign/"
+Source = "https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign"
+Tracker = "https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign/-/issues"
+
+[tool.setuptools]
+packages = ["hydesign"]
+include-package-data = true
+zip-safe = true
+
+[tool.setuptools.package-data]
+hydesign = [
+    "tests/test_files/sm.pkl",
+    "tests/test_files/*.pickle",
+    "tests/test_files/*.csv",
+    "look_up_tables/*.nc",
+    "examples/*.csv",
+    "examples/*/*.csv",
+    "examples/*/*/*.csv",
+    "examples/*/*.yml",
+    "examples/*.png",
+    "examples/*/*.nc",
+]
+
+[tool.setuptools_scm]
+version_scheme = "only-version"
+local_scheme = "no-local-version"
+version_file = "hydesign/_version.py"

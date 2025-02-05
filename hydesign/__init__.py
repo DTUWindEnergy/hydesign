@@ -1,3 +1,2 @@
-# 'filled_by_setup.py'
-__version__ = '1.4.1'
-__release__ = '1.4.1'
+from hydesign._version import __version__
+__release__ = __version__
