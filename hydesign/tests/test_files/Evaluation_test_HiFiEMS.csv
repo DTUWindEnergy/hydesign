@@ -13,11 +13,11 @@ surface_azimuth [deg];180.0
 DC_AC_ratio;1.5
 b_P [MW];40.0
 b_E_h [h];3.0
-NPV_over_CAPEX;1.2624691960767125
-NPV [MEuro];173.2278632273249
-IRR;0.13534846394439
+NPV_over_CAPEX;1.2608611514501775
+NPV [MEuro];173.0072177371264
+IRR;0.1352632362645387
 LCOE [Euro/MWh];12.966369061734753
-Revenues [MEuro];19.11304014306706
+Revenues [MEuro];19.10245117177261
 CAPEX [MEuro];137.21353658818214
 OPEX [MEuro];5.114226704499598
 Wind CAPEX [MEuro];103.92953658818212
@@ -27,7 +27,7 @@ PV OPEX [MEuro];0.0675
 Batt CAPEX [MEuro];6.94
 Batt OPEX [MEuro];0.0
 Shared CAPEX [MEuro];22.994
-Shared Opex [MEuro];0.0
+Shared OPEX [MEuro];0.0
 penalty lifetime [MEuro];1e-06
 AEP [GWh];1149.8700301469717
 GUF;1.312637020715721
@@ -44,5 +44,5 @@ Plant area [km2];20.0
 Rotor diam [m];190.73089080355845
 Hub height [m];115.36544540177924
 Number of batteries used in lifetime;1.0
-Break-even PPA price [Euro/MWh];30.987900014637397
+Break-even PPA price [Euro/MWh];31.00061095426359
 Capacity factor wind [-];0.2724142834887765

@@ -81,7 +81,7 @@ def test_EI():
 
 def test_KStd():
     res = KStd(sm, point)
-    np.testing.assert_allclose(float(res[0][0]), float(df.KStd.iloc[0]))
+    np.testing.assert_allclose(float(res[0][0]), float(df.KStd.iloc[0]), rtol=1.1e-7)
 
 def test_KB():
     res = KB(sm, point)

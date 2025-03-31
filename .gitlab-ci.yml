@@ -18,7 +18,7 @@ test_hydesign_windows:
   script:
   - conda init powershell
   - "if (test-path $PROFILE.CurrentUserAllHosts) { & $PROFILE.CurrentUserAllHosts}"
-  - conda activate hydesign113
+  - conda activate hydesign141
   - pip install -e . --no-deps
   - pytest --cov-report term-missing:skip-covered --cov=hydesign --cov-config .coveragerc
   tags:

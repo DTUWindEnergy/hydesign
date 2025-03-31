@@ -398,7 +398,7 @@ class hpp_model_constant_output(hpp_base):
             'Batt CAPEX [MEuro]',
             'Batt OPEX [MEuro]',
             'Shared CAPEX [MEuro]',
-            'Shared Opex [MEuro]',
+            'Shared OPEX [MEuro]',
             'penalty lifetime [MEuro]',
             'AEP [GWh]',
             'GUF',

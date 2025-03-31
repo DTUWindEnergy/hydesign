@@ -121,8 +121,8 @@ def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
             input_ts_fn = input_ts_fn,
             H2_demand_fn=H2_demand_fn) 
 
-        ptg_MW = output_df.loc['PTG [MW]','Design 1']
-        HSS_kg = output_df.loc['HSS [kg]','Design 1']
+        ptg_MW = output_df.loc['ptg_MW [MW]','Design 1']
+        HSS_kg = output_df.loc['HSS_kg [kg]','Design 1']
         x.extend([ptg_MW, HSS_kg])
         
     elif case=='HiFiEMS':

@@ -2,7 +2,7 @@ name: hydesign
 channels:
   - conda-forge
 dependencies:
-  - python=3.9
+  - python=3.11
   - pip
-  - smt
+  - smt=2.6.0
 
