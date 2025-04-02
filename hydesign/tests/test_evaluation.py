@@ -9,6 +9,7 @@ from hydesign.assembly.hpp_assembly_constantoutput import hpp_model_constant_out
 from hydesign.assembly.hpp_assembly_P2X_bidrectional import hpp_model_P2X_bidirectional
 from hydesign.assembly.hpp_assembly_BM import hpp_model as hpp_model_BM
 from hydesign.assembly.hpp_assembly_hifi_dems import hpp_model as hpp_model_hifi_ems
+from hydesign.assembly.hpp_assembly_solarX import hpp_model_solarX
 from hydesign.examples import examples_filepath
 
 
@@ -23,7 +24,7 @@ def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
     sim_pars_fn = examples_filepath+ex_site['sim_pars_fn'].values[0]
     H2_demand_fn = examples_filepath+ex_site['H2_demand_col'].values[0]
 
-    if case not in ['HiFiEMS']:
+    if case not in ['HiFiEMS', 'SolarX']:
         clearance = output_df.loc['clearance [m]',design_name]
         sp = output_df.loc['sp [W/m2]',design_name]
         p_rated = output_df.loc['p_rated [MW]',design_name]
@@ -40,6 +41,35 @@ def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
         x = [clearance, sp, p_rated, Nwt, wind_MW_per_km2, \
         solar_MW, surface_tilt, surface_azimuth, solar_DCAC, \
         b_P, b_E_h , cost_of_batt_degr]
+    elif case in ['SolarX']:
+        sf_area = output_df.loc['sf_area', design_name]
+        tower_height = output_df.loc['tower_height', design_name]
+        area_cpv_receiver_m2 = output_df.loc['area_cpv_receiver_m2', design_name]
+        heat_exchanger_capacity = output_df.loc['heat_exchanger_capacity', design_name]
+        p_rated_st = output_df.loc['p_rated_st', design_name]
+        v_molten_salt_tank_m3 = output_df.loc['v_molten_salt_tank_m3', design_name]
+        area_cst_receiver_m2 = output_df.loc['area_cst_receiver_m2', design_name]
+        area_dni_reactor_biogas_h2 = output_df.loc['area_dni_reactor_biogas_h2', design_name]
+        area_el_reactor_biogas_h2 = output_df.loc['area_el_reactor_biogas_h2', design_name]
+        x = [
+            # sizing variables
+            # sf
+            sf_area,
+            tower_height,
+
+            # cpv
+            area_cpv_receiver_m2,
+
+            # cst
+            heat_exchanger_capacity,
+            p_rated_st,
+            v_molten_salt_tank_m3,
+            area_cst_receiver_m2,
+
+            # bigas_h2
+            area_dni_reactor_biogas_h2,
+            area_el_reactor_biogas_h2,
+        ]
     else:
         x = None
     
@@ -124,6 +154,7 @@ def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
         ptg_MW = output_df.loc['ptg_MW [MW]','Design 1']
         HSS_kg = output_df.loc['HSS_kg [kg]','Design 1']
         x.extend([ptg_MW, HSS_kg])
+
         
     elif case=='HiFiEMS':
         sim_pars_fn = os.path.join(examples_filepath, 'Europe/hpp_pars_HiFiEMS.yml')
@@ -133,6 +164,17 @@ def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
                         input_ts_rt=os.path.join(examples_filepath, 'HiFiEMS_inputs/Weather/input_ts_RT.csv'),
                         market_fn=os.path.join(examples_filepath, 'HiFiEMS_inputs/Market/Market2021.csv'),)
         x = [20, 350, 10, 12, 6, 10, 25, 180, 1.5, 40, 3,]
+
+    elif case=='SolarX':
+        batch_size = 1 * 24
+        sim_pars_fn = examples_filepath + "solarX/hpp_pars.yml"
+        hpp = hpp_model_solarX(
+            latitude, longitude, altitude,  # Geographical data for the site
+            work_dir='./',  # Directory for saving outputs
+            sim_pars_fn=sim_pars_fn,  # Simulation parameters
+            input_ts_fn=input_ts_fn,  # Input time series (weather, prices, etc.)
+            batch_size=batch_size,)
+        x = [10000.0, 100, 10, 10, 10, 1000, 10, 5, 5]
 
     else:
         print(f'case type not implemented: {case}')
@@ -159,7 +201,9 @@ def load_evaluation(out_name,design_name,case,):
     if case in ['p2x', 'p2x_bidirectional']:
         load_file = np.array(output_df.iloc[17:][design_name])
     elif case in ['HiFiEMS']:
-        load_file = np.array(output_df.iloc[14:][design_name])        
+        load_file = np.array(output_df.iloc[14:][design_name])
+    elif case in ['SolarX']:
+        load_file = np.array(output_df.iloc[12:][design_name])
     else:
         load_file = np.array(output_df.iloc[15:][design_name])
     return load_file
@@ -559,7 +603,40 @@ def test_evaluation_HiFiEMS():
     for i in range(len(loaded_metrics)):
         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i])
 
-        
+
+# ------------------------------------------------------------------------------------------------
+# SolarX
+
+def run_evaluation_SolarX():
+    return run_evaluation(out_name='Evaluation_test_SolarX.csv',
+                          name='Denmark_good_solar',
+                          design_name='Design 1',
+                          case='SolarX',
+                          tmp_name='test_eval_design_SolarX',
+                          )
+
+
+def update_test_SolarX():
+    update_test(out_name='Evaluation_test_SolarX.csv',
+                name='Denmark_good_solar',
+                design_name='Design 1',
+                case='SolarX',
+                tmp_name='test_eval_design_SolarX',
+                )
+
+
+def load_evaluation_SolarX():
+    return load_evaluation(out_name='Evaluation_test_SolarX.csv',
+                           design_name='Design 1',
+                           case='SolarX',
+                           )
+
+
+def test_evaluation_SolarX():
+    evaluation_metrics = run_evaluation_SolarX()
+    loaded_metrics = load_evaluation_SolarX()
+    for i in range(len(loaded_metrics)):
+        np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i])
         
 # # ------------------------------------------------------------------------------------------------
 # update_test_design_1()
@@ -574,6 +651,7 @@ def test_evaluation_HiFiEMS():
 # update_test_P2X_bidirectional()
 # update_test_BM()
 # update_test_HiFiEMS()
+# update_test_SolarX()
 
 # test_evaluation_design_1()
 # test_evaluation_design_2()
@@ -587,3 +665,4 @@ def test_evaluation_HiFiEMS():
 # test_evaluation_P2X_bidirectional()
 # test_evaluation_BM()
 # test_evaluation_HiFiEMS()
+# test_evaluation_SolarX()

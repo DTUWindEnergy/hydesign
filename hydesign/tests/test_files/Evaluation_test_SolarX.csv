@@ -1,0 +1,38 @@
+name;Design 1
+longitude;11.813965
+latitude;55.39776
+altitude;42.0
+sf_area;10000.0
+tower_height;100.0
+area_cpv_receiver_m2;10.0
+heat_exchanger_capacity;10.0
+p_rated_st;10.0
+v_molten_salt_tank_m3;1000.0
+area_cst_receiver_m2;10.0
+area_dni_reactor_biogas_h2;5.0
+area_el_reactor_biogas_h2;5.0
+NPV_over_CAPEX;-0.7719755915419267
+NPV [MEuro];-15.543728535696694
+IRR;0.0
+LCOE [Euro/MWh];565.812773149257
+LCOVE [Euro/MWh];15.34715347658705
+Revenues [MEuro];2.565777056975149
+CAPEX [MEuro];20.135
+OPEX [MEuro];0.0
+SF CAPEX [MEuro];2.0
+SF OPEX [MEuro];0.0
+CPV CAPEX [MEuro];0.84
+CPV OPEX [MEuro];0.0
+CST CAPEX [MEuro];13.545
+CST OPEX [MEuro];0.0
+BiogasH2 CAPEX [MEuro];0.5
+BiogasH2 OPEX [MEuro];0.0
+Shared CAPEX [MEuro];3.25
+Shared Opex [MEuro];0.0
+penalty lifetime [MEuro];0.0
+AEP [GWh];2.714646407766444
+AH2P [T];0.0
+GUF;0.030989114243909176
+Total curtailment [GWh];0.0
+Break-even PPA price el [Euro/MWh];331.4410906584847
+Break-even PPA price H2 [Euro/kg];50.0
