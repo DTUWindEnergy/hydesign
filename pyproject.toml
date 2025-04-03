@@ -20,7 +20,7 @@ dependencies = [
     "netcdf4",
     "xarray",
     "openmdao",
-    "smt<=2.6",
+    "smt==2.9.2",
     "cplex",
     "docplex",
     "numpy-financial",
@@ -39,7 +39,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest"]
+test = ["pytest",
+        'pytest-cov',]
 optional = ["seaborn", "jupyterlab", "finitediff"]
 docs = [
     "pypandoc",

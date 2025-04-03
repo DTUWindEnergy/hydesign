@@ -71,7 +71,7 @@ class pvp_with_degradation(om.ExplicitComponent):
         life_y = self.life_y
         pv_deg = self.pv_deg
 
-        delta_life = inputs['delta_life']
+        delta_life = inputs['delta_life'][0]
         solar_t_ext = inputs['solar_t_ext']
 
         t_over_year = np.arange(self.life_h) / (365 * 24)

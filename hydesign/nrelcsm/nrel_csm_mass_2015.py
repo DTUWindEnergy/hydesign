@@ -413,8 +413,8 @@ class BrakeMass(om.ExplicitComponent):
     def compute(self, inputs, outputs):
 
         # Unpack inputs
-        rotor_torque = float(inputs["rotor_torque"])
-        coeff = float(inputs["brake_mass_coeff"])
+        rotor_torque = float(inputs["rotor_torque"][0])
+        coeff = float(inputs["brake_mass_coeff"][0])
 
         # Regression based sizing derived by J.Keller under FOA 1981 support project
         outputs["brake_mass"] = coeff * rotor_torque

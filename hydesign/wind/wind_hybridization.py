@@ -93,7 +93,7 @@ class wpp_with_degradation(om.ExplicitComponent):
         ws = inputs['ws']
         pcw = inputs['pcw']
         wst = inputs['wst']
-        delta_life = inputs['delta_life']
+        delta_life = inputs['delta_life'][0]
 
         N_limit = self.N_limit
         life_y = self.life_y

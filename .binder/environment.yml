@@ -6,4 +6,6 @@ dependencies:
   - pip
   - smt=2.9.2
   - numpy>=2.0
+  - pip:
+    - hydesign @ git+https://gitlab.windenergy.dtu.dk/TOPFARM/HyDesign.git
 

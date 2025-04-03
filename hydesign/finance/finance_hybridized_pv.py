@@ -207,7 +207,7 @@ class finance(om.ExplicitComponent):
         penalty_lifetime : total penalty
         """
 
-        delta_life = int(inputs['delta_life'])
+        delta_life = int(inputs['delta_life'][0])
 
         N_limit = int(self.N_limit)
         life_y = int(self.life_y)
@@ -260,8 +260,8 @@ class finance(om.ExplicitComponent):
         CAPEX = CAPEX_only_pv + CAPEX_wind  # This is the total CAPEX, used to calculate NPV/CAPEX
 
         CAPEX_vec = np.zeros(len(OPEX_vec))
-        CAPEX_vec[delta_life] = CAPEX_wind
-        CAPEX_vec[0] = CAPEX_only_pv
+        CAPEX_vec[delta_life] = CAPEX_wind[0]
+        CAPEX_vec[0] = CAPEX_only_pv[0]
 
         # Definition of the CAPEX vector to calculate the depraciation (batteries are depreciated just the first 25 years)
         CAPEX_for_depre = np.insert(np.concatenate((np.ones(delta_life) * CAPEX_only_pv,
@@ -301,7 +301,7 @@ class finance(om.ExplicitComponent):
             maintenance_cost_per_year=OPEX_vec,
             capex_vector=CAPEX_vec,
             capex_for_depreciation=CAPEX_for_depre,
-            tax_rate=inputs['tax_rate'],
+            tax_rate=inputs['tax_rate'][0],
             discount_rate=hpp_discount_factor,
             depreciation_yr=depreciation_yr,
             depreciation=depreciation,

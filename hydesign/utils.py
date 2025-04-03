@@ -114,7 +114,7 @@ class hybridization_shifted(om.ExplicitComponent):
         # life_h = self.life_h
 
         SoH = inputs['SoH']
-        delta_life = int(inputs['delta_life'])
+        delta_life = int(inputs['delta_life'][0])
 
         outputs['SoH_shifted'] = np.concatenate((np.zeros(delta_life * 365 * 24), SoH[0:life_y * 365 * 24], np.zeros((N_limit-delta_life) * 365 * 24)))
 

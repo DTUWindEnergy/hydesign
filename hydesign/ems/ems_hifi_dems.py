@@ -190,18 +190,18 @@ class ems(om.ExplicitComponent):
         parameter_dict = self.parameter_dict
         parameter_dict.update({
             # hpp parameters
-            'hpp_grid_connection': float(inputs['G_MW']),  # in MW
+            'hpp_grid_connection': float(inputs['G_MW'][0]),  # in MW
 
             # hpp wind parameters
-            'wind_capacity': float(inputs['wind_MW']), #in MW
+            'wind_capacity': float(inputs['wind_MW'][0]), #in MW
 
             # hpp solar parameters
-            'solar_capacity': float(inputs['solar_MW']),  # in MW
+            'solar_capacity': float(inputs['solar_MW'][0]),  # in MW
                        
             # hpp battery parameters
-            'battery_energy_capacity': float(inputs['b_E']),  # in MWh
-            'battery_power_capacity': float(inputs['b_P']),  # in MW
-            'battery_minimum_SoC': 1 - float(inputs['battery_depth_of_discharge']),
+            'battery_energy_capacity': float(inputs['b_E'][0]),  # in MWh
+            'battery_power_capacity': float(inputs['b_P'][0]),  # in MW
+            'battery_minimum_SoC': 1 - float(inputs['battery_depth_of_discharge'][0]),
             })
         
         Wind_data = pd.DataFrame({'Measurement': inputs['wind_t_measurement'] / inputs['wind_MW'],

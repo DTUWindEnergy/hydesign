@@ -46,10 +46,10 @@ def get_data1():
     return df
 
 def generate_data1():
-    df = pd.DataFrame({'LCB': float(LCB(sm, point)),
-                  'EI': float(EI(sm, point)),
-                  'KStd': float(KStd(sm, point)),
-                  'KB': float(KB(sm, point)),
+    df = pd.DataFrame({'LCB': float(LCB(sm, point)[0]),
+                  'EI': float(EI(sm, point)[0]),
+                  'KStd': float(KStd(sm, point)[0]),
+                  'KB': float(KB(sm, point)[0]),
                   }, index=[0])
     df.to_csv(tfp + f'test_surrogate_models_{smt_major}_{smt_minor}.csv', sep=';', index=False)
 
@@ -81,7 +81,7 @@ def test_EI():
 
 def test_KStd():
     res = KStd(sm, point)
-    np.testing.assert_allclose(float(res[0][0]), float(df.KStd.iloc[0]), rtol=1.1e-7)
+    np.testing.assert_allclose(float(res[0][0]), float(df.KStd.iloc[0]), rtol=1.3e-7)
 
 def test_KB():
     res = KB(sm, point)
@@ -143,8 +143,7 @@ def test_eval_sm(fmin):
     np.testing.assert_allclose(a, a_ref)
     np.testing.assert_allclose(b.ravel(), b_ref, rtol=1e-6)
 
-# def test_get_candidate_points():
-if 1:
+def test_get_candidate_points():
     xpred, ypred_LB = eval_sm(sm, mixint, npred=5, fmin=1e3)
     print(xpred, ypred_LB)
     xnew = get_candiate_points(

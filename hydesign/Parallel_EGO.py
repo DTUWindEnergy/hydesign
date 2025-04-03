@@ -17,7 +17,7 @@ from multiprocessing import Pool
 import os
 
 # SMT imports
-from smt.utils.design_space import (
+from smt.design_space import (
     DesignSpace,
     FloatVariable,
     IntegerVariable,
@@ -37,7 +37,7 @@ from openmdao.core.driver import Driver
 import smt
 smt_version = smt.__version__.split('.')
 smt_major, smt_minor = smt_version[:2]
-import platform
+# import platform
 
 def LCB(sm, point):
     """

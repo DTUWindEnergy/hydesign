@@ -30,12 +30,11 @@ Explanations of hydesign's core objects can be found in the following tutorials:
                
     .. toctree::
         :maxdepth: 1
-	:caption: Tutorials
-       
+	:caption: Evaluation Tutorials
+
 	notebooks/Quickstart
 	notebooks/Advanced_hpp_model
 	notebooks/HPP_evaluation_P2X
-	notebooks/more_sizing_examples
 	notebooks/break_even_price_and_PPA
 	notebooks/constant_output
 	notebooks/offshore
@@ -43,7 +42,15 @@ Explanations of hydesign's core objects can be found in the following tutorials:
 	notebooks/HPP_evaluation_BM
 	notebooks/Hybridize
 	notebooks/evaluate_with_reliability
+
+    .. toctree::
+        :maxdepth: 1
+	:caption: Sizing Tutorials
+
+	notebooks/Simple_Sizing_Example
+	notebooks/Simple_Sizing_P2X_Example
 	notebooks/sizing_with_reliability
+       
 
     .. toctree::
         :glob:
