@@ -193,11 +193,12 @@ class hpp_model_P2X(hpp_base):
                 # N_life = N_life,
                 # life_h = life_h
                 life_y = life_y,
+                battery_price_reduction_per_year = sim_pars['battery_price_reduction_per_year']
             ),
             promotes_inputs=[
                 'b_P',
                 'b_E',
-                'battery_price_reduction_per_year'])
+                ])
 
         model.add_subsystem(
             'shared_cost',

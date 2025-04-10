@@ -307,7 +307,8 @@ class hpp_model(hpp_base):
         reliability_ts_trans = sim_pars['reliability_ts_trans']
         reliability_ts_wind = sim_pars['reliability_ts_wind']
         reliability_ts_pv = sim_pars['reliability_ts_pv']
-        
+        battery_price_reduction_per_year = sim_pars['battery_price_reduction_per_year']
+
         model = om.Group()
         
         model.add_subsystem(
@@ -518,12 +519,14 @@ class hpp_model(hpp_base):
                 battery_control_system_cost=sim_pars['battery_control_system_cost'],
                 battery_energy_onm_cost=sim_pars['battery_energy_onm_cost'],
                 # N_life = N_life,
-                life_y = life_y
+                life_y = life_y,
+                battery_price_reduction_per_year = battery_price_reduction_per_year,
+
             ),
             promotes_inputs=[
                 'b_P',
                 'b_E',
-                'battery_price_reduction_per_year'])
+                ])
 
         model.add_subsystem(
             'shared_cost',

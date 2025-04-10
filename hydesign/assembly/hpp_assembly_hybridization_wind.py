@@ -240,11 +240,11 @@ class hpp_model(hpp_base):
                 battery_control_system_cost=sim_pars['battery_control_system_cost'],
                 battery_energy_onm_cost=sim_pars['battery_energy_onm_cost'],
                 life_y = life_y + N_limit,
+                battery_price_reduction_per_year = sim_pars['battery_price_reduction_per_year'],
             ),
             promotes_inputs=[
                 'b_P',
                 'b_E',
-                'battery_price_reduction_per_year',
             ])
 
         model.add_subsystem(

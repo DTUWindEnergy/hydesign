@@ -68,7 +68,7 @@ battery_energy_onm_cost: 0 # [Euro/MWh]
 # EMS and Degradation parameters
 battery_depth_of_discharge: 0.9 # 1 - Minimum energy level in the battery
 battery_charge_efficiency: 0.985  # Charge efficiency for Lithium-ion
-battery_price_reduction_per_year: 0.05 # Battery price reduction per year
+battery_price_reduction_per_year: 0.1 # Battery price reduction per year
 # n_steps_in_LoH: 20 # Number of battery degradation levels for discretization of lifetime operation
 min_LoH: 0.7 # Minimum energy storage capacity in percent for the storage to be replaced
 

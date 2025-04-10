@@ -274,6 +274,7 @@ class battery_cost(om.ExplicitComponent):
                  life_y = 25,
                  # life_h = 25*365*24
                  intervals_per_hour = 1,
+                 battery_price_reduction_per_year=0.1,
                  ):
         """Initialization of the battery cost model
 
@@ -300,7 +301,7 @@ class battery_cost(om.ExplicitComponent):
         self.life_h = life_y * 365 * 24
         self.yearly_intervals = 365 * 24 * intervals_per_hour
         self.life_intervals = life_y * self.yearly_intervals
-        # print(life_y, self.life_h)
+        self.battery_price_reduction_per_year = battery_price_reduction_per_year
 
 
     def setup(self):
@@ -313,9 +314,6 @@ class battery_cost(om.ExplicitComponent):
             'SoH',
             desc="Battery state of health at discretization levels",
             shape=[self.life_intervals])
-        self.add_input('battery_price_reduction_per_year',
-                       desc="Factor of battery price reduction per year")
-
         self.add_output('CAPEX_b',
                         desc="CAPEX battery")
         self.add_output('OPEX_b',
@@ -336,7 +334,6 @@ class battery_cost(om.ExplicitComponent):
         b_E : Battery energy storage capacity [MWh]
         ii_time : Indices on the lifetime time series (Hydesign operates in each range at constant battery health)
         SoH : Battery state of health at discretization levels 
-        battery_price_reduction_per_year : Factor of battery price reduction per year
 
         Returns
         -------
@@ -351,7 +348,7 @@ class battery_cost(om.ExplicitComponent):
         b_E = inputs['b_E'][0]
         b_P = inputs['b_P'][0]
         SoH = inputs['SoH']
-        battery_price_reduction_per_year = inputs['battery_price_reduction_per_year'][0]
+        battery_price_reduction_per_year = self.battery_price_reduction_per_year
 
         battery_energy_cost = self.battery_energy_cost
         battery_power_cost = self.battery_power_cost
@@ -363,7 +360,6 @@ class battery_cost(om.ExplicitComponent):
         ii_battery_change = np.where( (SoH>0.99) & ( np.append(1, np.diff(SoH)) > 0) )[0]
         year_new_battery = np.unique(np.floor(age[ii_battery_change]))
         
-        battery_price_reduction_per_year = 0.1
         factor = 1.0 - battery_price_reduction_per_year
         N_beq = np.sum([factor**iy for iy in year_new_battery])
 

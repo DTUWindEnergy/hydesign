@@ -63,6 +63,7 @@ class hpp_model(hpp_base):
         weeks_per_season_per_year = sim_pars['weeks_per_season_per_year']
         ems_type = sim_pars['ems_type']
         max_num_batteries_allowed = sim_pars['max_num_batteries_allowed']
+        battery_price_reduction_per_year = sim_pars['battery_price_reduction_per_year']
 
         # Weather database for HA
         if input_HA_ts_fn == None:
@@ -309,11 +310,13 @@ class hpp_model(hpp_base):
                 # N_life = N_life,
                 # life_h = life_h
                 life_y = life_y,
+                battery_price_reduction_per_year = battery_price_reduction_per_year,
+
             ),
             promotes_inputs=[
                 'b_P',
                 'b_E',
-                'battery_price_reduction_per_year'])
+                ])
 
         model.add_subsystem(
             'shared_cost',

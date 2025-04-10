@@ -66,6 +66,7 @@ class hpp_model_constant_output(hpp_base):
         weeks_per_season_per_year = sim_pars['weeks_per_season_per_year']
         ems_type = sim_pars['ems_type']
         max_num_batteries_allowed = sim_pars['max_num_batteries_allowed']
+        battery_price_reduction_per_year = sim_pars['battery_price_reduction_per_year']
 
   
         model = om.Group()
@@ -251,12 +252,14 @@ class hpp_model_constant_output(hpp_base):
                 battery_energy_onm_cost=sim_pars['battery_energy_onm_cost'],
                 # N_life = N_life,
                 life_y = life_y,
-                # life_h = life_h
+                # life_h = life_h,
+                battery_price_reduction_per_year = battery_price_reduction_per_year,
+
             ),
             promotes_inputs=[
                 'b_P',
                 'b_E',
-                'battery_price_reduction_per_year'])
+                ])
 
         model.add_subsystem(
             'shared_cost',
