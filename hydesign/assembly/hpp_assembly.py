@@ -7,6 +7,7 @@ import pandas as pd
 import openmdao.api as om
 import yaml
 import xarray as xr
+import datetime
 
 from hydesign.weather.weather import extract_weather_for_HPP, ABL, select_years
 from hydesign.wind.wind import genericWT_surrogate, genericWake_surrogate, wpp, wpp_with_degradation, get_rotor_d  # , get_rotor_area
@@ -180,6 +181,8 @@ class hpp_base:
         with xr.open_dataset(genWT_fn, engine='h5netcdf') as ds: 
             # number of points in the power curves
             self.N_ws = len(ds.ws.values)
+            
+        sim_pars['time_str'] = datetime.datetime.now().strftime('%y_%m_%H_%M_%S')
         
         self.N_time = N_time
         self.sim_pars = sim_pars
@@ -214,7 +217,8 @@ class hpp_base:
                     reliability_ts_battery=None,
                     reliability_ts_trans=None,
                     reliability_ts_wind=None,
-                    reliability_ts_pv=None,)
+                    reliability_ts_pv=None,
+                    save_finance_ts=False,)
     
     def check_inputs(self, sim_pars):
         req_vars = ['altitude', 'latitude', 'longitude']
@@ -308,6 +312,7 @@ class hpp_model(hpp_base):
         reliability_ts_wind = sim_pars['reliability_ts_wind']
         reliability_ts_pv = sim_pars['reliability_ts_pv']
         battery_price_reduction_per_year = sim_pars['battery_price_reduction_per_year']
+        work_dir = sim_pars['work_dir']
 
         model = om.Group()
         
@@ -554,7 +559,10 @@ class hpp_model(hpp_base):
                 # Early paying or CAPEX Phasing
                 phasing_yr = sim_pars['phasing_yr'],
                 phasing_CAPEX = sim_pars['phasing_CAPEX'],
-                life_y = life_y),
+                life_y = life_y,
+                save_finance_ts = sim_pars['save_finance_ts'],
+                work_dir = work_dir,
+                time_str = sim_pars['time_str']),
             promotes_inputs=['wind_WACC',
                              'solar_WACC', 
                              'battery_WACC',

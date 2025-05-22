@@ -39,6 +39,9 @@ class finance(om.ExplicitComponent):
         phasing_CAPEX,
         
         life_y = 25,
+        save_finance_ts=False,
+        work_dir='./',
+        time_str='',
         ):
         """Initialization of the HPP finance model
 
@@ -64,6 +67,11 @@ class finance(om.ExplicitComponent):
         # Early paying or CAPEX Phasing
         self.phasing_yr = phasing_yr
         self.phasing_CAPEX = phasing_CAPEX
+        
+        self.save_finance_ts = save_finance_ts
+        
+        self.work_dir = work_dir
+        self.time_str = time_str
 
     def setup(self):
         self.add_input('price_t_ext',
@@ -297,6 +305,27 @@ class finance(om.ExplicitComponent):
         
         outputs['penalty_lifetime'] = df['penalty_t'].sum()
         outputs['break_even_PPA_price'] = break_even_PPA_price
+        
+        if self.save_finance_ts:
+            df_out = pd.DataFrame()
+            df_out['production'] = np.insert(np.sum(np.split(df['hpp_t'].values, 25), axis=1), 0, 0)
+            df_out['revenue'] = np.insert(np.sum(np.split(df['hpp_t'].values*inputs['price_t_ext'], 25), axis=1), 0, 0)
+            df_out['price_eq'] = df_out['revenue'] / df_out['production']
+            df_out['actual_mean_price'] = np.insert(np.mean(np.split(inputs['price_t_ext'], 25),axis=1), 0, 0)
+            df_out['year'] = np.arange(25 + 1)
+            df_out['inflation_index'] = inflation_index
+            df_out.to_csv(os.path.join(self.work_dir, f'finance_ts_{self.time_str}.csv'), sep=';')
+            
+            df_out2 = pd.DataFrame()
+            df_out2['CAPEX'] = CAPEX
+            df_out2['OPEX'] = OPEX
+            df_out2['LCOE'] = outputs['LCOE']
+            df_out2['NPV'] = [NPV]
+            df_out2['WACC'] = hpp_discount_factor
+            df_out2['TAX_rate'] = inputs['tax_rate']
+            df_out2['break_even_price'] = break_even_PPA_price
+            df_out2.to_csv(os.path.join(self.work_dir, f'finance_vals_{self.time_str}.csv'), sep=';')
+        
 
 
 # -----------------------------------------------------------------------

@@ -1,0 +1,15 @@
+# escape=`
+
+# build: 
+# docker build -f Dockerfile_windows . -t registry.windenergy.dtu.dk/topfarm/hydesign:0.0.3
+# try:
+# docker run --volume C:\Sandbox\Repo\TOPFARM\hydesign:C:\hydesign -it registry.windenergy.dtu.dk/topfarm/hydesign:0.0.3
+# push:
+# docker login registry.windenergy.dtu.dk
+# docker push registry.windenergy.dtu.dk/topfarm/hydesign:0.0.3
+
+FROM registry.windenergy.dtu.dk/dockerimages/windows-miniconda:ltsc2019
+
+RUN conda install -y -c conda-forge -n py311 smt==2.9.2 numpoly finitediff 
+
+ENTRYPOINT "powershell.exe" "$Profile.CurrentUserAllHosts ; powershell.exe"

@@ -12,17 +12,18 @@ test_hydesign:
 
 # ===== TEST hydesign windows=====
 test_hydesign_windows:
+  image: registry.windenergy.dtu.dk/topfarm/hydesign:0.0.3
   stage:
     test
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   script:
   - conda init powershell
   - "if (test-path $PROFILE.CurrentUserAllHosts) { & $PROFILE.CurrentUserAllHosts}"
-  - conda activate hydesign141
-  - pip install -e . --no-deps
+  - conda activate py311
+  - pip install -e .[test]
   - pytest --cov-report term-missing:skip-covered --cov=hydesign --cov-config .coveragerc
   tags:
-  - ANMH_old
+  - docker-windows
 
 # ===== DEPLOY hydesign docs=====
 pages:
