@@ -6,18 +6,18 @@
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/git/https%3A%2F%2Fgitlab.windenergy.dtu.dk%2FTOPFARM%2FHyDesign.git/main)
 
 ## Welcome to Hydesign
-The DTU tool for design, control and optimization of utility scale Hybrid Power- and Energy Plants inluding wind, solar, storage and P2X technologies.
+The DTU tool for design, control and optimization of utility scale Hybrid Power- and Energy Plants including wind, solar, storage and P2X technologies.
 - Hydesign is a non-linear model for evaluating HPP projects including: 
     - Wind turbine selection
     - Wake losses that depend on the number of turbines and the installation density of the wind plant
-    - Internal energy management system operation of the plant. The operation of the HPP plant is designed in an ideal scenario without degradation and a actual operation that can include degradation of the battery, or PV plant, as well as forecast errors in wind, solar and spot prices.
+    - Internal energy management system operation of the plant. The operation of the HPP plant is designed in an ideal scenario without degradation and an actual operation that can include degradation of the battery, or PV plant, as well as forecast errors in wind, solar and spot prices.
     - Non-linear battery degradation
     - Detailed cost models for wind, solar and Li-ion battery
     - Detailed financial model based on weighted costs of capital per technology
     - P2X capability with power to Hydrogen
 
 ## How to cite
-If you make use of HyDesign please cite this paper, which inludes a detailed description of the methodology applied in the framework:
+If you make use of HyDesign please cite this paper, which includes a detailed description of the methodology applied in the framework:
 ```
 @Article{wes-9-759-2024,
 AUTHOR = {Murcia Leon, J. P. and Habbou, H. and Friis-M{\o}ller, M. and Gupta, M. and Zhu, R. and Das, K.},

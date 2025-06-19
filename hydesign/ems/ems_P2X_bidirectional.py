@@ -39,7 +39,6 @@ class ems_P2X_bidirectional(om.ExplicitComponent):
     price_H2: Price of Hydrogen
     ptg_MW: Electrolyzer power capacity
     storage_eff: Compressor efficiency for hydrogen storage
-    ptg_deg: Electrolyzer rate of degradation annually
     hhv: High heat value
     m_H2_demand_t: Hydrogen demand times series
     HSS_kg: Hydrogen storage system capacity
@@ -78,7 +77,13 @@ class ems_P2X_bidirectional(om.ExplicitComponent):
         intervals_per_hour = 1,
         ems_type='cplex',
         load_min_penalty_factor=1e6,
-        electrolyzer_eff_curve_type='production',):
+        electrolyzer_eff_curve_type='production',
+        price_H2=None,
+        storage_eff=None,
+        hhv=None,
+        penalty_factor_H2=None,
+        min_power_standby=None,
+        ):
 
         super().__init__()
         self.N_time = int(N_time)
@@ -89,6 +94,11 @@ class ems_P2X_bidirectional(om.ExplicitComponent):
         self.life_intervals = intervals_per_hour * self.life_h
         self.load_min_penalty_factor = load_min_penalty_factor
         self.electrolyzer_eff_curve_type = electrolyzer_eff_curve_type
+        self.price_H2 = price_H2
+        self.storage_eff = storage_eff
+        self.hhv = hhv
+        self.penalty_factor_H2 = penalty_factor_H2
+        self.min_power_standby = min_power_standby
 
     def setup(self):
         self.add_input(
@@ -133,22 +143,19 @@ class ems_P2X_bidirectional(om.ExplicitComponent):
         self.add_input(
             'n_full_power_hours_expected_per_day_at_peak_price',
             desc="Penalty occurs if nunmber of full power hours expected per day at peak price are not reached.")
-        self.add_input(
-            'price_H2',
-            desc="H2 price")
+        # self.add_input(
+        #     'price_H2',
+        #     desc="H2 price")
         self.add_input(
             'ptg_MW',
             desc="Electrolyzer power capacity.",
             units='MW')
-        self.add_input(
-            'storage_eff',
-            desc="Compressor efficiency for hydrogen storage.")
-        self.add_input(
-            'ptg_deg',
-            desc="Electrolyzer rate of degradation annually.")
-        self.add_input(
-            'hhv',
-            desc="High heat value.")
+        # self.add_input(
+        #     'storage_eff',
+        #     desc="Compressor efficiency for hydrogen storage.")
+        # self.add_input(
+        #     'hhv',
+        #     desc="High heat value.")
         self.add_input(
             'm_H2_demand_t',
             desc="Hydrogen demand times series.",
@@ -158,12 +165,12 @@ class ems_P2X_bidirectional(om.ExplicitComponent):
             'HSS_kg',
             desc="Hydrogen storgae capacity",
             units='kg')
-        self.add_input(
-            'penalty_factor_H2',
-            desc="Penalty for not meeting hydrogen demand in an hour")
-        self.add_input(
-            'min_power_standby',
-            desc="Minimum percentage of rated electrolyzer power required to operate in standby mode")
+        # self.add_input(
+        #     'penalty_factor_H2',
+        #     desc="Penalty for not meeting hydrogen demand in an hour")
+        # self.add_input(
+        #     'min_power_standby',
+        #     desc="Minimum percentage of rated electrolyzer power required to operate in standby mode")
         # self.add_input(
         #     'ramp_up_limit',
         #     desc="ramp-up limit of electrolyzer")
@@ -285,13 +292,12 @@ class ems_P2X_bidirectional(om.ExplicitComponent):
         cost_of_battery_P_fluct_in_peak_price_ratio = inputs['cost_of_battery_P_fluct_in_peak_price_ratio'][0]
         n_full_power_hours_expected_per_day_at_peak_price = inputs[
             'n_full_power_hours_expected_per_day_at_peak_price'][0]
-        price_H2 = inputs['price_H2'][0]
-        storage_eff = inputs['storage_eff'][0]
-        ptg_deg = inputs['ptg_deg'][0]
-        hhv = inputs['hhv'][0]
-        penalty_factor_H2 = inputs['penalty_factor_H2'][0]
+        price_H2 = self.price_H2
         ptg_MW = inputs['ptg_MW'][0]
-        min_power_standby = inputs['min_power_standby'][0]
+        storage_eff = self.storage_eff
+        hhv = self.hhv
+        penalty_factor_H2 = self.penalty_factor_H2
+        min_power_standby = self.min_power_standby
         # ramp_up_limit = inputs['ramp_up_limit']
         # ramp_down_limit = inputs['ramp_down_limit']
         
@@ -328,7 +334,6 @@ class ems_P2X_bidirectional(om.ExplicitComponent):
             ptg_MW = ptg_MW,
             HSS_kg = HSS_kg,
             storage_eff = storage_eff,
-            ptg_deg = ptg_deg,
             hhv = hhv,
             m_H2_demand_ts = WSPr_df.m_H2_demand_t,
             H2_storage_t = WSPr_df.H2_storage_t,
@@ -392,7 +397,6 @@ def ems_cplex_P2X_bidirectional(
     ptg_MW,
     HSS_kg,
     storage_eff,
-    ptg_deg,
     hhv,
     m_H2_demand_ts,
     H2_storage_t,
@@ -455,7 +459,6 @@ def ems_cplex_P2X_bidirectional(
             ptg_MW=ptg_MW,
             HSS_kg=HSS_kg,
             storage_eff=storage_eff,
-            ptg_deg=ptg_deg,
             hhv=hhv,
             m_H2_demand_ts = m_H2_demand_ts_sel,
             H2_storage_t = H2_storage_t_sel,
@@ -516,7 +519,6 @@ def ems_cplex_parts_P2X_bidirectional(
     ptg_MW,
     HSS_kg,
     storage_eff,
-    ptg_deg,
     hhv,
     m_H2_demand_ts,
     H2_storage_t,
@@ -551,7 +553,6 @@ def ems_cplex_parts_P2X_bidirectional(
     ptg_MW: Electrolyzer power capacity
     HSS_kg: Hydrogen storage capacity
     storage_eff: Compressor efficiency for hydrogen storage
-    ptg_deg: Electrolyzer rate of degradation annually
     hhv: High heat value
     m_H2_demand_ts: Hydrogen demand times series 
     penalty_factor_H2: Penalty on not meeting hydrogen demand in an hour
@@ -763,10 +764,8 @@ def ems_cplex_parts_P2X_bidirectional(
             m_H2_offtake_t[t] = m_H2_t[t]
             
         # Calculating Hydrogen production with electrolyzer efficiency curve
-        # mdl.add_constraint(m_H2_t[t] == PEM(P_ptg_t[t])* storage_eff / hhv * 1000  * ptg_deg) 
         mdl.add_constraint(m_H2_t[t] == H2_prod(P_ptg_t[t]))        
         # Calculating Hydrogen production with constant electrolyzer efficiency
-        # mdl.add_constraint(m_H2_t[t] == 0.65*P_ptg_t[t]* storage_eff / hhv * 1000  * ptg_deg)
 
         # constarint on power from grid
         mdl.add_constraint( m_H2_grid_t[t] == f4(m_H2_demand_ts[t]-m_H2_offtake_t[t]))

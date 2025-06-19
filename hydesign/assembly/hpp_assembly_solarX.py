@@ -1,19 +1,15 @@
 # %%
 import os
-import time
 
 # basic libraries
 import numpy as np
-from numpy import newaxis as na
 import pandas as pd
 import openmdao.api as om
 import yaml
-import scipy as sp
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 
 # specific library imports from 'hydesign'
-from hydesign.weather.weather import select_years
 from hydesign.sf.sf import sf
 from hydesign.cpv.cpv import cpv
 from hydesign.cst.cst import cst
@@ -74,16 +70,6 @@ class hpp_model_solarX:
             print('latitude =', latitude)
             print('altitude =', altitude)
 
-        # Set simulation start and end years, defaulting to a single year if not provided
-        if 'year_start' in sim_pars.keys():
-            year_start = sim_pars['year_start']
-        else:
-            year_start = sim_pars['year']
-
-        if 'year_end' in sim_pars.keys():
-            year_end = sim_pars['year_end']
-        else:
-            year_end = sim_pars['year']
 
         # Set lifetime parameters
         N_life = sim_pars['N_life']
@@ -101,7 +87,7 @@ class hpp_model_solarX:
             N_sel = N_time - np.mod(N_time, 365)
             weather = weather.iloc[:N_sel]
             input_ts_fn = f'{work_dir}input_ts_modified.csv'
-            print(f'\ninput_ts_fn length is not a complete number of years (hyDesign handles years as 365 days).')
+            print('\ninput_ts_fn length is not a complete number of years (hyDesign handles years as 365 days).')
             print(f'The file has been modified and stored in {input_ts_fn}')
             weather.to_csv(input_ts_fn)
             N_time = len(weather)
@@ -115,21 +101,7 @@ class hpp_model_solarX:
         price_co2_t = weather.get('Price_co2', pd.Series(0, index=price_el_t.index))
         dni = weather['dni'] / 1e6  # scaling Direct Normal Irradiance (DNI) from [W/m2] to [MW/m2]
         WS_1 = weather['WS_1']  # Wind Speed at 1 meter hight
-        temp_air_1 = weather['temp_air_1']  # Air tempreture at 1 meter hight
 
-        # ------------------------------------------------------------
-        # Randomly sample the weather to generate representative years
-        if weeks_per_season_per_year != None:
-            weather = select_years(
-                weather,
-                seed=seed,
-                weeks_per_season_per_year=weeks_per_season_per_year,
-            )
-            N_time = len(weather)
-            input_ts_fn = f'{work_dir}input_ts_sel.csv'
-            print(f'\n\nSelected input time series based on {weeks_per_season_per_year} weeks per season are stored in {input_ts_fn}')
-            weather.to_csv(input_ts_fn)
-        # ---------------------------------------------------------
 
         # Create an OpenMDAO model group to organize simulation subsystems
         model = om.Group()
@@ -671,16 +643,16 @@ class hpp_model_solarX:
         alpha_h2_t = prob.get_val('EmsSolarX.alpha_h2_t_ext')
         p_hpp_t = prob.get_val('EmsSolarX.hpp_t_ext')
         cpv_t = prob.get_val('EmsSolarX.p_cpv_t_ext')
-        p_cpv_max_dni_t = prob.get_val('EmsSolarX.p_cpv_max_dni_t_ext')
+        # p_cpv_max_dni_t = prob.get_val('EmsSolarX.p_cpv_max_dni_t_ext')
         p_st_t = prob.get_val('EmsSolarX.p_st_t_ext')
-        p_st_max_dni = prob.get_val('EmsSolarX.p_st_max_dni_t_ext')
-        p_biogas_h2_t = prob.get_val('EmsSolarX.p_biogas_h2_t_ext')
+        # p_st_max_dni = prob.get_val('EmsSolarX.p_st_max_dni_t_ext')
+        # p_biogas_h2_t = prob.get_val('EmsSolarX.p_biogas_h2_t_ext')
         q_t = prob.get_val('EmsSolarX.q_t_ext')
-        q_max_dni = prob.get_val('EmsSolarX.q_max_dni_t_ext')
+        # q_max_dni = prob.get_val('EmsSolarX.q_max_dni_t_ext')
         biogas_h2_dni = prob.get_val('EmsSolarX.biogas_h2_procuded_h2_kg_in_dni_reactor_t_ext')
         biogas_h2_el = prob.get_val('EmsSolarX.biogas_h2_procuded_h2_kg_in_el_reactor_t_ext')
         V_hot_ms_t = prob.get_val('EmsSolarX.v_hot_ms_t_ext')
-        V_tot = prob.get_val('EmsSolarX.v_molten_salt_tank_m3')
+        # V_tot = prob.get_val('EmsSolarX.v_molten_salt_tank_m3')
 
         # Create a figure with 2x2 subplots
         plt.rcParams.update({

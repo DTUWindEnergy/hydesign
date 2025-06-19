@@ -21,17 +21,23 @@ import rainflow
 from hydesign.ems.ems import expand_to_lifetime
 
 class battery_degradation(om.ExplicitComponent):
-    """
-    Battery degradation model to predict the degradation of the battery throughout the lifetime of the plant
+    """OpenMDAO component modelling the battery degradation over the plant life.
 
     Parameters
     ----------
-    b_E_SOC_t : battery energy SOC time series
-    min_LoH : minimum level of health before death of battery
-
-    Returns
-    -------
-    SoH : battery state of health at discretization levels
+    weather_fn : str
+        Path to the weather CSV file used for temperature information.
+    num_batteries : int, optional
+        Maximum number of battery replacements allowed. Default is ``1``.
+    life_y : int, optional
+        Plant lifetime in years. Default is ``25``.
+    intervals_per_hour : int, optional
+        Number of simulation steps per hour. Default is ``1``.
+    weeks_per_season_per_year : int, optional
+        Number of representative weeks per season. ``None`` disables the
+        expansion.
+    battery_deg : bool, optional
+        If ``False`` no degradation is computed. Default is ``True``.
     """
 
     def __init__(
@@ -60,7 +66,8 @@ class battery_degradation(om.ExplicitComponent):
 
         air_temp_K_t = expand_to_lifetime(
             weather.temp_air_1.values, 
-            life = self.life_intervals,
+            life_y = life_y,
+            intervals_per_hour = intervals_per_hour,
             weeks_per_season_per_year = weeks_per_season_per_year)
 
         self.air_temp_K_t = air_temp_K_t
@@ -124,19 +131,118 @@ class battery_degradation(om.ExplicitComponent):
         else:
             outputs['SoH'] = np.ones(self.life_intervals)
             outputs['n_batteries'] = 1
-            
 
-class battery_loss_in_capacity_due_to_temp(om.ExplicitComponent):
-    """
-    Battery non-permanent loss of capacity due to low temp
+class battery_degradation_pp:
+    """Pure Python model for estimating battery degradation over the plant life.
 
     Parameters
     ----------
-    SoH : battery state of health at discretization levels
+    weather_fn : str
+        Path to the weather CSV file used for temperature information.
+    num_batteries : int, optional
+        Maximum number of battery replacements allowed. Default is ``1``.
+    life_y : int, optional
+        Plant lifetime in years. Default is ``25``.
+    intervals_per_hour : int, optional
+        Number of simulation steps per hour. Default is ``1``.
+    weeks_per_season_per_year : int, optional
+        Number of representative weeks per season. ``None`` disables the
+        expansion.
+    battery_deg : bool, optional
+        If ``False`` no degradation is computed. Default is ``True``.
+    min_LoH : float, optional
+        Minimum state of health before a battery is replaced.
+    """
 
-    Returns
-    -------
-    SoH_all : battery state of health at discretization levels
+    def __init__(
+        self, 
+        weather_fn,
+        num_batteries = 1,
+        life_y = 25,
+        intervals_per_hour = 1,
+        weeks_per_season_per_year = None,
+        battery_deg = True,
+        min_LoH=None,
+    ):
+
+        self.life_h = 365 * 24 * life_y
+        self.life_intervals = self.life_h * intervals_per_hour
+        self.yearly_intervals = 365 * 24 * intervals_per_hour
+        self.num_batteries = num_batteries
+        self.weather_fn = weather_fn
+        self.battery_deg = battery_deg
+        self.battery_rf_matrix = None
+        self.min_LoH=min_LoH
+
+        weather = pd.read_csv(
+            weather_fn, 
+            index_col=0,
+            parse_dates=True)
+
+        air_temp_K_t = expand_to_lifetime(
+            weather.temp_air_1.values, 
+            life_y = life_y,
+            intervals_per_hour = intervals_per_hour,
+            # life = self.life_intervals,
+            weeks_per_season_per_year = weeks_per_season_per_year)
+
+        self.air_temp_K_t = air_temp_K_t
+
+    def compute(self, b_E_SOC_t):
+
+        num_batteries = self.num_batteries
+        life_intervals = self.life_intervals
+
+        air_temp_K_t = self.air_temp_K_t
+        
+        if self.battery_deg:
+            if np.max(b_E_SOC_t) == 0 or num_batteries==0:
+                SoH = np.zeros(life_intervals)
+                n_batteries = 0
+            else:
+                SoC = b_E_SOC_t/np.max(b_E_SOC_t)
+                rf_DoD, rf_SoC, rf_count, rf_i_start, self.battery_rf_matrix = RFcount(SoC)   
+
+                # use the temperature time-series
+                avr_tem = np.mean(air_temp_K_t)
+
+                # loop to determine the maximum number of replacements
+                for n_batteries in np.arange(num_batteries, dtype=int) + 1:
+                    LoC, ind_q, _ = battery_replacement(
+                        rf_DoD, rf_SoC, rf_count, rf_i_start, avr_tem, 
+                        self.min_LoH, num_batteries=n_batteries)
+                    if 1-LoC[-1] >= self.min_LoH: # stop replacing batteries
+                        break         
+
+                SoH_all = np.interp( 
+                    x = np.arange(life_intervals)/self.yearly_intervals,
+                    xp = np.array(rf_i_start)/self.yearly_intervals,
+                    fp = 1-LoC )
+                SoH = SoH_all
+                n_batteries = n_batteries
+        else:
+            SoH = np.ones(self.life_intervals)
+            n_batteries = 1   
+        return SoH, n_batteries
+
+class battery_loss_in_capacity_due_to_temp(om.ExplicitComponent):
+    """OpenMDAO component for temporary capacity loss due to low temperatures.
+
+    Parameters
+    ----------
+    weather_fn : str
+        Path to the weather CSV file used for temperature information.
+    num_batteries : int, optional
+        Number of batteries in the system. Default is ``1``.
+    life_y : int, optional
+        Plant lifetime in years. Default is ``25``.
+    intervals_per_hour : int, optional
+        Number of simulation steps per hour. Default is ``1``.
+    weeks_per_season_per_year : int, optional
+        Number of representative weeks per season. ``None`` disables the
+        expansion.
+    battery_deg : bool, optional
+        If ``False`` no degradation is computed. Default is ``True``.
     """
 
     def __init__(
@@ -164,7 +270,8 @@ class battery_loss_in_capacity_due_to_temp(om.ExplicitComponent):
 
         air_temp_C_t = expand_to_lifetime(
             (weather.temp_air_1 - 273.15).values, 
-            life=self.life_intervals,
+            life_y = life_y,
+            intervals_per_hour = intervals_per_hour,
             weeks_per_season_per_year = weeks_per_season_per_year)
 
         self.air_temp_C_t = air_temp_C_t
@@ -193,7 +300,68 @@ class battery_loss_in_capacity_due_to_temp(om.ExplicitComponent):
             outputs['SoH_all'] = B_E_loss_due_to_low_temp * inputs['SoH']
         else:
             outputs['SoH_all'] = np.ones(self.life_intervals)
-         
+
+class battery_loss_in_capacity_due_to_temp_pp:
+    """Pure Python version of :class:`battery_loss_in_capacity_due_to_temp`.
+
+    Parameters
+    ----------
+    weather_fn : str
+        Path to the weather CSV file used for temperature information.
+    num_batteries : int, optional
+        Number of batteries in the system. Default is ``1``.
+    life_y : int, optional
+        Plant lifetime in years. Default is ``25``.
+    intervals_per_hour : int, optional
+        Number of simulation steps per hour. Default is ``1``.
+    weeks_per_season_per_year : int, optional
+        Number of representative weeks per season. ``None`` disables the
+        expansion.
+    battery_deg : bool, optional
+        If ``False`` no degradation is computed. Default is ``True``.
+    """
+
+    def __init__(
+        self, 
+        weather_fn,
+        num_batteries = 1,
+        life_y = 25,
+        intervals_per_hour = 1,
+        weeks_per_season_per_year = None,
+        battery_deg = True,
+    ):
+
+        self.life_h = 365 * 24 * life_y
+        self.yearly_intervals = 365 * 24 * intervals_per_hour
+        self.life_intervals = self.life_h * intervals_per_hour
+        self.num_batteries = num_batteries
+        self.weather_fn = weather_fn
+        self.battery_deg = battery_deg
+
+        weather = pd.read_csv(
+            weather_fn, 
+            index_col=0,
+            parse_dates=True)
+
+        air_temp_C_t = expand_to_lifetime(
+            (weather.temp_air_1 - 273.15).values, 
+            life_y=life_y,
+            intervals_per_hour=intervals_per_hour,
+            weeks_per_season_per_year = weeks_per_season_per_year)
+
+        self.air_temp_C_t = air_temp_C_t
+
+
+    def compute(self, SoH):
+        
+        air_temp_C_t = self.air_temp_C_t
+        B_E_loss_due_to_low_temp = thermal_loss_of_storage(air_temp_C_t)
+        if self.battery_deg:
+            SoH_all = B_E_loss_due_to_low_temp * SoH
+        else:
+            SoH_all = np.ones(self.life_intervals)
+        return SoH_all
+
 
 # -----------------------------------------------------------------------
 # Auxiliar functions for bat_deg modelling
@@ -303,7 +471,7 @@ def battery_replacement(
                 ind_q = ind_q + ind_q_new[1:]        
 
         except:
-            raise('This many bateries are not required. Reduce the number.')
+            raise ValueError('This many batteries are not required. Reduce the number.')
 
     return LoC, ind_q, ind_q_last
 

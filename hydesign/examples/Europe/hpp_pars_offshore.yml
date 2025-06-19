@@ -81,7 +81,8 @@ n_full_power_hours_expected_per_day_at_peak_price: 0
 # --------------------------------------------------------------------------------------------
 price_H2: 5 #[Euro/kg]
 storage_eff: 0.9 #Compressor efficiency for hydrogen storage
-ptg_deg: 0.99 #Electrolyzer degradation over lifetime
+ptg_deg_yr: [0, 25]
+ptg_deg: [0.0, 0.25] #0.0 intial + 25yr * 1%/yr
 hhv: 39.3 #[kWh/kg]
 water_consumption : 9 #l/kg
 electrolyzer_capex_cost : 800_000  #[EUR/MW] This value is for PEM electrolyzers

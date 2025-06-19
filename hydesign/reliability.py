@@ -19,21 +19,18 @@ class battery_with_reliability(om.ExplicitComponent):
         reliability_ts_battery=None,
         reliability_ts_trans=None,
         ):
-        """
+        """Initialize the component with optional reliability time series.
+
         Parameters
         ----------
         life_y : int, optional
-            lifetime in years. The default is 25.
+            Lifetime of the plant in years. Default is ``25``.
         intervals_per_hour : int, optional
-            intervals per hour. The default is 1.
+            Number of simulation steps per hour. Default is ``1``.
         reliability_ts_battery : array-like, optional
-            battery reliability time series. The default is None.
+            Time series describing battery availability.
         reliability_ts_trans : array-like, optional
-            transformer reliability time series. The default is None.
-
-        Returns
-        -------
-        None.
+            Time series describing transformer availability.
         """
 
         super().__init__()
@@ -69,21 +66,18 @@ class wpp_with_reliability(om.ExplicitComponent):
         reliability_ts_wind=None,
         reliability_ts_trans=None,
         ):
-        """
+        """Initialize the component with optional wind farm reliability data.
+
         Parameters
         ----------
         life_y : int, optional
-            lifetime in years. The default is 25.
+            Lifetime of the plant in years. Default is ``25``.
         intervals_per_hour : int, optional
-            intervals per hour. The default is 1.
+            Number of simulation steps per hour. Default is ``1``.
         reliability_ts_wind : array-like, optional
-            wind farm reliability time series. The default is None.
+            Time series describing wind farm availability.
         reliability_ts_trans : array-like, optional
-            transformer reliability time series. The default is None.
-
-        Returns
-        -------
-        None.
+            Time series describing transformer availability.
         """
 
         super().__init__()
@@ -118,21 +112,18 @@ class pvp_with_reliability(om.ExplicitComponent):
         reliability_ts_pv=None,
         reliability_ts_trans=None,
         ):
-        """
+        """Initialize the component with optional PV plant reliability data.
+
         Parameters
         ----------
         life_y : int, optional
-            lifetime in years. The default is 25.
+            Lifetime of the plant in years. Default is ``25``.
         intervals_per_hour : int, optional
-            intervals per hour. The default is 1.
+            Number of simulation steps per hour. Default is ``1``.
         reliability_ts_pv : array-like, optional
-            solar farm reliability time series. The default is None.
+            Time series describing PV availability.
         reliability_ts_trans : array-like, optional
-            transformer reliability time series. The default is None.
-
-        Returns
-        -------
-        None.
+            Time series describing transformer availability.
         """
 
         super().__init__()

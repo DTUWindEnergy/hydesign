@@ -73,6 +73,65 @@ class ABL(om.ExplicitComponent):
 
         partials['wst', 'hh'] = ds_interpolated.dWS_dz.values.flatten()
 
+class ABL_pp:
+    """Pure Python Atmospheric boundary layer WS interpolation and gradient
+    
+    Parameters
+    ----------
+    hh : Turbine's hub height
+
+    Returns
+    -------
+    wst : wind speed time series at the hub height
+
+    """
+
+
+    def __init__(self, weather_fn, N_time, interpolate_wd=False):
+        self.N_time = N_time
+        self.weather = pd.read_csv(weather_fn, index_col=0, parse_dates=True)
+        self.interpolate_wd = interpolate_wd
+
+    def precompute(self, hh):
+        ds_interpolated = interpolate_WS_loglog(self.weather, hh=hh)
+        if self.interpolate_wd:
+            ds_interpolated['WD'] = (('time',), interpolate_WD(self.weather, hh=hh))
+        return ds_interpolated
+
+    def compute(self, hh, **kwargs):
+        ds_interpolated = self.precompute(hh)
+        self.ds_interpolated = ds_interpolated
+        wst = np.nan_to_num(ds_interpolated.WS.values.flatten())
+        if self.interpolate_wd:
+            wd = ds_interpolated.WD.values.ravel()
+            return wst, wd
+        else:
+            return wst
+
+    def compute_partials(self):
+        ds_interpolated = self.ds_interpolated
+        d_wst_d_hh = ds_interpolated.dWS_dz.values.flatten()
+        return d_wst_d_hh
+
+# def precompute(hh, weather_fn, interpolate_wd=False):
+#     weather = pd.read_csv(weather_fn, index_col=0, parse_dates=True)
+#     ds_interpolated = interpolate_WS_loglog(weather, hh=hh)
+#     if interpolate_wd:
+#         ds_interpolated['WD'] = (('time',), interpolate_WD(weather, hh=hh))
+#     return ds_interpolated
+   
+
+# def abl(hh, weather_fn, N_time):
+#     ds_interpolated = precompute(hh, weather_fn)
+#     wst = np.nan_to_num(ds_interpolated.WS.values.flatten())
+#     return wst
+
+# def abl_ws_wd(hh, weather_fn, N_time):
+#     ds_interpolated = precompute(hh, weather_fn, interpolate_wd=True)
+#     ws = np.nan_to_num(ds_interpolated.WS.values.flatten())
+#     wd = ds_interpolated.WD.values.ravel()
+#     return ws, wd
+    
 
 # -----------------------------------------------------------------------
 # Auxiliar functions for weather handling
@@ -100,7 +159,8 @@ def interpolate_WS_loglog(weather, hh):
     ws_vars = [var for var in weather.columns if 'WS_' in var]
     heights = np.array([float(var.split('_')[-1]) for var in ws_vars])
     weather[ws_vars] = weather[ws_vars].clip(lower=1e-6)  # to avoid log from throwing error if wind speed is zero
-
+    
+   
     ds_all = xr.Dataset(
         data_vars = {
             'log_WS': (['time','log_height'], np.log(weather[ws_vars].values)),
@@ -122,6 +182,43 @@ def interpolate_WS_loglog(weather, hh):
     ds_interpolated['dWS_dz'] = (
         ds_interpolated['shear']/ds_interpolated['height'])*ds_interpolated['WS']
     return ds_interpolated
+
+
+def interpolate_WD(weather, hh):
+    wd_vars = [var for var in weather.columns if 'WD_' in var]
+    heights = np.array([float(var.split('_')[-1]) for var in wd_vars])
+    
+    # wind direction to mathematical direction
+    for height in heights:
+        key = int(height)
+        weather[f'WD_{key:d}_math'] = 90 - weather[f'WD_{key:d}']
+        weather.loc[weather[f'WD_{key:d}_math'] < 180, f'WD_{key:d}_math'] += 360
+        weather[f'WD_x_{key:d}'] = np.sin(np.radians(weather[f'WD_{key:d}_math']))
+        weather[f'WD_y_{key:d}'] = np.cos(np.radians(weather[f'WD_{key:d}_math']))
+    
+    wd_x_vars = [var for var in weather.columns if 'WD_x_' in var]
+    wd_y_vars = [var for var in weather.columns if 'WD_y_' in var]
+
+    ds_wd = xr.Dataset(
+        data_vars = {
+            'WD_x': (['time','height'], weather[wd_x_vars].values),
+            'WD_y': (['time','height'], weather[wd_y_vars].values),
+            # 'height': (['height'], heights),
+            },
+        coords = {
+            'time': weather.index.values,
+            'height': heights,
+            }  
+        )
+    
+    # mathematical direction to wind direction
+    wd_x = ds_wd.interp(height=hh).WD_x
+    wd_y = ds_wd.interp(height=hh).WD_y
+    wd_math = np.degrees(np.arctan2(wd_x.values.ravel(), wd_y.values.ravel()))
+    wd = 90 - wd_math
+    wd[wd < 0] += 360 
+    
+    return wd
 
 
 # -----------------------------------------------------------------

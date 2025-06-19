@@ -33,9 +33,10 @@ Explanations of hydesign's core objects can be found in the following tutorials:
 	:caption: Evaluation Tutorials
 
 	notebooks/Quickstart
-	notebooks/Advanced_hpp_model
-	notebooks/HPP_evaluation_P2X
-	notebooks/break_even_price_and_PPA
+        notebooks/Advanced_hpp_model
+        notebooks/HPP_evaluation_P2X
+        notebooks/PyWake_P2X_Example
+        notebooks/break_even_price_and_PPA
 	notebooks/constant_output
 	notebooks/offshore
 	notebooks/Example_ISO_prob

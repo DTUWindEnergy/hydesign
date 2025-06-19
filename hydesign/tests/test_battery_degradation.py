@@ -80,7 +80,6 @@ def test_degradation():
     deg_outdata = load_degradation()
     for i in range(len(deg_out)):
         np.testing.assert_allclose(deg_out[i], deg_outdata[i])
-        print(np.allclose(deg_out[i], deg_outdata[i]))
 
 # ------------------------------------------------------------------------------------------------
 def run_battery_replacement():
@@ -110,5 +109,4 @@ def test_battery_replacement():
     br_out_data = load_battery_replacement()
     for i in range(len(br_out)):
         np.testing.assert_allclose(br_out[i], br_out_data[i])
-        print(np.allclose(br_out[i], br_out_data[i]))
 

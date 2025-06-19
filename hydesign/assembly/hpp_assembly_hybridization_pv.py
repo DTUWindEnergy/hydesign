@@ -162,7 +162,6 @@ class hpp_model(hpp_base):
         model.add_subsystem(
             'ems', 
             ems(
-                # life_h = life_h,
                 life_y = self.life_y+N_limit,
                 N_time = N_time,
                 weeks_per_season_per_year = weeks_per_season_per_year,
@@ -183,7 +182,6 @@ class hpp_model(hpp_base):
             'battery_degradation', 
             battery_degradation(
                 life_y = self.life_y+N_limit,
-                # life_h = life_h,
                 weather_fn = input_ts_fn, # for extracting temperature
                 num_batteries = max_num_batteries_allowed,
                 weeks_per_season_per_year = weeks_per_season_per_year,
@@ -196,7 +194,6 @@ class hpp_model(hpp_base):
         model.add_subsystem(
             'battery_loss_in_capacity_due_to_temp', 
             battery_loss_in_capacity_due_to_temp(
-                # life_h = life_h,
                 life_y = self.life_y+N_limit,
                 weather_fn = input_ts_fn, # for extracting temperature
                 weeks_per_season_per_year = weeks_per_season_per_year,
@@ -238,7 +235,6 @@ class hpp_model(hpp_base):
             'existing_pvp_with_degradation',
             pvp_with_degradation(
                 life_y = self.life_y+N_limit,
-                # life_h = life_h,
                 pv_deg = sim_pars['pv_deg'],
                 pv_deg_yr = sim_pars['pv_deg_yr'],
             ),
@@ -249,7 +245,6 @@ class hpp_model(hpp_base):
             ems_long_term_operation(
                 N_time = N_time,
                 life_y = self.life_y+N_limit,
-                # life_h = life_h,
             ),
             promotes_inputs=[
                 'b_P',
@@ -296,7 +291,6 @@ class hpp_model(hpp_base):
         model.add_subsystem(
             'battery_cost',
             battery_cost(
-                # life_h = life_h,
                 battery_energy_cost=sim_pars['battery_energy_cost'],
                 battery_power_cost=sim_pars['battery_power_cost'],
                 battery_BOP_installation_commissioning_cost=sim_pars['battery_BOP_installation_commissioning_cost'],
@@ -356,9 +350,6 @@ class hpp_model(hpp_base):
                 ),
             promotes_inputs=[
                              'delta_life',
-                             # 'wind_WACC',
-                             # 'solar_WACC', 
-                             # 'battery_WACC',
                              'hpp_WACC',
                              'tax_rate',
                              'decommissioning_cost_tot_w',
@@ -392,7 +383,6 @@ class hpp_model(hpp_base):
         model.connect('battery_degradation.SoH', 'battery_loss_in_capacity_due_to_temp.SoH')
         model.connect('battery_loss_in_capacity_due_to_temp.SoH_all', 'hybridization_shifted.SoH')
         model.connect('hybridization_shifted.SoH_shifted', 'ems_long_term_operation.SoH')
-        #model.connect('battery_degradation.SoH', 'hybridization_shifted.SoH')
 
         model.connect('genericWT.ws', 'wpp_with_degradation.ws')
         model.connect('genericWake.pcw', 'wpp_with_degradation.pcw')
@@ -411,7 +401,6 @@ class hpp_model(hpp_base):
 
         model.connect('wpp.wind_t', 'wpp_cost.wind_t')
         
-        #model.connect('battery_degradation.SoH','battery_cost.SoH')
         model.connect('hybridization_shifted.SoH_shifted', 'battery_cost.SoH')
 
         model.connect('existing_pvp.Apvp', 'shared_cost.Apvp')
@@ -454,9 +443,6 @@ class hpp_model(hpp_base):
         prob.set_val('n_full_power_hours_expected_per_day_at_peak_price',
                      sim_pars['n_full_power_hours_expected_per_day_at_peak_price'])        
         prob.set_val('min_LoH', sim_pars['min_LoH'])
-        # prob.set_val('wind_WACC', sim_pars['wind_WACC'])
-        # prob.set_val('solar_WACC', sim_pars['solar_WACC'])
-        # prob.set_val('battery_WACC', sim_pars['battery_WACC'])
         prob.set_val('hpp_WACC', sim_pars['hpp_WACC'])
         prob.set_val('tax_rate', sim_pars['tax_rate'])
         prob.set_val('land_use_per_solar_MW', sim_pars['land_use_per_solar_MW'])
@@ -585,12 +571,6 @@ class hpp_model(hpp_base):
         
         self.prob = prob
 
-        # surface_tilt = prob['surface_tilt']
-        # surface_azimuth = prob['surface_azimuth']
-        # DC_AC_ratio = prob['DC_AC_ratio']
-
-
-        # wind_MW = p_rated * Nwt
 
         if Nwt == 0:
             cf_wind = np.nan

@@ -162,7 +162,7 @@ class hpp_base:
 
         # Assign PPA to the full input_ts
         if ppa_price is None:
-            price = weather['Price']
+            price = weather['Price'].values
         else:
             price = ppa_price * np.ones_like(weather['Price'])
 
@@ -184,21 +184,42 @@ class hpp_base:
             
         sim_pars['time_str'] = datetime.datetime.now().strftime('%y_%m_%H_%M_%S')
         
+        if 'H2_demand_fn' in sim_pars:
+            H2_demand_fn = sim_pars['H2_demand_fn']
+            if isinstance(H2_demand_fn, str):
+                H2_demand_data = pd.read_csv(H2_demand_fn, index_col=0, parse_dates=True).loc[weather.index,:]
+                H2_demand = H2_demand_data['H2_demand']
+            elif H2_demand_fn is None:
+                H2_demand = None
+            elif np.size(H2_demand_fn) == 1:
+                H2_demand = H2_demand_fn * np.ones(N_time)
+            else:
+                H2_demand = H2_demand_fn
+            sim_pars['H2_demand'] = H2_demand
+        
         self.N_time = N_time
-        self.sim_pars = sim_pars
         self.wind_deg = wind_deg
         self.wind_deg_yr = wind_deg_yr
         self.share_WT_deg_types = share_WT_deg_types
-        # self.N_life = N_life
         self.price = price
         self.wpp_efficiency = sim_pars['wpp_efficiency']
-        # self.life_h = N_life*365*24
         self.max_num_batteries_allowed = max_num_batteries_allowed
         self.input_ts_fn = input_ts_fn
         self.longitude = longitude
         self.latitude = latitude
         self.altitude = altitude
         self.life_y = life_y
+        
+        sim_pars['N_ws'] = self.N_ws
+        sim_pars['N_time'] = N_time
+        sim_pars['wind_deg'] = wind_deg
+        sim_pars['wind_deg_yr'] = wind_deg_yr
+        sim_pars['share_WT_deg_types'] = share_WT_deg_types
+        sim_pars['price'] = price
+        sim_pars['input_ts_fn'] = input_ts_fn
+        sim_pars['life_y'] = life_y
+
+        self.sim_pars = sim_pars
         
     def get_defaults(self):
         return dict(work_dir = './',
@@ -235,7 +256,10 @@ class hpp_base:
         print('---------------') 
 
         for i_v, var in enumerate(self.list_vars):
+            if np.size(x_opt[i_v])==1:
                 print(f'{var}: {x_opt[i_v]:.3f}')
+            else:
+                print(f'{var}: ' + 'mean, std, min, max ' + f'{np.mean(x_opt[i_v]):3f}' + f'{np.std(x_opt[i_v]):3f}' + f'{np.min(x_opt[i_v]):3f}' + f'{np.max(x_opt[i_v]):3f}')
         print()    
         print()
         for i_v, var in enumerate(self.list_out_vars):
@@ -290,12 +314,10 @@ class hpp_model(hpp_base):
         N_ws = self.N_ws
         wpp_efficiency = self.wpp_efficiency
         sim_pars = self.sim_pars
-        # life_h = self.life_h
         life_y = self.life_y
         wind_deg_yr = self.wind_deg_yr
         wind_deg = self.wind_deg
         share_WT_deg_types = self.share_WT_deg_types
-        # N_life = self.N_life
         price = self.price
         
         input_ts_fn = sim_pars['input_ts_fn']
@@ -453,7 +475,6 @@ class hpp_model(hpp_base):
                 reliability_ts_wind=reliability_ts_wind,
                 reliability_ts_trans=reliability_ts_trans,
                 ),
-            # promotes_inputs=['Nwt',]
             )        
         
 
@@ -462,10 +483,8 @@ class hpp_model(hpp_base):
             pvp_with_reliability(
                 life_y = life_y,
                 reliability_ts_pv=reliability_ts_pv,
-                # reliability_ts_inv_fn=reliability_ts_inv_fn,
                 reliability_ts_trans=reliability_ts_trans,
                 ),
-            # promotes_inputs=['solar_MW',]
             )        
         
         model.add_subsystem(
@@ -648,7 +667,6 @@ class hpp_model(hpp_base):
         # Additional parameters
         prob.set_val('price_t', price)
         prob.set_val('G_MW', sim_pars['G_MW'])
-        #prob.set_val('pv_deg_per_year', sim_pars['pv_deg_per_year'])
         prob.set_val('battery_depth_of_discharge', sim_pars['battery_depth_of_discharge'])
         prob.set_val('battery_charge_efficiency', sim_pars['battery_charge_efficiency'])      
         prob.set_val('peak_hr_quantile',sim_pars['peak_hr_quantile'] )
@@ -770,7 +788,6 @@ class hpp_model(hpp_base):
         hh = (d/2)+clearance
         wind_MW = Nwt * p_rated
         Awpp = wind_MW / wind_MW_per_km2 
-        #Awpp = Awpp + 1e-10*(Awpp==0)
         b_E = b_E_h * b_P
         
         # pass design variables        
@@ -878,7 +895,7 @@ if __name__ == '__main__':
     
     start = time.time()
     
-    x=[55.0, 257.0, 10.000000000000002, 75.0, 5.916666666666667, 75.0, 28.125, 191.25, 1.4791666666666665, 27.0, 4.0, 8.75]
+    x=[55.0, 257.0, 10.000000000000002, 10.0, 5.916666666666667, 75.0, 28.125, 191.25, 1.4791666666666665, 27.0, 4.0, 8.75]
     
     outs = hpp.evaluate(*x)
     

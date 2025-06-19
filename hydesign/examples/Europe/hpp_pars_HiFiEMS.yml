@@ -77,7 +77,8 @@ peak_hr_quantile: 0.9 # An hour of peak price has prices above this quantile
 # --------------------------------------------------------------------------------------------
 price_H2: 5 #[Euro/kg]
 storage_eff: 0.9 #efficiency for hydrogen storage
-ptg_deg: 0.99 # Annual electrolyzer degradation (% per year)
+ptg_deg_yr: [0, 25]
+ptg_deg: [0.0, 0.25] #0.0 intial + 25yr * 1%/yr
 hhv: 39.3 #[kWh/kg]
 water_consumption : 9.4 #l/kg
 electrolyzer_capex_cost : 480_000  #[EUR/MW] This value is for PEM electrolyzers

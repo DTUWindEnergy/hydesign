@@ -18,7 +18,6 @@ class hpp_model_P2X(hpp_base):
     def __init__(
         self,
         sim_pars_fn,
-        H2_demand_fn = None, # If input_ts_fn is given it should include H2_demand column.
         **kwargs
         ):
         """Initialization of the hybrid power plant evaluator
@@ -26,10 +25,11 @@ class hpp_model_P2X(hpp_base):
         Parameters
         ----------
         sims_pars_fn : Case study input values of the HPP 
-        H2_demand_fn : H2 demand time series file path
+        kwargs : Additional parameters
         """
         defaults = {'electrolyzer_eff_curve_name': 'PEM electrolyzer H2 production',
-                    'electrolyzer_eff_curve_type': 'production',}
+                    'electrolyzer_eff_curve_type': 'production',
+                    'H2_demand_fn': None,}
         hpp_base.__init__(self,
                           sim_pars_fn=sim_pars_fn,
                           defaults=defaults,
@@ -40,8 +40,6 @@ class hpp_model_P2X(hpp_base):
         N_ws = self.N_ws
         wpp_efficiency = self.wpp_efficiency
         sim_pars = self.sim_pars
-        # life_h = self.life_h
-        # N_life = self.N_life
         price = self.price
         life_y = self.life_y
         
@@ -52,9 +50,9 @@ class hpp_model_P2X(hpp_base):
         longitude = sim_pars['longitude']
         altitude = sim_pars['altitude']
         ems_type = sim_pars['ems_type']
+        H2_demand = sim_pars['H2_demand']
         
-        weather = pd.read_csv(input_ts_fn, index_col=0, parse_dates=True)
-        H2_demand_data = pd.read_csv(H2_demand_fn, index_col=0, parse_dates=True).loc[weather.index,:]
+
         electrolyzer_eff_fn = os.path.join(os.path.dirname(sim_pars_fn), 'Electrolyzer_efficiency_curves.csv')
         df = pd.read_csv(electrolyzer_eff_fn)
         electrolyzer_eff_curve_name = sim_pars['electrolyzer_eff_curve_name']
@@ -125,9 +123,13 @@ class hpp_model_P2X(hpp_base):
             ems(
                 N_time = N_time,
                 eff_curve=eff_curve,
-                # life_h = life_h, 
                 ems_type=ems_type,
                 electrolyzer_eff_curve_type=electrolyzer_eff_curve_type,
+                price_H2=sim_pars['price_H2'],
+                storage_eff=sim_pars['storage_eff'],
+                hhv=sim_pars['hhv'],
+                penalty_factor_H2=sim_pars['penalty_factor_H2'],
+                min_power_standby=sim_pars['min_power_standby'],
                 ),
             promotes_inputs=[
                 'price_t',
@@ -139,15 +141,9 @@ class hpp_model_P2X(hpp_base):
                 'peak_hr_quantile',
                 'cost_of_battery_P_fluct_in_peak_price_ratio',
                 'n_full_power_hours_expected_per_day_at_peak_price',
-                'price_H2',
                 'ptg_MW',
                 'HSS_kg',
-                'storage_eff',
-                'ptg_deg',
-                'hhv',
                 'm_H2_demand_t',
-                'penalty_factor_H2',
-                'min_power_standby',
                 ],
             promotes_outputs=[
                 'total_curtailment'
@@ -190,8 +186,6 @@ class hpp_model_P2X(hpp_base):
                 battery_BOP_installation_commissioning_cost=sim_pars['battery_BOP_installation_commissioning_cost'],
                 battery_control_system_cost=sim_pars['battery_control_system_cost'],
                 battery_energy_onm_cost=sim_pars['battery_energy_onm_cost'],
-                # N_life = N_life,
-                # life_h = life_h
                 life_y = life_y,
                 battery_price_reduction_per_year = sim_pars['battery_price_reduction_per_year']
             ),
@@ -225,36 +219,31 @@ class hpp_model_P2X(hpp_base):
                 transportation_cost = sim_pars['H2_transportation_cost'],
                 transportation_distance = sim_pars['H2_transportation_distance'],
                 N_time = N_time,
-                # life_h = life_h,
                 ),
             promotes_inputs=[
             'ptg_MW',
             'HSS_kg',
             ])
         model.add_subsystem(
-            'finance_P2X', 
+            'finance_P2X',
             finance_P2X(
-                N_time = N_time, 
-                # Depreciation curve
+                N_time = N_time,
                 depreciation_yr = sim_pars['depreciation_yr'],
                 depreciation = sim_pars['depreciation'],
-                # Inflation curve
                 inflation_yr = sim_pars['inflation_yr'],
                 inflation = sim_pars['inflation'],
                 ref_yr_inflation = sim_pars['ref_yr_inflation'],
-                # Early paying or CAPEX Phasing
                 phasing_yr = sim_pars['phasing_yr'],
                 phasing_CAPEX = sim_pars['phasing_CAPEX'],
-                # life_h = life_h
+                price_H2 = sim_pars['price_H2'],
+                penalty_factor_H2 = sim_pars['penalty_factor_H2'],
+                wind_WACC = sim_pars['wind_WACC'],
+                solar_WACC = sim_pars['solar_WACC'],
+                battery_WACC = sim_pars['battery_WACC'],
+                ptg_WACC = sim_pars['ptg_WACC'],
+                tax_rate = sim_pars['tax_rate'],
                 ),
-            promotes_inputs=['price_H2',
-                             'wind_WACC',
-                             'solar_WACC', 
-                             'battery_WACC',
-                             'ptg_WACC',
-                             'tax_rate',
-                              'penalty_factor_H2',
-                            ],
+            promotes_inputs=[],
             promotes_outputs=['NPV',
                               'IRR',
                               'NPV_over_CAPEX',
@@ -262,10 +251,8 @@ class hpp_model_P2X(hpp_base):
                               'LCOH',
                               'Revenue',
                               'mean_AEP',
-                            #   'mean_Power2Grid',
                               'annual_H2',
                               'annual_P_ptg',
-                              # 'annual_P_ptg_H2',
                               'penalty_lifetime',
                               'CAPEX',
                               'OPEX',
@@ -331,27 +318,14 @@ class hpp_model_P2X(hpp_base):
         
         # Additional parameters
         prob.set_val('price_t', price)
-        prob.set_val('m_H2_demand_t', H2_demand_data['H2_demand'])
+        prob.set_val('m_H2_demand_t', H2_demand)
         prob.set_val('G_MW', sim_pars['G_MW'])
-        #prob.set_val('pv_deg_per_year', sim_pars['pv_deg_per_year'])
         prob.set_val('battery_depth_of_discharge', sim_pars['battery_depth_of_discharge'])
         prob.set_val('battery_charge_efficiency', sim_pars['battery_charge_efficiency'])      
         prob.set_val('peak_hr_quantile',sim_pars['peak_hr_quantile'] )
         prob.set_val('n_full_power_hours_expected_per_day_at_peak_price',
                      sim_pars['n_full_power_hours_expected_per_day_at_peak_price'])        
-        #prob.set_val('min_LoH', sim_pars['min_LoH'])
-        prob.set_val('wind_WACC', sim_pars['wind_WACC'])
-        prob.set_val('solar_WACC', sim_pars['solar_WACC'])
-        prob.set_val('battery_WACC', sim_pars['battery_WACC'])
-        prob.set_val('ptg_WACC', sim_pars['ptg_WACC'])
-        prob.set_val('tax_rate', sim_pars['tax_rate'])
         prob.set_val('land_use_per_solar_MW', sim_pars['land_use_per_solar_MW'])
-        prob.set_val('hhv', sim_pars['hhv'])
-        prob.set_val('min_power_standby', sim_pars['min_power_standby'])
-        prob.set_val('ptg_deg', sim_pars['ptg_deg'])
-        prob.set_val('price_H2', sim_pars['price_H2'])
-        prob.set_val('penalty_factor_H2', sim_pars['penalty_factor_H2'])
-        prob.set_val('storage_eff', sim_pars['storage_eff'])
 
         self.prob = prob
 
@@ -472,7 +446,6 @@ class hpp_model_P2X(hpp_base):
         hh = (d/2)+clearance
         wind_MW = Nwt * p_rated
         Awpp = wind_MW / wind_MW_per_km2 
-        #Awpp = Awpp + 1e-10*(Awpp==0)
         b_E = b_E_h * b_P
         
         # pass design variables        
@@ -481,8 +454,6 @@ class hpp_model_P2X(hpp_base):
         prob.set_val('p_rated', p_rated)
         prob.set_val('Nwt', Nwt)
         prob.set_val('Awpp', Awpp)
-        #Apvp = solar_MW * self.sim_pars['land_use_per_solar_MW']
-        #prob.set_val('Apvp', Apvp)
 
         prob.set_val('surface_tilt', surface_tilt)
         prob.set_val('surface_azimuth', surface_azimuth)

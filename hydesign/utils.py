@@ -3,33 +3,35 @@ import numpy as np
 import openmdao.api as om
 
 def get_weights(grid, xtgt, maxorder):
-    """
-
-    Populates weights for finite difference formulas for derivatives of various orders.
+    """Return finite-difference weights on an arbitrary grid.
 
     Parameters
     ----------
     grid : array-like
-        Target x value where derivatives are approximated
-    xtgt : int
-        Array of x values
+        Grid points where the function is sampled.
+    xtgt : float
+        Target location at which the derivative is approximated.
     maxorder : int
-        Maximum order of derivative
+        Highest derivative order to compute.
 
-    Returns:
-    c : array-like
-        Array of weights
+    Returns
+    -------
+    numpy.ndarray
+        Weight matrix with shape ``(len(grid), maxorder + 1)``.
 
-    @article{fornberg_generation_1988,
-             title={Generation of finite difference formulas on arbitrarily spaced grids},
-             author={Fornberg, Bengt},
-             journal={Mathematics of computation},
-             volume={51},
-             number={184},
-             pages={699--706},
-             year={1988}
-             doi={10.1090/S0025-5718-1988-0935077-0}
-             }
+    Notes
+    -----
+    Based on Fornberg's method for generating finite-difference formulas:
+        @article{fornberg_generation_1988,
+         title={Generation of finite difference formulas on arbitrarily spaced grids},
+         author={Fornberg, Bengt},
+         journal={Mathematics of computation},
+         volume={51},
+         number={184},
+         pages={699--706},
+         year={1988}
+         doi={10.1090/S0025-5718-1988-0935077-0}
+         }
 
     """
     x = grid
@@ -119,4 +121,16 @@ class hybridization_shifted(om.ExplicitComponent):
         outputs['SoH_shifted'] = np.concatenate((np.zeros(delta_life * 365 * 24), SoH[0:life_y * 365 * 24], np.zeros((N_limit-delta_life) * 365 * 24)))
 
 def sample_mean(outs):
+    """Return the mean of all samples along the first axis.
+
+    Parameters
+    ----------
+    outs : ndarray
+        Array of samples with shape ``(n_samples, ...)``.
+
+    Returns
+    -------
+    ndarray
+        Mean value over ``axis=0``.
+    """
     return np.mean(outs, axis=0)

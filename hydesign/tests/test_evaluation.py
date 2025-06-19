@@ -10,11 +10,11 @@ from hydesign.assembly.hpp_assembly_P2X_bidrectional import hpp_model_P2X_bidire
 from hydesign.assembly.hpp_assembly_BM import hpp_model as hpp_model_BM
 from hydesign.assembly.hpp_assembly_hifi_dems import hpp_model as hpp_model_hifi_ems
 from hydesign.assembly.hpp_assembly_solarX import hpp_model_solarX
+from hydesign.assembly.hpp_pywake_p2x import hpp_model as hpp_model_pywake
 from hydesign.examples import examples_filepath
 
 
 def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
-    output_df = pd.read_csv(tfp+out_name, index_col=0, sep=';')
     examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0, sep=';')
     ex_site = examples_sites.loc[examples_sites.name == name]
     longitude = ex_site['longitude'].values[0]
@@ -24,7 +24,8 @@ def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
     sim_pars_fn = examples_filepath+ex_site['sim_pars_fn'].values[0]
     H2_demand_fn = examples_filepath+ex_site['H2_demand_col'].values[0]
 
-    if case not in ['HiFiEMS', 'SolarX']:
+    if case in ['base', 'p2x', 'p2x_bidirectional', 'ppa', 'constant_output', 'bm']:
+        output_df = pd.read_csv(tfp+out_name, index_col=0, sep=';')
         clearance = output_df.loc['clearance [m]',design_name]
         sp = output_df.loc['sp [W/m2]',design_name]
         p_rated = output_df.loc['p_rated [MW]',design_name]
@@ -41,37 +42,37 @@ def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
         x = [clearance, sp, p_rated, Nwt, wind_MW_per_km2, \
         solar_MW, surface_tilt, surface_azimuth, solar_DCAC, \
         b_P, b_E_h , cost_of_batt_degr]
-    elif case in ['SolarX']:
-        sf_area = output_df.loc['sf_area', design_name]
-        tower_height = output_df.loc['tower_height', design_name]
-        area_cpv_receiver_m2 = output_df.loc['area_cpv_receiver_m2', design_name]
-        heat_exchanger_capacity = output_df.loc['heat_exchanger_capacity', design_name]
-        p_rated_st = output_df.loc['p_rated_st', design_name]
-        v_molten_salt_tank_m3 = output_df.loc['v_molten_salt_tank_m3', design_name]
-        area_cst_receiver_m2 = output_df.loc['area_cst_receiver_m2', design_name]
-        area_dni_reactor_biogas_h2 = output_df.loc['area_dni_reactor_biogas_h2', design_name]
-        area_el_reactor_biogas_h2 = output_df.loc['area_el_reactor_biogas_h2', design_name]
-        x = [
-            # sizing variables
-            # sf
-            sf_area,
-            tower_height,
+    # elif case in ['SolarX']:
+    #     sf_area = output_df.loc['sf_area', design_name]
+    #     tower_height = output_df.loc['tower_height', design_name]
+    #     area_cpv_receiver_m2 = output_df.loc['area_cpv_receiver_m2', design_name]
+    #     heat_exchanger_capacity = output_df.loc['heat_exchanger_capacity', design_name]
+    #     p_rated_st = output_df.loc['p_rated_st', design_name]
+    #     v_molten_salt_tank_m3 = output_df.loc['v_molten_salt_tank_m3', design_name]
+    #     area_cst_receiver_m2 = output_df.loc['area_cst_receiver_m2', design_name]
+    #     area_dni_reactor_biogas_h2 = output_df.loc['area_dni_reactor_biogas_h2', design_name]
+    #     area_el_reactor_biogas_h2 = output_df.loc['area_el_reactor_biogas_h2', design_name]
+        # x = [
+        #     # sizing variables
+        #     # sf
+        #     sf_area,
+        #     tower_height,
 
-            # cpv
-            area_cpv_receiver_m2,
+        #     # cpv
+        #     area_cpv_receiver_m2,
 
-            # cst
-            heat_exchanger_capacity,
-            p_rated_st,
-            v_molten_salt_tank_m3,
-            area_cst_receiver_m2,
+        #     # cst
+        #     heat_exchanger_capacity,
+        #     p_rated_st,
+        #     v_molten_salt_tank_m3,
+        #     area_cst_receiver_m2,
 
-            # bigas_h2
-            area_dni_reactor_biogas_h2,
-            area_el_reactor_biogas_h2,
-        ]
-    else:
-        x = None
+        #     # bigas_h2
+        #     area_dni_reactor_biogas_h2,
+        #     area_el_reactor_biogas_h2,
+        # ]
+    # else:
+    #     x = None
     
     if case=='base':
         hpp = hpp_model(
@@ -175,6 +176,62 @@ def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
             input_ts_fn=input_ts_fn,  # Input time series (weather, prices, etc.)
             batch_size=batch_size,)
         x = [10000.0, 100, 10, 10, 10, 1000, 10, 5, 5]
+        
+    elif case=='PyWake':
+        from py_wake.examples.data.hornsrev1 import Hornsrev1Site
+        from py_wake.turbulence_models.stf import STF2017TurbulenceModel
+        from py_wake import NOJ
+        from py_wake.deflection_models import JimenezWakeDeflection
+        from py_wake.examples.data.dtu10mw_surrogate import DTU10MW_1WT_Surrogate
+        from py_wake.superposition_models import LinearSum
+        from topfarm.utils import regular_generic_layout
+            
+        intervals_per_hour = 1
+        Nwt = 40
+        n_loads = 4
+        wt = DTU10MW_1WT_Surrogate()
+        d = wt.diameter()
+        site = Hornsrev1Site()
+        sx = 4 * d
+        sy = 5 * d
+        xt, yt = regular_generic_layout(Nwt, sx, sy, stagger=0, rotation=0)
+        N_ws = 365 * 24 * intervals_per_hour
+        time_stamp = np.arange(N_ws)/6/24
+        farm = NOJ(site, wt, turbulenceModel=STF2017TurbulenceModel(), deflectionModel=JimenezWakeDeflection(),
+                   superpositionModel=LinearSum())
+
+        yaw = 30*np.sin(np.arange(N_ws) / 100)
+        tilt = np.zeros(N_ws)
+        
+        hpp = hpp_model_pywake(latitude=latitude,
+                               longitude=longitude,
+                               altitude=altitude,
+                               sim_pars_fn=sim_pars_fn,
+                               input_ts_fn=input_ts_fn,
+                               intervals_per_hour = intervals_per_hour,
+                               farm = farm,
+                               x = xt,
+                               y = yt,
+                               tilt = tilt,
+                               time_stamp = time_stamp,
+                               n_loads=n_loads,
+                               H2_demand_fn=6000,
+                               Nwt=Nwt,
+                               )
+        p_rated=10.0
+        wind_MW_per_km2 = 3 # Nwt * p_rated / area  # 2.169 min. supported is 3 for the wake model
+        clearance = wt.hub_height()-d/2  # 29.85
+        sp=360 # sp should be 400 for the DTU 10mw ref, but surrogate is only until 360
+                # Wind plant design
+        x=dict(clearance=clearance, sp=sp, p_rated=p_rated, Nwt=Nwt, wind_MW_per_km2=wind_MW_per_km2,
+               # PV plant design
+               solar_MW=200,  surface_tilt=45, surface_azimuth=180, DC_AC_ratio=1.5,
+               # Energy storage & EMS price constrains
+               b_P=40, b_E_h=4, cost_of_battery_P_fluct_in_peak_price_ratio=5,
+               # PtG plant design
+               ptg_MW=800, HSS_kg=5000,
+               # Wind turbine control
+               yaw=yaw).values()
 
     else:
         print(f'case type not implemented: {case}')
@@ -187,10 +244,12 @@ def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
     return outs
 
 def update_test(out_name, name, design_name, tmp_name, case, **kwargs):
-    output_df = pd.read_csv(
-        tfp+out_name,
-        index_col=0, 
-        sep=';')
+    if os.path.exists(tfp+out_name):
+        output_df = pd.read_csv(
+            tfp+out_name,
+            index_col=0, 
+            sep=';')
+    else: output_df = pd.DataFrame()
     run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs)
     eval_df = pd.read_csv(os.path.join(tfp + 'tmp', tmp_name + '.csv'))
     output_df[design_name] = eval_df.T[0]
@@ -204,6 +263,8 @@ def load_evaluation(out_name,design_name,case,):
         load_file = np.array(output_df.iloc[14:][design_name])
     elif case in ['SolarX']:
         load_file = np.array(output_df.iloc[12:][design_name])
+    elif case in ['PyWake']:
+        load_file = np.array(output_df.iloc[19:][design_name], dtype=float)        
     else:
         load_file = np.array(output_df.iloc[15:][design_name])
     return load_file
@@ -638,6 +699,40 @@ def test_evaluation_SolarX():
     for i in range(len(loaded_metrics)):
         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i])
         
+# ------------------------------------------------------------------------------------------------
+# PyWake
+
+def run_evaluation_PyWake():
+    return run_evaluation(out_name=None,
+                          name='Aalborg',
+                          design_name='Design 1',
+                          case='PyWake',
+                          tmp_name='test_eval_design_PyWake',
+                          )
+
+
+def update_test_PyWake():
+    update_test(out_name='Evaluation_test_PyWake.csv',
+                name='Aalborg',
+                design_name='Design 1',
+                case='PyWake',
+                tmp_name='test_eval_design_PyWake',
+                )
+
+
+def load_evaluation_PyWake():
+    return load_evaluation(out_name='Evaluation_test_PyWake.csv',
+                           design_name='Design 1',
+                           case='PyWake',
+                           )
+
+
+# def test_evaluation_PyWake():
+    # evaluation_metrics = run_evaluation_PyWake()
+    # loaded_metrics = load_evaluation_PyWake()
+    # for i in range(len(loaded_metrics)):
+        # np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i])
+        
 # # ------------------------------------------------------------------------------------------------
 # update_test_design_1()
 # update_test_design_2()
@@ -652,6 +747,7 @@ def test_evaluation_SolarX():
 # update_test_BM()
 # update_test_HiFiEMS()
 # update_test_SolarX()
+# update_test_PyWake()
 
 # test_evaluation_design_1()
 # test_evaluation_design_2()
@@ -666,3 +762,4 @@ def test_evaluation_SolarX():
 # test_evaluation_BM()
 # test_evaluation_HiFiEMS()
 # test_evaluation_SolarX()
+# test_evaluation_PyWake()

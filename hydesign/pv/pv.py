@@ -128,6 +128,69 @@ class pvp(om.ExplicitComponent):
             weather = self.weather)
         outputs['solar_t'] = solar_t
         outputs['Apvp'] = Apvp
+    
+class pvp_pp:
+    """Pure Python PV power plant model : It computes the solar power output during the lifetime of the plant using solar plant AC capacity, DC/AC ratio, location coordinates and PV module angles"""
+
+    def __init__(self,
+                 weather_fn,
+                 N_time,
+                 latitude,
+                 longitude,
+                 altitude,
+                 tracking = 'single_axis'):
+
+        """Initialization of the PV power plant model
+
+        Parameters
+        ----------
+        weather_fn : Weather timeseries
+        N_time : Length of the representative data
+        latitude : Latitude at chosen location
+        longitude : Longitude at chosen location
+        altitude : Altitude at chosen location
+        tracking : Tracking type of the PV modules, ex:'single_axis'
+
+        """   
+        self.weather_fn = weather_fn
+        self.N_time = N_time
+        self.tracking = tracking
+
+        pvloc = Location(
+            latitude=latitude,
+            longitude=longitude,
+            altitude=altitude,
+            name='Plant')
+
+        weather = pd.read_csv(
+            weather_fn, 
+            index_col=0,
+            parse_dates=True)
+
+        weather = weather.rename(columns={'GHI': 'ghi',
+                                  'DNI': 'dni',
+                                  'DHI': 'dhi',
+                                  })
+        weather['temp_air'] = weather['temp_air_1'] - 273.15  # Celcium
+        heights = [int(x.split('WS_')[-1]) for x in list(weather) if x.startswith('WS_')]
+        min_key = f'WS_{int(np.min(heights))}'
+        weather['wind_speed'] = weather[min_key]
+
+        self.weather = weather
+        self.pvloc = pvloc
+
+    def compute(self, surface_tilt, surface_azimuth, solar_MW, land_use_per_solar_MW, DC_AC_ratio):
+        Apvp = solar_MW * land_use_per_solar_MW
+        solar_t = get_solar_time_series(
+            surface_tilt = surface_tilt, 
+            surface_azimuth = surface_azimuth, 
+            solar_MW = solar_MW, 
+            land_use_per_solar_MW = land_use_per_solar_MW, 
+            DC_AC_ratio = DC_AC_ratio, 
+            tracking = self.tracking, 
+            pvloc = self.pvloc, 
+            weather = self.weather)    
+        return solar_t, Apvp
 
         
 
@@ -180,6 +243,40 @@ class pvp_with_degradation(om.ExplicitComponent):
         degradation = np.interp(t_over_year, self.pv_deg_yr, self.pv_deg)
 
         outputs['solar_t_ext_deg'] = (1-degradation)*solar_t_ext
+        
+class pvp_with_degradation_pp:
+    """
+    Pure Python PV degradation model providing the PV degradation time series throughout the lifetime of the plant
+    """
+    def __init__(
+        self, 
+        life_y = 25,
+        intervals_per_hour=1,
+        pv_deg_yr = [0, 25],
+        pv_deg = [0, 25*1/100],
+        ):
+        """Initialization of the PV degradation model
+
+        Parameters
+        ----------
+        life_h : lifetime of the plant
+
+        """ 
+        self.life_y = life_y
+        self.life_h = 365 * 24 * life_y
+        self.life_intervals = self.life_h * intervals_per_hour
+        self.intervals_per_hour = intervals_per_hour
+        
+        # PV degradation curve
+        self.pv_deg_yr = pv_deg_yr
+        self.pv_deg = pv_deg        
+
+    def compute(self, solar_t_ext):
+        t_over_year = np.arange(self.life_intervals)/(365*24*self.intervals_per_hour)
+        degradation = np.interp(t_over_year, self.pv_deg_yr, self.pv_deg)
+        solar_t_ext_deg = (1-degradation)*solar_t_ext
+        return solar_t_ext_deg
+
     
 class pvp_degradation_linear(om.ExplicitComponent):
     """

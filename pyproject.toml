@@ -36,6 +36,9 @@ dependencies = [
     "tqdm",
     "openpyxl",
     "h5py>=3.13",
+    "py_wake",
+    "topfarm",
+    "surrogates-interface",
 ]
 
 [project.optional-dependencies]
