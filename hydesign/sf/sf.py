@@ -1,15 +1,16 @@
 # Import necessary libraries
 import math
 import numpy as np
-from numpy import newaxis as na
+# from numpy import newaxis as na
 import pandas as pd
-from scipy.interpolate import RegularGridInterpolator, interp1d
-import xarray as xr
-import openmdao.api as om
+from scipy.interpolate import RegularGridInterpolator  #, interp1d
+# import xarray as xr
+# import openmdao.api as om
 import pvlib
+from hydesign.openmdao_wrapper import ComponentWrapper
 
 # Solar Field (sf) Class using OpenMDAO for explicit components
-class sf(om.ExplicitComponent):
+class sf_pp:
     def __init__(self,
                  N_time,  # Number of time steps
                  sf_azimuth_altitude_efficiency_table,  # Efficiency table for the solar field
@@ -40,7 +41,7 @@ class sf(om.ExplicitComponent):
         dni_receivers_height_efficiency_table: dict
             Efficiency vs. height for solar receivers.
         """
-        super().__init__()
+        # super().__init__()
         self.N_time = N_time
         self.sf_azimuth_altitude_efficiency_table = sf_azimuth_altitude_efficiency_table
         self.latitude = latitude
@@ -48,26 +49,29 @@ class sf(om.ExplicitComponent):
         self.altitude = altitude
         self.dni = dni
 
-    def setup(self):
+    # def setup(self):
         """
         Sets up the inputs and outputs for the solar field component in OpenMDAO.
         Inputs are solar field area and receiver heights; outputs are maximum fluxes and AOI.
         """
         # Inputs
-        self.add_input('sf_area', desc="Area of the solar field in square meters", units='m**2')
-        self.add_input('tower_diameter', desc="Diameter of the tower", units='m')
-        self.add_input('tower_height', desc="Heigh of the tower", units='m')
-        self.add_input('area_cpv_receiver_m2', desc="area_cpv_receiver", units='m**2')
-        self.add_input('area_cst_receiver_m2', desc="area_cst_receiver", units='m**2')
-        self.add_input('area_dni_reactor_biogas_h2', desc="area_dni_reactor_biogas_h2", units='m**2')
-
+        self.inputs = [
+        ('sf_area', dict(desc="Area of the solar field in square meters", units='m**2')),
+        ('tower_diameter', dict(desc="Diameter of the tower", units='m')),
+        ('tower_height', dict(desc="Heigh of the tower", units='m')),
+        ('area_cpv_receiver_m2', dict(desc="area_cpv_receiver", units='m**2')),
+        ('area_cst_receiver_m2', dict(desc="area_cst_receiver", units='m**2')),
+        ('area_dni_reactor_biogas_h2', dict(desc="area_dni_reactor_biogas_h2", units='m**2')),
+        ]
         # Outputs
-        self.add_output('flux_sf_t', desc="solar flux from solar field", shape=[self.N_time], units='MW')
-        self.add_output('max_solar_flux_cpv_t', val=0, desc="maximum solar flux on cpv reciever time series", shape=[self.N_time], units='MW')
-        self.add_output('max_solar_flux_cst_t', val=0, desc="maximum solar flux on cst reciever time series", shape=[self.N_time], units='MW')
-        self.add_output('max_solar_flux_biogas_h2_t', val=0, desc="maximum solar flux on biogas_h2 reciever time series", shape=[self.N_time], units='MW')
+        self.outputs = [
+        ('flux_sf_t', dict(desc="solar flux from solar field", shape=[self.N_time], units='MW')),
+        ('max_solar_flux_cpv_t', dict(val=0, desc="maximum solar flux on cpv reciever time series", shape=[self.N_time], units='MW')),
+        ('max_solar_flux_cst_t', dict(val=0, desc="maximum solar flux on cst reciever time series", shape=[self.N_time], units='MW')),
+        ('max_solar_flux_biogas_h2_t', dict(val=0, desc="maximum solar flux on biogas_h2 reciever time series", shape=[self.N_time], units='MW')),
+        ]
 
-    def compute(self, inputs, outputs):
+    def compute(self, **inputs):
         """
         Computes the solar flux based on solar position, efficiency tables, and receiver heights.
         Uses interpolation to calculate fluxes on cpv, cst, and H2 receivers.
@@ -79,6 +83,7 @@ class sf(om.ExplicitComponent):
         outputs: dict
             Dictionary to store computed maximum fluxes for cpv, cst, and H2 receivers.
         """
+        outputs = {}
         # Extract geographical and DNI data
         latitude = self.latitude
         longitude = self.longitude
@@ -140,6 +145,8 @@ class sf(om.ExplicitComponent):
         outputs['max_solar_flux_cpv_t'] = max_solar_flux_cpv_t  # MW for cpv
         outputs['max_solar_flux_cst_t'] = max_solar_flux_cst_t  # MW for cst
         outputs['max_solar_flux_biogas_h2_t'] = max_solar_flux_biogas_h2_t  # MW for biogas to H2
+        out_keys = ['flux_sf_t', 'max_solar_flux_cpv_t', 'max_solar_flux_cst_t', 'max_solar_flux_biogas_h2_t']
+        return [outputs[key] for key in out_keys]
 
 
     def calculate_flux_sf(self,
@@ -200,4 +207,10 @@ class sf(om.ExplicitComponent):
 
         return flux_sf_t
 
-
+class sf(ComponentWrapper):
+    def __init__(self, **insta_inp):
+        sf_model = sf_pp(**insta_inp)
+        super().__init__(inputs=sf_model.inputs,
+                            outputs=sf_model.outputs,
+                            function=sf_model.compute,
+                            partial_options=[{'dependent': False, 'val': 0}],)

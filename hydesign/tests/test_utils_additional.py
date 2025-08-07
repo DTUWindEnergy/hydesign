@@ -91,9 +91,10 @@ def test_pv_and_wind_hybridization(tmp_path):
     life_y = 25
     N_limit = 1
     life_h = (life_y + N_limit) * 8760
+    pv_deg=[0,0,0.2,0.5,0.5,0.5]
 
     pv_comp = pvp_with_degradation(N_limit=N_limit, life_y=life_y, life_h=life_h,
-                                   pv_deg=[0,0,0.2,0.5,0.5,0.5])
+                                   pv_deg=pv_deg)
     prob_pv = om.Problem()
     prob_pv.model.add_subsystem('pv', pv_comp)
     prob_pv.setup()
@@ -103,15 +104,16 @@ def test_pv_and_wind_hybridization(tmp_path):
     prob_pv.run_model()
     t_over_year = np.arange(life_h)/(365*24)
     pv_deg_yr = [0,1,1.0001,26,26.0001,26]
-    expected = (1 - np.interp(t_over_year, pv_deg_yr, pv_comp.pv_deg)) * solar
+    expected = (1 - np.interp(t_over_year, pv_deg_yr, pv_deg)) * solar
     assert np.allclose(prob_pv.get_val('pv.solar_t_ext_deg'), expected)
 
     ws = np.array([0,5,10,15,20])
     pcw = np.array([0,0.5,1,1,1])
     wst = np.array([6,7])
+    wind_deg=[0,0.2,0.5,0.5,0.5,0.5]
     wind_comp = wpp_with_degradation(N_limit=N_limit, life_y=life_y, N_time=2,
                                      life_h=life_h, N_ws=len(ws), wpp_efficiency=0.9,
-                                     wind_deg=[0,0.2,0.5,0.5,0.5,0.5],
+                                     wind_deg=wind_deg,
                                      share_WT_deg_types=0.5)
     prob_wind = om.Problem()
     prob_wind.model.add_subsystem('wind', wind_comp)
@@ -124,7 +126,7 @@ def test_pv_and_wind_hybridization(tmp_path):
     wind_deg_yr = [0,1,1.0001,26,26.0001,26]
     wst_ext = expand_to_lifetime(wst, life=life_h)
     expected_wind = 0.9 * get_wind_ts_degradation(ws, pcw, wst_ext, wind_deg_yr,
-                                                  wind_comp.wind_deg, life_h, share=0.5)
+                                                  wind_deg, life_h, share=0.5)
     assert np.allclose(prob_wind.get_val('wind.wind_t_ext_deg'), expected_wind)
 
 

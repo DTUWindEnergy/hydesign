@@ -3,11 +3,12 @@
 # import necessary libraries
 import numpy as np
 import pandas as pd
-import openmdao.api as om
+# import openmdao.api as om
 from docplex.mp.model import Model
+from hydesign.openmdao_wrapper import ComponentWrapper
 
 # Define EmsSolarX Class
-class EmsSolarX(om.ExplicitComponent):
+class EmsSolarX_pp:
     """
     Energy Management Optimization Model for SolarX.
 
@@ -124,7 +125,7 @@ class EmsSolarX(om.ExplicitComponent):
         weeks_per_season_per_year = None,
         ):
 
-        super().__init__()
+        # super().__init__()
         self.N_time = int(N_time)
         self.max_el_buy_from_grid_mw = max_el_buy_from_grid_mw
 
@@ -149,307 +150,471 @@ class EmsSolarX(om.ExplicitComponent):
         self.batch_size = batch_size
         self.weeks_per_season_per_year = weeks_per_season_per_year
         
-    def setup(self):
+    # def setup(self):
         # Define input and output variables to the openmdao model
         # inputs
         # grid
-        self.add_input(
+        self.inputs =[
+        (
             'grid_el_capacity',
-            desc="Grid capacity",
-            units='MW')
-        self.add_input(
+            dict(
+                desc="Grid capacity",
+                units='MW')
+        ),
+        (
             'grid_h2_capacity',
-            desc="hydrogen capacity of the grid",
-            units='kg/h'
-        )
+            dict(
+                desc="hydrogen capacity of the grid",
+                units='kg/h'
+            )
+        ),
 
         # cpv
-        self.add_input(
+        (
             'p_cpv_max_dni_t',
-            desc="maximum cpv power power time series (assuming all available solar flux goes to cpv)",
-            units='MW',
+            dict(
+                desc="maximum cpv power power time series (assuming all available solar flux goes to cpv)",
+                units='MW',
             shape=[self.N_time])
-        self.add_input('cpv_inverter_mw',
-                       desc="rated power of the cpv inverter",
-                       units='MW', )
-        self.add_input('cpv_rated_mw',
-                       desc="rated power of the cpv reciever",
-                       units='MW', )
+            ),
+        (
+            'cpv_inverter_mw',
+            dict(
+                desc="rated power of the cpv inverter",
+                units='MW',
+            )
+        ),
+        (
+            'cpv_rated_mw',
+            dict(
+                desc="rated power of the cpv reciever",
+                units='MW',
+            )
+        ),
 
         # cst
-        self.add_input(
+        (
             'v_molten_salt_tank_m3',
-            desc="Volume of the hot molten salt tank",
-            units='m**3')
-        self.add_input(
+            dict(
+                desc="Volume of the hot molten salt tank",
+                units='m**3',
+            )
+        ),
+        (
             'flow_ms_max_t',
-            desc="maximum flow of molten salt time series (asuuing all available solar flux goes to cst)",
-            units='kg/h',
+            dict(
+                desc="maximum flow of molten salt time series (assuming all available solar flux goes to cst)",
+                units='kg/h',
             shape=[self.N_time])
-        self.add_input(
+            ),
+        (
             'p_rated_st',
-            desc="rated power of the steam turbine",
-            units='MW',
-        )
-        self.add_input(
+            dict(
+                desc="rated power of the steam turbine",
+                units='MW',
+            )
+        ),
+        (
             'delta_q_hot_cold_ms_per_kg',
-            desc="Heat (kJ) difference between hot and cold molten salt per kg",
-            units='kJ/kg',
-        )
-        self.add_input(
+            dict(
+                desc="Heat (kJ) difference between hot and cold molten salt per kg",
+                units='kJ/kg',
+            )
+        ),
+        (
             'v_max_hot_ms_percentage',
-            desc="Maximim allowable volume of the hot molten salt in percentage",
-        )
-        self.add_input(
+            dict(
+                desc="Maximim allowable volume of the hot molten salt in percentage",
+            )
+        ),
+        (
             'v_min_hot_ms_percentage',
-            desc="Minimum allowable volume of the hot molten salt in percentage",
-        )
-        self.add_input(
+            dict(
+                desc="Minimum allowable volume of the hot molten salt in percentage",
+            )
+        ),
+        (
             'flow_ms_max_cst_receiver_capacity',
-            desc="Capacity of the reciever for molten salt flow",
-            units='kg/h',
-        )
-        self.add_input(
+            dict(
+                desc="Capacity of the reciever for molten salt flow",
+                units='kg/h',
+            )
+        ),
+        (
             'heat_exchanger_capacity',
-            desc="capacity of the steam generator",
-            units='MW',
-        )
+            dict(
+                desc="capacity of the steam generator",
+                units='MW',
+            )
+        ),
 
         # biogas_h2
-        self.add_input(
+        (
             'biogas_h2_mass_ratio',
-            desc="amount of biogas required for production of 1kg H2 in biogas_h2 module",
-        )
-        self.add_input(
+            dict(
+                desc="amount of biogas required for production of 1kg H2 in biogas_h2 module",
+            )
+        ),
+        (
             'water_h2_mass_ratio',
-            desc="amount of water required for production of 1kg H2 in biogas_h2 module",
-        )
-        self.add_input(
+            dict(
+                desc="amount of water required for production of 1kg H2 in biogas_h2 module",
+            )
+        ),
+        (
             'co2_h2_mass_ratio',
-            desc="amount of CO2 required for production of 1kg H2 in biogas_h2 module",
-        )
-        self.add_input('max_solar_flux_dni_reactor_biogas_h2_t',
-                       desc="maximum solar flux at dni reactor of the biogas_h2 module",
-                       units='MW',
-                       shape=[self.N_time])
-        self.add_input(
+            dict(
+                desc="amount of CO2 required for production of 1kg H2 in biogas_h2 module",
+            )
+        ),
+        (
+            'max_solar_flux_dni_reactor_biogas_h2_t',
+            dict(
+                desc="maximum solar flux at dni reactor of the biogas_h2 module",
+                units='MW',
+                shape=[self.N_time]
+            )
+        ),
+        (
             'heat_mwht_per_kg_h2',
-            desc="Required heat for generating 1 kg of hydrogen",
-            units = 'MW*h/kg',
-        )
-        self.add_input(
+            dict(
+                desc="Required heat for generating 1 kg of hydrogen",
+                units = 'MW*h/kg',
+            )
+        ),
+        (
             'area_dni_reactor_biogas_h2',
-            desc="area of dni reactor in biogas_h2 module",
-            units='m**2',
-        )
-        self.add_input(
+            dict(
+                desc="area of dni reactor in biogas_h2 module",
+                units='m**2',
+            )
+        ),
+        (
             'area_el_reactor_biogas_h2',
-            desc="area of el reactor in biogas_h2 module",
-            units='m**2',
-        )
+            dict(
+                desc="area of el reactor in biogas_h2 module",
+                units='m**2',
+            )
+        ),
 
         # prices
-        self.add_input(
+        (
             'price_el_t',
-            desc="electricity price time series",
+            dict(
+                desc="electricity price time series",
             shape=[self.N_time])
-        self.add_input(
+            ),
+        (
             'price_h2_t',
-            desc="Hydrogen price time series",
-            shape=[self.N_time])
-        self.add_input(
+            dict(
+                desc="Hydrogen price time series",
+                shape=[self.N_time])
+            ),
+        (
             'price_water_t',
-            desc="water price time series",
-            shape=[self.N_time])
-        self.add_input(
+            dict(
+                desc="water price time series",
+                shape=[self.N_time])
+            ),
+        (
             'price_co2_t',
-            desc="co2 price time series",
-            shape=[self.N_time])
-        self.add_input(
+            dict(
+                desc="co2 price time series",
+                shape=[self.N_time])
+            ),
+        (
             'price_biogas_t',
-            desc="Biogas price time series",
-            shape=[self.N_time])
-        self.add_input(
+            dict(
+                desc="Biogas price time series",
+                shape=[self.N_time])
+            ),
+        (
             'peak_hr_quantile',
-            desc="Quantile of price tim sereis to define peak price hours (above this quantile).\n"+
-                 "Only used for peak production penalty and for cost of battery degradation.")
-        self.add_input(
+            dict(
+                desc="Quantile of price tim sereis to define peak price hours (above this quantile).\n"+
+                     "Only used for peak production penalty and for cost of battery degradation.")
+        ),
+        (
             'n_full_power_hours_expected_per_day_at_peak_price',
-            desc="Pnealty occurs if nunmber of full power hours expected per day at peak price are not reached.")
+            dict(
+                desc="Penalty occurs if number of full power hours expected per day at peak price are not reached."
+            )
+        ),
 
-
-        self.add_input(
+        (
             'demand_q_t',
-            desc="Heat demand time series",
-            shape=[self.N_time])
-
+            dict(
+                desc="Heat demand time series",
+                shape=[self.N_time]
+            )),
+        ]
         # outputs
         # hpp
-        self.add_output(
+        self.outputs = [
+        (
             'hpp_t_ext',
-            desc="HPP power time series",
-            units='MW',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="HPP power time series",
+                units='MW',
+                shape=[self.life_h]
+            )
+        ),
+        (
             'hpp_curt_t_ext',
-            desc="HPP curtailed power time series",
-            units='MW',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="HPP curtailed power time series",
+                units='MW',
+                shape=[self.life_h]
+            )
+        ),
+        (
             'total_curtailment',
-            desc="total HPP curtailed power",
-            units='MW',)
+            dict(
+                desc="total HPP curtailed power",
+                units='MW',
+            )
+        ),
 
         # cpv
-        self.add_output(
+        (
             'alpha_cpv_t_ext',
-            desc="Share of flux_sf directed towards cpv receiver",
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="Share of flux_sf directed towards cpv receiver",
+                shape=[self.life_h]
+            )
+        ),
+        (
             'p_cpv_max_dni_t_ext',
-            desc="max cpv power time series extended to lifetime",
-            units='MW',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="max cpv power time series extended to lifetime",
+                units='MW',
+                shape=[self.life_h]
+            )
+        ),
+        (
             'p_cpv_t_ext',
-            desc="cpv power time series extended to lifetime",
-            units='MW',
-            shape=[self.life_h])
+            dict(
+                desc="cpv power time series extended to lifetime",
+                units='MW',
+                shape=[self.life_h]
+            )
+        ),
 
         # cst
-        self.add_output(
+        (
             'alpha_cst_t_ext',
-            desc="Share of flux_sf directed towards cst receiver",
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="Share of flux_sf directed towards cst receiver",
+                shape=[self.life_h]
+            )
+        ),
+        (
             'flow_ms_heat_exchanger_t_ext',
-            desc="flow of molten salt into the heat exchanger",
-            units='kg/h',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="flow of molten salt into the heat exchanger",
+                units='kg/h',
+                shape=[self.life_h]
+            )
+        ),
+        (
             'flow_ms_q_t_ext',
-            desc="flow of molten salt used for heat production",
-            units='kg/h',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="flow of molten salt used for heat production",
+                units='kg/h',
+                shape=[self.life_h]
+            )
+        ),
+        (
             'p_st_t_ext',
-            desc="steam turbine power time series extended to lifetime",
-            units='MW',
-            shape=[self.life_h])
-        self.add_output(
-            'flow_ms_t_ext',
-            desc="flow of molten salt time series extended to life time",
-            units='kg/h',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="steam turbine power time series extended to lifetime",
+                units='MW',
+                shape=[self.life_h]
+            )
+        ),
+        # (
+        #     'flow_ms_t_ext',
+        #     dict(
+        #         desc="flow of molten salt time series extended to life time",
+        #         units='kg/h',
+        #         shape=[self.life_h]
+        #     )
+        # ),
+        (
             'v_hot_ms_t_ext',
-            desc="Volum of the molten salt stored in hot tank",
-            units='m**3',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="Volume of the molten salt stored in hot tank",
+                units='m**3',
+                shape=[self.life_h]
+            )
+        ),
+        (
             'p_st_max_dni_t_ext',
-            desc="maximum steam turbine power with max available solar flux",
-            units='MW',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="maximum steam turbine power with max available solar flux",
+                units='MW',
+                shape=[self.life_h]
+            )
+        ),
+        (
             'q_max_dni_t_ext',
-            desc="maximum heat production with max available solar flux",
-            units='MW',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="maximum heat production with max available solar flux",
+                units='MW',
+                shape=[self.life_h]
+            )
+        ),
+        (
             'flow_steam_st_t_ext',
-            desc="flow of steam into the steam turbine extended to lifetime",
-            units='kg/h',
-            shape=[self.life_h])
+            dict(
+                desc="flow of steam into the steam turbine extended to lifetime",
+                units='kg/h',
+                shape=[self.life_h]
+            )
+        ),
 
         # biogas_h2
-        self.add_output(
+        (
             'alpha_h2_t_ext',
-            desc="Share of flux_sf directed towards H2 receiver",
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="Share of flux_sf directed towards H2 receiver",
+                shape=[self.life_h]
+            )
+        ),
+        (
             'biogas_h2_procuded_h2_kg_in_dni_reactor_t_ext',
-            desc="produced h2 in dni reactor of biogas_h2 module extented to lifetime",
-            units='kg/h',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="produced h2 in dni reactor of biogas_h2 module extented to lifetime",
+                units='kg/h',
+                shape=[self.life_h]
+            )
+        ),
+        (
             'biogas_h2_procuded_h2_kg_in_el_reactor_t_ext',
-            desc="produced h2 in el reactor of biogas_h2 module extented to lifetime",
-            units='kg/h',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="produced h2 in el reactor of biogas_h2 module extented to lifetime",
+                units='kg/h',
+                shape=[self.life_h]
+            )
+        ),
+        (
             'h2_t_ext',
-            desc="H2 production time series",
-            units='kg/h',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="H2 production time series",
+                units='kg/h',
+                shape=[self.life_h]
+            )
+        ),
+        (
             'max_solar_flux_dni_reactor_biogas_h2_t_ext',
-            desc="max solar flux on biogas_h2 dni reactor time series extended to lifetime",
-            units='MW',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="max solar flux on biogas_h2 dni reactor time series extended to lifetime",
+                units='MW',
+                shape=[self.life_h]
+            )
+        ),
+        (
             'p_biogas_h2_t_ext',
-            desc="consumed electricity in el_reactor of biogas_h2 time series extended to lifetime",
-            units='MW',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="consumed electricity in el_reactor of biogas_h2 time series extended to lifetime",
+                units='MW',
+                shape=[self.life_h]
+            )
+        ),
+        (
             'q_t_ext',
-            desc="Output heat time series",
-            units='MW',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="Output heat time series",
+                units='MW',
+                shape=[self.life_h]
+            )
+        ),
+        (
             'biogas_t_ext',
-            desc="Required biogas time series",
-            units='kg/h',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="Required biogas time series",
+                units='kg/h',
+                shape=[self.life_h]
+            )
+        ),
+        (
             'water_t_ext',
-            desc="Required water time series",
-            units='kg/h',
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="Required water time series",
+                units='kg/h',
+                shape=[self.life_h]
+            )
+        ),
+        (
             'co2_t_ext',
-            desc="Required co2 time series",
-            units='kg/h',
-            shape=[self.life_h])
+            dict(
+                desc="Required co2 time series",
+                units='kg/h',
+                shape=[self.life_h]
+            )
+        ),
 
         # prices (extended to lifetime)
-        self.add_output(
+        (
             'price_el_t_ext',
-            desc="Electricity price time series",
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="Electricity price time series",
+                shape=[self.life_h]
+            )
+        ),
+        (
             'price_h2_t_ext',
-            desc="Hydrogen price time series",
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="Hydrogen price time series",
+                shape=[self.life_h]
+            )
+        ),
+        (
             'demand_q_t_ext',
-            desc="Heat price time series",
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="Heat price time series",
+                shape=[self.life_h]
+            )
+        ),
+        (
             'price_water_t_ext',
-            desc="water price time series",
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="water price time series",
+                shape=[self.life_h]
+            )
+        ),
+        (
             'price_co2_t_ext',
-            desc="co2 price time series",
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="co2 price time series",
+                shape=[self.life_h]
+            )
+        ),
+        (
             'price_biogas_t_ext',
-            desc="Biogas price time series",
-            shape=[self.life_h])
+            dict(
+                desc="Biogas price time series",
+                shape=[self.life_h]
+            )
+        ),
 
         # others
-        self.add_output(
+        (
             'penalty_t_ext',
-            desc="penalty for not reaching expected energy productin at peak hours",
-            shape=[self.life_h])
-        self.add_output(
+            dict(
+                desc="penalty for not reaching expected energy production at peak hours",
+                shape=[self.life_h]
+            )
+        ),
+        (
             'penalty_q_t_ext',
-            desc="penalty for not reaching expected heat production",
-            shape=[self.life_h])
-
-    def compute(self, inputs, outputs):
+            dict(
+                desc="penalty for not reaching expected heat production",
+                shape=[self.life_h]
+            )),
+        ]
+    def compute(self, **inputs):
+        outputs = {}
         # Extract required inputs for computation
         # grid
         max_el_buy_from_grid_mw = self.max_el_buy_from_grid_mw
@@ -644,6 +809,28 @@ class EmsSolarX(om.ExplicitComponent):
             penalty_t, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
         outputs['penalty_q_t_ext'] = expand_to_lifetime(
             penalty_q_t, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
+        out_keys = ['hpp_t_ext', 'hpp_curt_t_ext', 'total_curtailment',
+                    'alpha_cpv_t_ext', 'p_cpv_max_dni_t_ext', 'p_cpv_t_ext',
+                    'alpha_cst_t_ext', 'flow_ms_heat_exchanger_t_ext', 'flow_ms_q_t_ext',
+                    'p_st_t_ext', #'flow_ms_t_ext', 
+                    'v_hot_ms_t_ext',
+                    'p_st_max_dni_t_ext', 'q_max_dni_t_ext', 'flow_steam_st_t_ext',
+                    'alpha_h2_t_ext', 'biogas_h2_procuded_h2_kg_in_dni_reactor_t_ext',
+                    'biogas_h2_procuded_h2_kg_in_el_reactor_t_ext','h2_t_ext',
+                    'max_solar_flux_dni_reactor_biogas_h2_t_ext', 'p_biogas_h2_t_ext',
+                    'q_t_ext', 'biogas_t_ext', 'water_t_ext', 'co2_t_ext',
+                    'price_el_t_ext', 'price_h2_t_ext', 'demand_q_t_ext',
+                    'price_water_t_ext', 'price_co2_t_ext', 'price_biogas_t_ext',
+                    'penalty_t_ext', 'penalty_q_t_ext']
+        return [outputs[key] for key in out_keys]
+
+class EmsSolarX(ComponentWrapper):
+    def __init__(self, **insta_inp):
+        EmsSolarX_model = EmsSolarX_pp(**insta_inp)
+        super().__init__(inputs=EmsSolarX_model.inputs,
+                            outputs=EmsSolarX_model.outputs,
+                            function=EmsSolarX_model.compute,
+                            partial_options=[{'dependent': False, 'val': 0}],)
 
 # Optimization function for the energy management system
 def ems_cplex_solarX(

@@ -13,8 +13,9 @@ import openmdao.api as om
 from scipy.interpolate import RegularGridInterpolator
 from hydesign.look_up_tables import lut_filepath
 from hydesign.ems.ems import expand_to_lifetime
+from hydesign.openmdao_wrapper import ComponentWrapper
 
-class genericWT_surrogate(om.ExplicitComponent):
+class genericWT_surrogate_pp:
     """
     Metamodel of the wind turbine.
 
@@ -44,56 +45,75 @@ class genericWT_surrogate(om.ExplicitComponent):
         genWT_fn = lut_filepath+'genWT_v3.nc',
         N_ws = 51,
         ):
-        super().__init__()
+        # super().__init__()
         self.genWT_fn = genWT_fn
         # number of points in the power curves
         self.N_ws = N_ws
 
-    def setup(self):
-        self.add_input('hh',
-                       desc="Turbine's hub height",
-                       units='m',
-                       shape=1)
-        self.add_input('d',
-                       desc="Turbine's diameter",
-                       units='m',
-                       shape=1)
-        self.add_input('p_rated',
-                       desc="Turbine's rated power",
-                       units='MW',
-                       shape=1)
+    # def setup(self):
+    #     self.add_input('hh',
+    #                    desc="Turbine's hub height",
+    #                    units='m',
+    #                    shape=1)
+    #     self.add_input('d',
+    #                    desc="Turbine's diameter",
+    #                    units='m',
+    #                    shape=1)
+    #     self.add_input('p_rated',
+    #                    desc="Turbine's rated power",
+    #                    units='MW',
+    #                    shape=1)
 
-        self.add_output('ws',
-                        desc="Turbine's ws",
-                        units='m/s',
-                        shape=[self.N_ws])
-        self.add_output('pc',
-                        desc="Turbine's power curve",
-                        units='MW',
-                        shape=[self.N_ws])
-        self.add_output('ct',
-                        desc="Turbine's ct curve",
-                        shape=[self.N_ws])
+    #     self.add_output('ws',
+    #                     desc="Turbine's ws",
+    #                     units='m/s',
+    #                     shape=[self.N_ws])
+    #     self.add_output('pc',
+    #                     desc="Turbine's power curve",
+    #                     units='MW',
+    #                     shape=[self.N_ws])
+    #     self.add_output('ct',
+    #                     desc="Turbine's ct curve",
+    #                     shape=[self.N_ws])
 
-    def setup_partials(self):
-        self.declare_partials(['pc', 'ct'], '*', method='fd')
+    # def setup_partials(self):
+    #     self.declare_partials(['pc', 'ct'], '*', method='fd')
 
-    def compute(self, inputs, outputs):
+    def compute(self, hh, d, p_rated, **kwargs):
         
-        p_rated = inputs['p_rated'][0]  
-        A = get_rotor_area(inputs['d'][0])  
+        p_rated = p_rated
+        A = get_rotor_area(d)  
         sp = p_rated*1e6/A
         
         ws, pc, ct = get_WT_curves(
             genWT_fn=self.genWT_fn,
             specific_power=sp) 
         
-        outputs['ws'] = ws 
-        outputs['pc'] = pc
-        outputs['ct'] = ct
-    
+        # outputs = {}
+        # outputs['ws'] = ws 
+        # outputs['pc'] = pc
+        # outputs['ct'] = ct
+        return ws, pc, ct
 
-class genericWake_surrogate(om.ExplicitComponent):
+class genericWT_surrogate(ComponentWrapper):
+    def __init__(self, genWT_fn=lut_filepath+'genWT_v3.nc', N_ws=51):
+        GenericWT = genericWT_surrogate_pp(genWT_fn=genWT_fn, N_ws=N_ws)
+        super().__init__(
+            inputs=[
+                ('hh', {'desc': "Turbine's hub height", 'units': 'm'}),
+                ('d', {'desc': "Turbine's diameter", 'units': 'm'}),
+                ('p_rated', {'desc': "Turbine's rated power", 'units': 'MW'})
+            ],
+            outputs=[
+                ('ws', {'desc': "Turbine's ws", 'units': 'm/s', 'shape': [N_ws]}),
+                ('pc', {'desc': "Turbine's power curve", 'units': 'MW', 'shape': [N_ws]}),
+                ('ct', {'desc': "Turbine's ct curve", 'shape': [N_ws]})
+            ],
+            function=GenericWT.compute,
+            partial_options=[{'dependent': False, 'val': 0}],
+        )
+
+class genericWake_surrogate_pp:
     """
     Generic wind farm wake model
 
@@ -124,66 +144,66 @@ class genericWake_surrogate(om.ExplicitComponent):
         N_ws = 51,
         ):
 
-        super().__init__()
+        # super().__init__()
         self.genWake_fn = genWake_fn
         # number of points in the power curves
         self.N_ws = N_ws
 
-    def setup(self):
-        #self.add_discrete_input(
-        self.add_input(
-            'Nwt',
-            val=1,
-            desc="Number of wind turbines")
-        self.add_input(
-            'Awpp',
-            desc="Land use area of WPP",
-            units='km**2')
-        self.add_input(
-            'd',
-            desc="Turbine's diameter",
-            units='m')
-        self.add_input(
-            'p_rated',
-            desc="Turbine's rated power",
-            units='MW')
-        self.add_input(
-            'ws',
-            desc="Turbine's ws",
-            units='m/s',
-            shape=[self.N_ws])
-        self.add_input(
-            'pc',
-            desc="Turbine's power curve",
-            units='MW',
-            shape=[self.N_ws])
-        self.add_input(
-            'ct',
-            desc="Turbine's ct curve",
-            shape=[self.N_ws])
+    # def setup(self):
+    #     #self.add_discrete_input(
+    #     self.add_input(
+    #         'Nwt',
+    #         val=1,
+    #         desc="Number of wind turbines")
+    #     self.add_input(
+    #         'Awpp',
+    #         desc="Land use area of WPP",
+    #         units='km**2')
+    #     self.add_input(
+    #         'd',
+    #         desc="Turbine's diameter",
+    #         units='m')
+    #     self.add_input(
+    #         'p_rated',
+    #         desc="Turbine's rated power",
+    #         units='MW')
+    #     self.add_input(
+    #         'ws',
+    #         desc="Turbine's ws",
+    #         units='m/s',
+    #         shape=[self.N_ws])
+    #     self.add_input(
+    #         'pc',
+    #         desc="Turbine's power curve",
+    #         units='MW',
+    #         shape=[self.N_ws])
+    #     self.add_input(
+    #         'ct',
+    #         desc="Turbine's ct curve",
+    #         shape=[self.N_ws])
 
-        self.add_output(
-            'pcw',
-            desc="Wake affected power curve",
-            shape=[self.N_ws])
+    #     self.add_output(
+    #         'pcw',
+    #         desc="Wake affected power curve",
+    #         shape=[self.N_ws])
 
-    def setup_partials(self):
-        self.declare_partials('*', '*', method='fd')
+    # def setup_partials(self):
+    #     self.declare_partials('*', '*', method='fd')
 
-    def compute(self, inputs, outputs):#, discrete_inputs, discrete_outputs):
-        ws = inputs['ws']
-        pc = inputs['pc']
-        Nwt = inputs['Nwt'][0]
+    def compute(self, Nwt, Awpp, d, p_rated, ws, pc, ct):#, discrete_inputs, discrete_outputs):
+        # ws = inputs['ws']
+        # pc = inputs['pc']
+        # Nwt = inputs['Nwt'][0]
         #Nwt = discrete_inputs['Nwt']
-        Awpp = inputs['Awpp'][0]  # in km2
-        d = inputs['d'][0]  # in m
-        p_rated = inputs['p_rated'][0]
+        # Awpp = inputs['Awpp'][0]  # in km2
+        # d = inputs['d'][0]  # in m
+        # p_rated = inputs['p_rated'][0]
         
         A = get_rotor_area(d)
         sp = p_rated*1e6/A
         wind_MW_per_km2 = Nwt*p_rated/(Awpp + 1e-10*(Awpp==0))
         
-        outputs['pcw'] = get_wake_affected_pc(
+        pcw = get_wake_affected_pc(
             genWake_fn = self.genWake_fn, 
             specific_power = sp,
             Nwt = Nwt,
@@ -192,8 +212,29 @@ class genericWake_surrogate(om.ExplicitComponent):
             pc = pc,
             p_rated = p_rated
         )
+        return pcw
 
-class wpp(om.ExplicitComponent):
+class genericWake_surrogate(ComponentWrapper):
+    def __init__(self, genWake_fn=lut_filepath+'genWake_v3.nc', N_ws=51):
+        GenericWake = genericWake_surrogate_pp(genWake_fn=genWake_fn, N_ws=N_ws)
+        super().__init__(
+            inputs=[
+                ('Nwt', {'desc': "Number of wind turbines", 'val': 1}),
+                ('Awpp', {'desc': "Land use area of WPP", 'units': 'km**2'}),
+                ('d', {'desc': "Turbine's diameter", 'units': 'm'}),
+                ('p_rated', {'desc': "Turbine's rated power", 'units': 'MW'}),
+                ('ws', {'desc': "Turbine's ws", 'units': 'm/s', 'shape': [N_ws]}),
+                ('pc', {'desc': "Turbine's power curve", 'units': 'MW', 'shape': [N_ws]}),
+                ('ct', {'desc': "Turbine's ct curve", 'shape': [N_ws]})
+            ],
+            outputs=[
+                ('pcw', {'desc': "Wake affected power curve", 'shape': [N_ws]})
+            ],
+            function=GenericWake.compute,
+            partial_options=[{'dependent': False, 'val': 0}],
+        )
+
+class wpp_pp:
     """
     Wind power plant model
 
@@ -217,45 +258,62 @@ class wpp(om.ExplicitComponent):
         N_ws = 51,
         wpp_efficiency = 0.95,
         ):
-        super().__init__()
+        # super().__init__()
         self.N_time = N_time
         # number of points in the power curves
         self.N_ws = N_ws
         self.wpp_efficiency = wpp_efficiency
 
-    def setup(self):
-        self.add_input('ws',
-                       desc="Turbine's ws",
-                       units='m/s',
-                       shape=[self.N_ws])
-        self.add_input('pcw',
-                       desc="Wake affected power curve",
-                       shape=[self.N_ws])
-        self.add_input('wst',
-                       desc="ws time series at the hub height",
-                       units='m/s',
-                       shape=[self.N_time])
+    # def setup(self):
+    #     self.add_input('ws',
+    #                    desc="Turbine's ws",
+    #                    units='m/s',
+    #                    shape=[self.N_ws])
+    #     self.add_input('pcw',
+    #                    desc="Wake affected power curve",
+    #                    shape=[self.N_ws])
+    #     self.add_input('wst',
+    #                    desc="ws time series at the hub height",
+    #                    units='m/s',
+    #                    shape=[self.N_time])
 
-        self.add_output('wind_t',
-                        desc="power time series at the hub height",
-                        units='MW',
-                        shape=[self.N_time])
+    #     self.add_output('wind_t',
+    #                     desc="power time series at the hub height",
+    #                     units='MW',
+    #                     shape=[self.N_time])
 
 
-    def compute(self, inputs, outputs):
+    def compute(self, ws, pcw, wst):
 
-        ws = inputs['ws']
-        pcw = inputs['pcw']
-        wst = inputs['wst']
+        # ws = inputs['ws']
+        # pcw = inputs['pcw']
+        # wst = inputs['wst']
 
-        outputs['wind_t'] = get_wind_ts(
+        wind_t = get_wind_ts(
             ws = ws,
             pcw = pcw,
             wst = wst,
             wpp_efficiency = self.wpp_efficiency,
         )
+        return wind_t
 
-class wpp_with_degradation(om.ExplicitComponent):
+class wpp(ComponentWrapper):
+    def __init__(self, N_time, N_ws=51, wpp_efficiency=0.95):
+        WPP = wpp_pp(N_time=N_time, N_ws=N_ws, wpp_efficiency=wpp_efficiency)
+        super().__init__(
+            inputs=[
+                ('ws', {'desc': "Turbine's ws", 'units': 'm/s', 'shape': [N_ws]}),
+                ('pcw', {'desc': "Wake affected power curve", 'shape': [N_ws]}),
+                ('wst', {'desc': "ws time series at the hub height", 'units': 'm/s', 'shape': [N_time]})
+            ],
+            outputs=[
+                ('wind_t', {'desc': "power time series at the hub height", 'units': 'MW', 'shape': [N_time]})
+            ],
+            function=WPP.compute,
+            partial_options=[{'dependent': False, 'val': 0}],
+        )
+
+class wpp_with_degradation_pp:
     """
     Wind power plant model
 
@@ -292,7 +350,7 @@ class wpp_with_degradation(om.ExplicitComponent):
         share_WT_deg_types = 0.5,
         weeks_per_season_per_year = None,
         ):
-        super().__init__()
+        # super().__init__()
         self.N_time = N_time
         self.life_y = life_y
         self.life_h = life_y*365*24
@@ -310,36 +368,36 @@ class wpp_with_degradation(om.ExplicitComponent):
         # In case data is provided as weeks per season
         self.weeks_per_season_per_year = weeks_per_season_per_year
         
-    def setup(self):
-        self.add_input('ws',
-                       desc="Turbine's ws",
-                       units='m/s',
-                       shape=[self.N_ws])
-        self.add_input('pcw',
-                       desc="Wake affected power curve",
-                       shape=[self.N_ws])
-        self.add_input('wst',
-                       desc="ws time series at the hub height",
-                       units='m/s',
-                       shape=[self.N_time])
+    # def setup(self):
+    #     self.add_input('ws',
+    #                    desc="Turbine's ws",
+    #                    units='m/s',
+    #                    shape=[self.N_ws])
+    #     self.add_input('pcw',
+    #                    desc="Wake affected power curve",
+    #                    shape=[self.N_ws])
+    #     self.add_input('wst',
+    #                    desc="ws time series at the hub height",
+    #                    units='m/s',
+    #                    shape=[self.N_time])
 
-        self.add_output('wind_t_ext_deg',
-                        desc="power time series with degradation",
-                        units='MW',
-                        shape=[self.life_intervals])
+    #     self.add_output('wind_t_ext_deg',
+    #                     desc="power time series with degradation",
+    #                     units='MW',
+    #                     shape=[self.life_intervals])
 
 
-    def compute(self, inputs, outputs):
+    def compute(self, ws, pcw, wst):
         
-        ws = inputs['ws']
-        pcw = inputs['pcw']
-        wst = inputs['wst']
+        # ws = inputs['ws']
+        # pcw = inputs['pcw']
+        # wst = inputs['wst']
 
         wst_ext = expand_to_lifetime(
             wst, life_y = self.life_y,
             intervals_per_hour=self.intervals_per_hour,)
         
-        outputs['wind_t_ext_deg'] = self.wpp_efficiency*get_wind_ts_degradation(
+        wind_t_ext_deg = self.wpp_efficiency*get_wind_ts_degradation(
             ws = ws, 
             pc = pcw, 
             ws_ts = wst_ext, 
@@ -348,6 +406,29 @@ class wpp_with_degradation(om.ExplicitComponent):
             life = self.life_intervals, 
             share = self.share_WT_deg_types,
             intervals_per_hour=self.intervals_per_hour)
+        return wind_t_ext_deg
+
+class wpp_with_degradation(ComponentWrapper):
+    def __init__(self, N_time, N_ws=51, wpp_efficiency=0.95, life_y=25, intervals_per_hour=1,
+                 wind_deg_yr=[0, 25], wind_deg=[0, 25*1/100], share_WT_deg_types=0.5,
+                 weeks_per_season_per_year=None):
+        WPPDeg = wpp_with_degradation_pp(
+            N_time=N_time, N_ws=N_ws, wpp_efficiency=wpp_efficiency, life_y=life_y,
+            intervals_per_hour=intervals_per_hour, wind_deg_yr=wind_deg_yr,
+            wind_deg=wind_deg, share_WT_deg_types=share_WT_deg_types,
+            weeks_per_season_per_year=weeks_per_season_per_year)
+        super().__init__(
+            inputs=[
+                ('ws', {'desc': "Turbine's ws", 'units': 'm/s', 'shape': [N_ws]}),
+                ('pcw', {'desc': "Wake affected power curve", 'shape': [N_ws]}),
+                ('wst', {'desc': "ws time series at the hub height", 'units': 'm/s', 'shape': [N_time]})
+            ],
+            outputs=[
+                ('wind_t_ext_deg', {'desc': "power time series with degradation", 'units': 'MW', 'shape': [WPPDeg.life_intervals]})
+            ],
+            function=WPPDeg.compute,
+            partial_options=[{'dependent': False, 'val': 0}],
+        )
 
 # class wpp_with_degradation_pp_2d:
 #     """
@@ -508,9 +589,9 @@ def get_wake_affected_pc(
     
     genWake_sm = ds.interp(
         ws=ws, 
-        sp=float(specific_power), 
-        Nwt=float(Nwt), 
-        wind_MW_per_km2=float(wind_MW_per_km2),
+        sp=np.asarray(specific_power).item(), 
+        Nwt=np.asarray(Nwt).item(), 
+        wind_MW_per_km2=np.asarray(wind_MW_per_km2).item(),
         kwargs={"fill_value": 1}
         )
     wl = genWake_sm.wl.values

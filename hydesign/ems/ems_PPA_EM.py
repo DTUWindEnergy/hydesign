@@ -1,10 +1,3 @@
-# %%
-
-# import glob
-# import os
-# import time
-# import copy
-
 # basic libraries
 import numpy as np
 # from numpy import newaxis as na
@@ -495,17 +488,6 @@ def ems_cplex_PPA_EM(
             load_min_penalty_factor=load_min_penalty_factor,
         )
         
-        # print()
-        # print()
-        # print()
-        # print(ib, len(batch))
-        # print()
-        # print('len(wind_ts_sel)',len(wind_ts_sel))
-        # print('len(P_HPP_ts_batch)',len(P_HPP_ts_batch))
-        # print('len(P_curtailment_ts_batch)',len(P_curtailment_ts_batch))
-        # print('len(P_charge_discharge_ts_batch)',len(P_charge_discharge_ts_batch))
-        # print('len(E_SOC_ts_batch)',len(E_SOC_ts_batch))
-        # print('len(penalty_batch)',len(penalty_batch))
         
         P_HPP_ts[batch] = P_HPP_ts_batch
         P_curtailment_ts[batch] = P_curtailment_ts_batch

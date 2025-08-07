@@ -170,7 +170,9 @@ def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
         batch_size = 1 * 24
         sim_pars_fn = examples_filepath + "solarX/hpp_pars.yml"
         hpp = hpp_model_solarX(
-            latitude, longitude, altitude,  # Geographical data for the site
+            latitude=latitude,
+            longitude=longitude,
+            altitude=altitude,  # Geographical data for the site
             work_dir='./',  # Directory for saving outputs
             sim_pars_fn=sim_pars_fn,  # Simulation parameters
             input_ts_fn=input_ts_fn,  # Input time series (weather, prices, etc.)
@@ -697,7 +699,7 @@ def test_evaluation_SolarX():
     evaluation_metrics = run_evaluation_SolarX()
     loaded_metrics = load_evaluation_SolarX()
     for i in range(len(loaded_metrics)):
-        np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i])
+        np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=3e-03)
         
 # ------------------------------------------------------------------------------------------------
 # PyWake

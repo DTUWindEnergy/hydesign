@@ -1,4 +1,3 @@
-# %%
 import os
 
 # basic libraries
@@ -62,26 +61,22 @@ class hpp_model(hpp_base):
         life_h = (self.life_y+N_limit)*365*24
         self.life_h = life_h
         
-        model = om.Group()
-
-        model.add_subsystem(
-            'abl_wd', 
+        comps = [
+            ('abl_wd', 
             ABL_WD(
                 weather_fn=input_ts_fn, 
                 N_time=N_time),
-            promotes_inputs=['hh']
-            )
-        
-        model.add_subsystem(
+            ),
+        (
             'existing_wpp', 
             existing_wpp(
                 N_time = N_time,
                 wpp_efficiency = wpp_efficiency,
                 existing_wpp_power_curve_xr_fn = existing_wpp_power_curve_xr_fn,
             )
-                )
+                ),
         
-        model.add_subsystem(
+        (
             'pvp', 
             pvp(
                 weather_fn = input_ts_fn, 
@@ -91,33 +86,16 @@ class hpp_model(hpp_base):
                 altitude = altitude,
                 tracking = sim_pars['tracking']
                ),
-            promotes_inputs=[
-                'surface_tilt',
-                'surface_azimuth',
-                'DC_AC_ratio',
-                'solar_MW',
-                'land_use_per_solar_MW',
-                ])
-        model.add_subsystem(
+            ),
+        (
             'ems', 
             ems(
                 life_y = life_y + N_limit,
                 N_time = N_time,
                 weeks_per_season_per_year = weeks_per_season_per_year,
                 ems_type=ems_type),
-            promotes_inputs=[
-                'price_t',
-                'b_P',
-                'b_E',
-                'G_MW',
-                'battery_depth_of_discharge',
-                'battery_charge_efficiency',
-                'peak_hr_quantile',
-                'cost_of_battery_P_fluct_in_peak_price_ratio',
-                'n_full_power_hours_expected_per_day_at_peak_price'
-                ]
-            )
-        model.add_subsystem(
+            ),
+        (
             'battery_degradation', 
             battery_degradation(
                 life_y = life_y + N_limit,
@@ -125,11 +103,9 @@ class hpp_model(hpp_base):
                 num_batteries = max_num_batteries_allowed,
                 weeks_per_season_per_year = weeks_per_season_per_year,
             ),
-            promotes_inputs=[
-                'min_LoH'
-                ])
+            ),
 
-        model.add_subsystem(
+        (
             'hybridization_shifted',
             hybridization_shifted(
                 N_limit=N_limit,
@@ -137,20 +113,19 @@ class hpp_model(hpp_base):
                 N_time=N_time,
                 life_h=life_h,
             ),
-            promotes_inputs=[
-                'delta_life',
-            ])
+            {'SoH': 'SoH_all'}
+        ),
 
-        model.add_subsystem(
+        (
             'battery_loss_in_capacity_due_to_temp', 
             battery_loss_in_capacity_due_to_temp(
                 life_y = life_y + N_limit,
                 weather_fn = input_ts_fn, # for extracting temperature
                 weeks_per_season_per_year = weeks_per_season_per_year,
             ),
-            )
+            ),
 
-        model.add_subsystem(
+        (
             'existing_wpp_with_degradation', 
             existing_wpp_with_degradation(
                 life_h = life_h,
@@ -162,9 +137,9 @@ class hpp_model(hpp_base):
                 share_WT_deg_types = share_WT_deg_types,
                 weeks_per_season_per_year = weeks_per_season_per_year,
             ),
-            )
+            ),
 
-        model.add_subsystem(
+        (
             'pvp_with_degradation',
             pvp_with_degradation(
                 life_y = life_y,
@@ -172,30 +147,18 @@ class hpp_model(hpp_base):
                 life_h = life_h,
                 pv_deg = sim_pars['pv_deg'],
             ),
-            promotes_inputs=[
-                'delta_life'
-            ])
+            ),
 
-        model.add_subsystem(
+        (
             'ems_long_term_operation', 
             ems_long_term_operation(
                 N_time = N_time,
                 life_y = life_y + N_limit,
             ),
-            promotes_inputs=[
-                'b_P',
-                'b_E',
-                'G_MW',
-                'battery_depth_of_discharge',
-                'battery_charge_efficiency',
-                'peak_hr_quantile',
-                'n_full_power_hours_expected_per_day_at_peak_price',
-                ],
-            promotes_outputs=[
-                'total_curtailment'
-            ])
+            {'SoH': 'SoH_shifted',}
+            ),
         
-        model.add_subsystem(
+        (
             'wpp_cost',
             wpp_cost(
                 wind_turbine_cost=sim_pars['wind_turbine_cost'],
@@ -207,14 +170,9 @@ class hpp_model(hpp_base):
                 p_rated_ref=sim_pars['p_rated_ref'],
                 N_time = N_time, 
             ),
-            promotes_inputs=[
-                'Nwt',
-                'Awpp',
-                'hh',
-                'd',
-                'p_rated'])
+            ),
 
-        model.add_subsystem(
+        (
             'pvp_cost',
             pvp_cost(
                 # pv_reduction=pv_reduction,
@@ -223,9 +181,9 @@ class hpp_model(hpp_base):
                 solar_inverter_cost=sim_pars['solar_inverter_cost'],
                 solar_fixed_onm_cost=sim_pars['solar_fixed_onm_cost'],
             ),
-            promotes_inputs=['solar_MW', 'DC_AC_ratio'])
+            ),
 
-        model.add_subsystem(
+        (
             'battery_cost',
             battery_cost(
                 battery_energy_cost=sim_pars['battery_energy_cost'],
@@ -236,40 +194,26 @@ class hpp_model(hpp_base):
                 life_y = life_y + N_limit,
                 battery_price_reduction_per_year = sim_pars['battery_price_reduction_per_year'],
             ),
-            promotes_inputs=[
-                'b_P',
-                'b_E',
-            ])
+            ),
 
-        model.add_subsystem(
+        (
             'shared_cost',
             shared_cost(
                 hpp_BOS_soft_cost=sim_pars['hpp_BOS_soft_cost'],
                 hpp_grid_connection_cost=sim_pars['hpp_grid_connection_cost'],
                 land_cost=sim_pars['land_cost'],
             ),
-            promotes_inputs=[
-                'G_MW',
-                'p_rated',
-                'Nwt',
-                'solar_MW',
-                'Awpp',
-            ])
+            ),
 
-        model.add_subsystem(
+        (
             'decommissioning_cost',
             decommissioning_cost(
                 decommissioning_cost_w=sim_pars['decommissioning_cost_w'],
                 decommissioning_cost_s=sim_pars['decommissioning_cost_s'],
             ),
-            promotes_inputs=['solar_MW',
-                             ],
-            promotes_outputs=['decommissioning_cost_tot_w',
-                              'decommissioning_cost_tot_s',
-                              ],
-            )
+            ),
 
-        model.add_subsystem(
+        (
             'finance', 
             finance(
                 N_limit = N_limit,
@@ -286,86 +230,13 @@ class hpp_model(hpp_base):
                 ref_yr_inflation = sim_pars['ref_yr_inflation'],
                 # Early paying or CAPEX Phasing
                 ),
-            promotes_inputs=[
-                             'delta_life',
-                              'hpp_WACC',
-                             'tax_rate',
-                             'decommissioning_cost_tot_w',
-                             'decommissioning_cost_tot_s',
-                            ],
-            promotes_outputs=['NPV',
-                              'IRR',
-                              'NPV_over_CAPEX',
-                              'LCOE',
-                              'COVE',
-                              'mean_AEP',
-                              'penalty_lifetime',
-                              'CAPEX',
-                              'OPEX',
-                              'break_even_PPA_price',
-                              ],
-        )
+            {'CAPEX_el_w':'CAPEX_sh_w', 'CAPEX_el_s':'CAPEX_sh_s','penalty_t':'penalty_t_with_deg','OPEX_el':'OPEX_sh'}, #{<input-key-name in model> (that corresponds to): <output-key-name from prior component>}
+            ),
+        ]
                   
                       
-        model.connect('abl_wd.wst', 'existing_wpp.wst')
-        model.connect('abl_wd.wdt', 'existing_wpp.wdt')
-        
-        model.connect('existing_wpp.wind_t', 'ems.wind_t')
-        model.connect('pvp.solar_t', 'ems.solar_t')
-        
-        model.connect('ems.b_E_SOC_t', 'battery_degradation.b_E_SOC_t')
-        
-        model.connect('battery_degradation.SoH', 'hybridization_shifted.SoH')
-        model.connect('hybridization_shifted.SoH_shifted', 'battery_loss_in_capacity_due_to_temp.SoH')
-        model.connect('battery_loss_in_capacity_due_to_temp.SoH_all', 'ems_long_term_operation.SoH')
 
-        model.connect('abl_wd.wst', 'existing_wpp_with_degradation.wst')
-        model.connect('abl_wd.wdt', 'existing_wpp_with_degradation.wdt')
-        
-        model.connect('existing_wpp_with_degradation.wind_t_ext_deg', 'ems_long_term_operation.wind_t_ext_deg')
-
-        model.connect('ems.solar_t_ext','pvp_with_degradation.solar_t_ext')
-        model.connect('pvp_with_degradation.solar_t_ext_deg', 'ems_long_term_operation.solar_t_ext_deg')
-        
-        model.connect('ems.wind_t_ext', 'ems_long_term_operation.wind_t_ext')
-        model.connect('ems.solar_t_ext', 'ems_long_term_operation.solar_t_ext')
-        model.connect('ems.price_t_ext', 'ems_long_term_operation.price_t_ext')
-        model.connect('ems.hpp_curt_t', 'ems_long_term_operation.hpp_curt_t')
-        model.connect('ems.b_E_SOC_t', 'ems_long_term_operation.b_E_SOC_t')
-        model.connect('ems.b_t', 'ems_long_term_operation.b_t')
-
-        model.connect('existing_wpp.wind_t', 'wpp_cost.wind_t')
-        
-        model.connect('battery_degradation.SoH','battery_cost.SoH')
-        #model.connect('hybridization_shifted.SoH_shifted', 'battery_cost.SoH')
-
-        model.connect('pvp.Apvp', 'shared_cost.Apvp')
-        
-        model.connect('wpp_cost.CAPEX_w', 'finance.CAPEX_w')
-        model.connect('wpp_cost.OPEX_w', 'finance.OPEX_w')
-
-        model.connect('pvp_cost.CAPEX_s', 'finance.CAPEX_s')
-        model.connect('pvp_cost.OPEX_s', 'finance.OPEX_s')
-
-        model.connect('battery_cost.CAPEX_b', 'finance.CAPEX_b')
-        model.connect('battery_cost.OPEX_b', 'finance.OPEX_b')
-
-        model.connect('shared_cost.CAPEX_sh_w', 'finance.CAPEX_el_w')
-        model.connect('shared_cost.CAPEX_sh_s', 'finance.CAPEX_el_s')
-        model.connect('shared_cost.OPEX_sh', 'finance.OPEX_el')
-
-        model.connect('wpp_cost.CAPEX_w', 'decommissioning_cost.CAPEX_w')
-
-        model.connect('ems.price_t_ext', 'finance.price_t_ext')
-        model.connect('ems_long_term_operation.hpp_t_with_deg', 'finance.hpp_t_with_deg')
-        model.connect('ems_long_term_operation.penalty_t_with_deg', 'finance.penalty_t')
-
-
-
-        prob = om.Problem(
-            model,
-            reports=None
-        )
+        prob = self.get_prob(comps)
 
         prob.setup()        
         
@@ -514,7 +385,7 @@ class hpp_model(hpp_base):
         if Nwt == 0:
             cf_wind = np.nan
         else:
-            wind_t_ext_degg = prob.get_val('existing_wpp_with_degradation.wind_t_ext_deg')
+            wind_t_ext_degg = prob['wind_t_ext_deg']
             cf_wind = np.mean(wind_t_ext_degg[wind_t_ext_degg != 0]) / wind_MW   # Capacity factor of wind only
 
         return np.hstack([
@@ -525,15 +396,15 @@ class hpp_model(hpp_base):
             prob['COVE'],
             prob['CAPEX']/1e6,
             prob['OPEX']/1e6,
-            prob.get_val('finance.CAPEX_w')/1e6,
-            prob.get_val('finance.OPEX_w')/1e6,
-            prob.get_val('finance.CAPEX_s')/1e6,
-            prob.get_val('finance.OPEX_s')/1e6,
-            prob.get_val('finance.CAPEX_b')/1e6,
-            prob.get_val('finance.OPEX_b')/1e6,
-            prob.get_val('finance.CAPEX_el_w')/1e6,
-            prob.get_val('finance.CAPEX_el_s') / 1e6,
-            prob.get_val('finance.OPEX_el')/1e6,
+            prob['CAPEX_w']/1e6,
+            prob['OPEX_w']/1e6,
+            prob['CAPEX_s']/1e6,
+            prob['OPEX_s']/1e6,
+            prob['CAPEX_b']/1e6,
+            prob['OPEX_b']/1e6,
+            prob['CAPEX_sh_w']/1e6,
+            prob['CAPEX_sh_s'] / 1e6,
+            prob['OPEX_sh']/1e6,
             prob['penalty_lifetime']/1e6,
             prob['mean_AEP']/1e3, #[GWh]
             # Grid Utilization factor
@@ -545,11 +416,11 @@ class hpp_model(hpp_base):
             b_P,
             prob['total_curtailment']/1e3, #[GWh]
             Awpp,
-            prob.get_val('shared_cost.Apvp'),
-            max( Awpp , prob.get_val('shared_cost.Apvp') ),
+            prob['Apvp'],
+            max( Awpp , prob['Apvp'] ),
             d,
             hh,
-            prob.get_val('battery_degradation.n_batteries') * (b_P>0),
+            prob['n_batteries'] * (b_P>0),
             prob['break_even_PPA_price'],
             cf_wind,
             ])

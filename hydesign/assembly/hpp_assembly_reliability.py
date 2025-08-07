@@ -68,6 +68,12 @@ class ReliabilityModel(hpp_model):
         n_panels_per_inverter = np.max((int(inverter_size_real * 10 ** 3 / panel_size), 1)) #  ensure that there is at least 1 inverter
         panel_size_real = inverter_size_real * 10 ** 3 / n_panels_per_inverter
         Nwt = int(Nwt)
+        x = [# Wind plant design
+                clearance, sp, wt_rated_power_MW, Nwt, wind_MW_per_km2,
+                # PV plant design
+                solar_MW,  surface_tilt_deg, surface_azimuth_deg, DC_AC_ratio,
+                # Energy storage & EMS price constrains
+                b_P, b_E_h, cost_of_batt_degr]
         for i in range(self.n_seed):
             with xr.open_dataset(os.path.join(self.reliability_data_set_path,self.battery_ds_fn), engine='h5netcdf') as ds_batt:
                 reliability_ts_battery = reliability_dataset_to_timeseries(ds_batt.sel(seed=i)).squeeze()
@@ -79,12 +85,6 @@ class ReliabilityModel(hpp_model):
                 reliability_ts_pv = np.hstack([reliability_dataset_to_timeseries(ds_pv.sel(seed=i).sel(batch_no=batch)) for batch in ds_pv.batch_no.values])[:,:n_panels_per_inverter].mean((1)).squeeze()
                 reliability_ts_inverter = reliability_dataset_to_timeseries(ds_inv.sel(seed=i))[:,:n_inverters].mean((1)).squeeze()
                 reliability_ts_pv = reliability_ts_pv * reliability_ts_inverter
-            x = [# Wind plant design
-                 clearance, sp, wt_rated_power_MW, Nwt, wind_MW_per_km2,
-                 # PV plant design
-                 solar_MW,  surface_tilt_deg, surface_azimuth_deg, DC_AC_ratio,
-                 # Energy storage & EMS price constrains
-                 b_P, b_E_h, cost_of_batt_degr]
     
             out = self.hpp(sim_pars_fn = self.sim_pars_fn,
                            reliability_ts_battery=reliability_ts_battery,
@@ -100,7 +100,10 @@ class ReliabilityModel(hpp_model):
                                    n_panels_per_inverter,
                                    panel_size_real,]])
             outs.append(out)
-        return self.aggregation_method(outs)
+        outputs = self.aggregation_method(outs)
+        self.outputs = outputs
+        self.inputs = x
+        return outputs
 
 
 

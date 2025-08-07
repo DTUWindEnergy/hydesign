@@ -11,9 +11,10 @@ import openmdao.api as om
 # from hydesign.look_up_tables import lut_filepath
 from hydesign.ems.ems import expand_to_lifetime
 from hydesign.wind.wind import get_wind_ts, get_Dws, get_shifted_pc
+from hydesign.openmdao_wrapper import ComponentWrapper
 
 
-class wpp_with_degradation(om.ExplicitComponent):
+class wpp_with_degradation_pp:
     """
     Wind power plant model
 
@@ -50,7 +51,7 @@ class wpp_with_degradation(om.ExplicitComponent):
         share_WT_deg_types=0.5,
         weeks_per_season_per_year = None,
         ):
-        super().__init__()
+        # super().__init__()
         self.N_limit = N_limit
         self.life_y = life_y
         self.N_time = N_time
@@ -66,34 +67,34 @@ class wpp_with_degradation(om.ExplicitComponent):
         # In case data is provided as weeks per season
         self.weeks_per_season_per_year = weeks_per_season_per_year
         
-    def setup(self):
-        self.add_input('delta_life',
-                       desc="Years between the starting of operations of the existing plant and the new plant",
-                       val=1)
-        self.add_input('ws',
-                       desc="Turbine's ws",
-                       units='m/s',
-                       shape=[self.N_ws])
-        self.add_input('pcw',
-                       desc="Wake affected power curve",
-                       shape=[self.N_ws])
-        self.add_input('wst',
-                       desc="ws time series at the hub height",
-                       units='m/s',
-                       shape=[self.N_time])
+    # def setup(self):
+    #     self.add_input('delta_life',
+    #                    desc="Years between the starting of operations of the existing plant and the new plant",
+    #                    val=1)
+    #     self.add_input('ws',
+    #                    desc="Turbine's ws",
+    #                    units='m/s',
+    #                    shape=[self.N_ws])
+    #     self.add_input('pcw',
+    #                    desc="Wake affected power curve",
+    #                    shape=[self.N_ws])
+    #     self.add_input('wst',
+    #                    desc="ws time series at the hub height",
+    #                    units='m/s',
+    #                    shape=[self.N_time])
 
-        self.add_output('wind_t_ext_deg',
-                        desc="power time series with degradation",
-                        units='MW',
-                        shape=[self.life_h])
+    #     self.add_output('wind_t_ext_deg',
+    #                     desc="power time series with degradation",
+    #                     units='MW',
+    #                     shape=[self.life_h])
 
 
-    def compute(self, inputs, outputs):
+    def compute(self, delta_life, ws, pcw, wst, **kwargs):
         
-        ws = inputs['ws']
-        pcw = inputs['pcw']
-        wst = inputs['wst']
-        delta_life = inputs['delta_life'][0]
+        # ws = inputs['ws']
+        # pcw = inputs['pcw']
+        # wst = inputs['wst']
+        # delta_life = inputs['delta_life'][0]
 
         N_limit = self.N_limit
         life_y = self.life_y
@@ -104,7 +105,7 @@ class wpp_with_degradation(om.ExplicitComponent):
         wst_ext = expand_to_lifetime(
             wst, life = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
         
-        outputs['wind_t_ext_deg'] = self.wpp_efficiency*get_wind_ts_degradation(
+        wind_t_ext_deg = self.wpp_efficiency*get_wind_ts_degradation(
             ws = ws, 
             pc = pcw, 
             ws_ts = wst_ext, 
@@ -112,9 +113,27 @@ class wpp_with_degradation(om.ExplicitComponent):
             wind_deg=self.wind_deg, 
             life_h = self.life_h, 
             share = self.share_WT_deg_types)
+        return wind_t_ext_deg
+
+class wpp_with_degradation(ComponentWrapper):
+    def __init__(self, N_limit, life_y, N_time, life_h, N_ws=51, wpp_efficiency=0.95, wind_deg=[0, 25 * 1 / 100], share_WT_deg_types=0.5, weeks_per_season_per_year=None):
+        WPP_With_Degradation = wpp_with_degradation_pp(N_limit, life_y, N_time, life_h, N_ws, wpp_efficiency, wind_deg, share_WT_deg_types, weeks_per_season_per_year)
+        super().__init__(
+            inputs=[
+                ('delta_life', {'desc': 'Years between the starting of operations of the existing plant and the new plant'}),
+                ('ws', {'desc': 'Turbine\'s ws', 'units': 'm/s', 'shape': [N_ws]}),
+                ('pcw', {'desc': 'Wake affected power curve', 'shape': [N_ws]}),
+                ('wst', {'desc': 'ws time series at the hub height', 'units': 'm/s', 'shape': [N_time]})
+            ],
+            outputs=[
+                ('wind_t_ext_deg', {'desc': 'power time series with degradation', 'units': 'MW', 'shape': [life_h]})
+            ],
+            function=WPP_With_Degradation.compute,
+            partial_options=[{'dependent': False, 'val': 0}],
+        )
 
 
-class existing_wpp(om.ExplicitComponent):
+class existing_wpp_pp:
     """
     Wind power plant model for an existing layout
 
@@ -155,36 +174,36 @@ class existing_wpp(om.ExplicitComponent):
         wpp_efficiency = 0.95,
         ):
         
-        super().__init__()
+        # super().__init__()
         self.N_time = N_time
         self.wpp_efficiency = wpp_efficiency
 
         self.existing_wpp_power_curve_xr_fn = existing_wpp_power_curve_xr_fn
         
         
-    def setup(self):
-        self.add_input('wst',
-                       desc="ws time series at the hub height",
-                       units='m/s',
-                       shape=[self.N_time])
-        self.add_input('wdt',
-                       desc="wd time series at the hub height",
-                       units='deg',
-                       shape=[self.N_time])
+    # def setup(self):
+    #     self.add_input('wst',
+    #                    desc="ws time series at the hub height",
+    #                    units='m/s',
+    #                    shape=[self.N_time])
+    #     self.add_input('wdt',
+    #                    desc="wd time series at the hub height",
+    #                    units='deg',
+    #                    shape=[self.N_time])
 
-        self.add_output('wind_t',
-                        desc="power time series at the hub height",
-                        units='MW',
-                        shape=[self.N_time])
+    #     self.add_output('wind_t',
+    #                     desc="power time series at the hub height",
+    #                     units='MW',
+    #                     shape=[self.N_time])
 
 
-    def compute(self, inputs, outputs):
+    def compute(self, wst, wdt, **kwargs):
 
         N_time = self.N_time
         # wpp_efficiency = self.wpp_efficiency
         
-        wst = inputs['wst']
-        wdt = inputs['wdt']
+        # wst = inputs['wst']
+        # wdt = inputs['wdt']
 
         # Calculation of the mode of wdt
         # mode_wdt = st.mode(wdt)
@@ -217,9 +236,25 @@ class existing_wpp(om.ExplicitComponent):
             wpp_efficiency = self.wpp_efficiency,
         )
         
-        outputs['wind_t'] = wake_losses_eff_t * wind_t_no_wake
+        wind_t = wake_losses_eff_t * wind_t_no_wake
+        return wind_t
 
-class existing_wpp_with_degradation(om.ExplicitComponent):
+class existing_wpp(ComponentWrapper):
+    def __init__(self, N_time, existing_wpp_power_curve_xr_fn, wpp_efficiency=0.95):
+        Existing_WPP = existing_wpp_pp(N_time, existing_wpp_power_curve_xr_fn, wpp_efficiency)
+        super().__init__(
+            inputs=[
+                ('wst', {'desc': 'ws time series at the hub height', 'units': 'm/s', 'shape': [N_time]}),
+                ('wdt', {'desc': 'wd time series at the hub height', 'units': 'deg', 'shape': [N_time]})
+            ],
+            outputs=[
+                ('wind_t', {'desc': 'power time series at the hub height', 'units': 'MW', 'shape': [N_time]})
+            ],
+            function=Existing_WPP.compute,
+            partial_options=[{'dependent': False, 'val': 0}],
+        )
+
+class existing_wpp_with_degradation_pp:
     """
     
 
@@ -271,7 +306,7 @@ class existing_wpp_with_degradation(om.ExplicitComponent):
         weeks_per_season_per_year = None,
         ):
         
-        super().__init__()
+        # super().__init__()
         self.life_h = life_h
         self.N_time = N_time
         self.wpp_efficiency = wpp_efficiency
@@ -286,32 +321,32 @@ class existing_wpp_with_degradation(om.ExplicitComponent):
         # In case data is provided as weeks per season
         self.weeks_per_season_per_year = weeks_per_season_per_year
         
-    def setup(self):
+    # def setup(self):
 
-        self.add_input('wst',
-                       desc="ws time series at the hub height",
-                       units='m/s',
-                       shape=[self.N_time])
-        self.add_input('wdt',
-                       desc="wd time series at the hub height",
-                       units='deg',
-                       shape=[self.N_time])
+    #     self.add_input('wst',
+    #                    desc="ws time series at the hub height",
+    #                    units='m/s',
+    #                    shape=[self.N_time])
+    #     self.add_input('wdt',
+    #                    desc="wd time series at the hub height",
+    #                    units='deg',
+    #                    shape=[self.N_time])
 
-        self.add_output('wst_ext',
-                       desc="ws time series at the hub height",
-                       units='m/s',
-                       shape=[self.life_h])
-        self.add_output('wdt_ext',
-                       desc="wd time series at the hub height",
-                       units='deg',
-                       shape=[self.life_h] )
-        self.add_output('wind_t_ext_deg',
-                        desc="power time series with degradation",
-                        units='MW',
-                        shape=[self.life_h])
+    #     self.add_output('wst_ext',
+    #                    desc="ws time series at the hub height",
+    #                    units='m/s',
+    #                    shape=[self.life_h])
+    #     self.add_output('wdt_ext',
+    #                    desc="wd time series at the hub height",
+    #                    units='deg',
+    #                    shape=[self.life_h] )
+    #     self.add_output('wind_t_ext_deg',
+    #                     desc="power time series with degradation",
+    #                     units='MW',
+    #                     shape=[self.life_h])
 
 
-    def compute(self, inputs, outputs):
+    def compute(self, wst, wdt, **kwargs):
 
         # N_time = self.N_time
         life_h = self.life_h
@@ -327,11 +362,11 @@ class existing_wpp_with_degradation(om.ExplicitComponent):
         # In case data is provided as weeks per season
         weeks_per_season_per_year = self.weeks_per_season_per_year
         
-        wst = inputs['wst']
+        # wst = inputs['wst']
         wst_ext = expand_to_lifetime(
             wst, life = life_h, weeks_per_season_per_year = weeks_per_season_per_year)
 
-        wdt = inputs['wdt']
+        # wdt = inputs['wdt']
         wdt_ext = expand_to_lifetime(
             wdt, life = life_h, weeks_per_season_per_year = weeks_per_season_per_year)
 
@@ -363,10 +398,27 @@ class existing_wpp_with_degradation(om.ExplicitComponent):
         
         wind_t_ext_deg = wake_losses_eff_t_ext*wind_t_ext_deg_no_wake
 
-        outputs['wst_ext'] = wst_ext
-        outputs['wdt_ext'] = wdt_ext
-        outputs['wind_t_ext_deg'] = wind_t_ext_deg
+        # outputs['wst_ext'] = wst_ext
+        # outputs['wdt_ext'] = wdt_ext
+        # outputs['wind_t_ext_deg'] = wind_t_ext_deg
+        return wst_ext, wdt_ext, wind_t_ext_deg
 
+class existing_wpp_with_degradation(ComponentWrapper):
+    def __init__(self, life_h, N_time, existing_wpp_power_curve_xr_fn, wpp_efficiency=0.95, wind_deg_yr=[0, 25], wind_deg=[0, 25*1/100], share_WT_deg_types=0.5, weeks_per_season_per_year=None):
+        Existing_WPP_With_Degradation = existing_wpp_with_degradation_pp(life_h, N_time, existing_wpp_power_curve_xr_fn, wpp_efficiency, wind_deg_yr, wind_deg, share_WT_deg_types, weeks_per_season_per_year)
+        super().__init__(
+            inputs=[
+                ('wst', {'desc': 'ws time series at the hub height', 'units': 'm/s', 'shape': [N_time]}),
+                ('wdt', {'desc': 'wd time series at the hub height', 'units': 'deg', 'shape': [N_time]})
+            ],
+            outputs=[
+                ('wst_ext', {'desc': 'ws time series at the hub height', 'units': 'm/s', 'shape': [life_h]}),
+                ('wdt_ext', {'desc': 'wd time series at the hub height', 'units': 'deg', 'shape': [life_h]}),
+                ('wind_t_ext_deg', {'desc': 'power time series with degradation', 'units': 'MW', 'shape': [life_h]})
+            ],
+            function=Existing_WPP_With_Degradation.compute,
+            partial_options=[{'dependent': False, 'val': 0}],
+        )
 
 # -----------------------------------------------------------------------
 # Auxiliar functions 

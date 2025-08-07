@@ -1,24 +1,4 @@
-# import glob
-# import os
-# import time
-
-# basic libraries
-# import numpy as np
-# from numpy import newaxis as na
-# import numpy_financial as npf
-# import pandas as pd
-# import seaborn as sns
 import openmdao.api as om
-# import yaml
-# import scipy as sp
-# from statsmodels.distributions.empirical_distribution import ECDF, monotone_fn_inverter
-# from scipy import stats
-# import xarray as xr
-# import matplotlib.pyplot as plt
-
-# Wisdem
-# from hydesign.nrel_csm_wrapper import wt_cost
-
 
 class shared_cost(om.ExplicitComponent):
     """Electrical infrastructure and land rent cost model"""

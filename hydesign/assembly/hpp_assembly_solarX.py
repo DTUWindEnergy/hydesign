@@ -1,4 +1,3 @@
-# %%
 import os
 
 # basic libraries
@@ -17,22 +16,18 @@ from hydesign.h2.h2 import BiogasH2
 from hydesign.ems.EmsSolarX import EmsSolarX
 from hydesign.costs.costs_solarX import sf_cost, cpv_cost, cst_cost, H2Cost, shared_cost
 from hydesign.finance.finance_solarX import finance_solarX
+from hydesign.assembly.hpp_assembly import hpp_base, mkdir
 
 
-class hpp_model_solarX:
+class hpp_model_solarX(hpp_base):
     """
     HPP (Hybrid Power Plant) design evaluator class
     """
 
     def __init__(
             self,
-            latitude,
-            longitude,
-            altitude,
             sim_pars_fn=None,
-            work_dir='./',
-            weeks_per_season_per_year=None,
-            input_ts_fn=None,  # it includes DNI, price_el_t, WS_1_t, T_1_t
+            # input_ts_fn=None,  # it includes DNI, price_el_t, WS_1_t, T_1_t
             verbose=True,
             batch_size=7 * 24,
             name='',
@@ -52,46 +47,20 @@ class hpp_model_solarX:
         input_ts_fn : User-provided weather time series; if None, weather data is generated from ERA5 datasets
         verbose : If True, prints status and loaded values
         """
-        # Create the working directory if it does not exist
-        work_dir = mkdir(work_dir)
+        hpp_base.__init__(self,
+                          sim_pars_fn=sim_pars_fn,
+                          wpp_efficiency=1.0,
+                          **kwargs
+                          )
 
-        # Load simulation parameters from the YAML file
-        try:
-            with open(sim_pars_fn) as file:
-                sim_pars = yaml.load(file, Loader=yaml.FullLoader)
-        except:
-            raise (f'sim_pars_fn="{sim_pars_fn}" can not be read')
-
-        # Print location parameters if verbose mode is enabled
-        if verbose:
-            print('\nFixed parameters on the site')
-            print('-------------------------------')
-            print('longitude =', longitude)
-            print('latitude =', latitude)
-            print('altitude =', altitude)
-
-
-        # Set lifetime parameters
+        N_time = self.N_time
+        sim_pars = self.sim_pars
+        weather = self.weather
+        dni = weather['dni'] / 1e6  # scaling Direct Normal Irradiance (DNI) from [W/m2] to [MW/m2]
+        WS_1 = weather['WS_1']  # Wind Speed at 1 meter hight
+        weeks_per_season_per_year = sim_pars['weeks_per_season_per_year']
         N_life = sim_pars['N_life']
         life_h = N_life * 365 * 24  # total hours in project lifetime
-
-        # Read the weather time series from the CSV file
-        weather = pd.read_csv(input_ts_fn, index_col=0, parse_dates=True)
-        N_time = len(weather)  # number of time points in weather data
-
-        # Adjust data if it is not a complete number of years
-        if np.mod(N_time, 365) / 24 == 0:
-            pass  # data is complete; proceed
-        else:
-            # Truncate data to a complete year if incomplete
-            N_sel = N_time - np.mod(N_time, 365)
-            weather = weather.iloc[:N_sel]
-            input_ts_fn = f'{work_dir}input_ts_modified.csv'
-            print('\ninput_ts_fn length is not a complete number of years (hyDesign handles years as 365 days).')
-            print(f'The file has been modified and stored in {input_ts_fn}')
-            weather.to_csv(input_ts_fn)
-            N_time = len(weather)
-
         # Extract necessary data series from weather data
         price_el_t = weather['Price']
         price_h2_t = weather.get('Price_h2', pd.Series(0, index=price_el_t.index))
@@ -99,50 +68,33 @@ class hpp_model_solarX:
         price_biogas_t = weather.get('Price_biogas', pd.Series(0, index=price_el_t.index))
         price_water_t = weather.get('Price_water', pd.Series(0, index=price_el_t.index))
         price_co2_t = weather.get('Price_co2', pd.Series(0, index=price_el_t.index))
-        dni = weather['dni'] / 1e6  # scaling Direct Normal Irradiance (DNI) from [W/m2] to [MW/m2]
-        WS_1 = weather['WS_1']  # Wind Speed at 1 meter hight
 
 
-        # Create an OpenMDAO model group to organize simulation subsystems
-        model = om.Group()
-
-        # Add subsystems representing different components of the hybrid power plant
-        # sf (solar field) subsystem
-        model.add_subsystem(
+        comps = [
+        (
             'sf',
             sf(
                 N_time=N_time,
                 sf_azimuth_altitude_efficiency_table=sim_pars['sf_azimuth_altitude_efficiency_table'],
-                latitude=latitude,
-                longitude=longitude,
-                altitude=altitude,
+                latitude=sim_pars['latitude'],
+                longitude=sim_pars['longitude'],
+                altitude=sim_pars['altitude'],
                 dni=dni,
             ),
-            promotes_inputs=['sf_area',
-                             'tower_diameter',
-                             'tower_height',
-                             'area_cpv_receiver_m2',
-                             'area_cst_receiver_m2',
-                             'area_dni_reactor_biogas_h2',
-                             ]
-        )
+        ),
 
         # cpv (Concentrated Photovoltaic) subsystem
-        model.add_subsystem(
+        (
             'cpv',
             cpv(
                 N_time=N_time,
                 cpv_efficiency=sim_pars['cpv_efficiency'],
                 p_max_cpv_mw_per_m2=sim_pars['p_max_cpv_mw_per_m2'],
             ),
-            promotes_inputs=[
-                'area_cpv_receiver_m2',
-                'cpv_dc_ac_ratio',
-            ]
-        )
+        ),
 
         # cst (Concentrated Solar Thermal) subsystem
-        model.add_subsystem(
+        (
             'cst',
             cst(
                 N_time=N_time,
@@ -158,13 +110,10 @@ class hpp_model_solarX:
                 wind_speed=WS_1,
                 flow_ms_max_cst_receiver_per_m2=sim_pars['flow_ms_max_cst_receiver_per_m2'],
             ),
-            promotes_inputs=[
-                'area_cst_receiver_m2'
-            ]
-        )
+        ),
 
         # BiogasH2 subsystem
-        model.add_subsystem(
+        (
             'BiogasH2',
             BiogasH2(
                 N_time=N_time,
@@ -173,10 +122,10 @@ class hpp_model_solarX:
                 water_h2_mass_ratio=sim_pars['water_h2_mass_ratio'],
                 co2_h2_mass_ratio=sim_pars['co2_h2_mass_ratio'],
             ),
-        )
+        ),
 
         # Energy management system (EMS) subsystem - designed for SolarX project
-        model.add_subsystem(
+        (
             'EmsSolarX',
             EmsSolarX(
                 N_time=N_time,
@@ -197,51 +146,25 @@ class hpp_model_solarX:
                 life_h=life_h,
                 batch_size=batch_size,
             ),
-            promotes_inputs=[
-                'price_el_t',
-                'price_h2_t',
-                'demand_q_t',
-                'price_biogas_t',
-                'price_water_t',
-                'price_co2_t',
-                'grid_el_capacity',
-                'peak_hr_quantile',
-                'n_full_power_hours_expected_per_day_at_peak_price',
-                'v_molten_salt_tank_m3',
-                'area_el_reactor_biogas_h2',
-                'area_dni_reactor_biogas_h2',
-                'heat_exchanger_capacity',
-                'p_rated_st',
-                'v_max_hot_ms_percentage',
-                'v_min_hot_ms_percentage',
-                'grid_h2_capacity',
-            ],
-            promotes_outputs=['total_curtailment']
-        )
+        ),
 
         # Cost and Finance subsystems
-        model.add_subsystem(
+        (
             'sf_cost',
             sf_cost(
                 heliostat_cost_per_m2=sim_pars['heliostat_cost_per_m2'],
                 sf_opex_cost_per_m2=sim_pars['sf_opex_cost_per_m2']),
-            promotes_inputs=[
-                'sf_area',
-            ]
-        )
+        ),
 
-        model.add_subsystem(
+        (
             'cpv_cost',
             cpv_cost(
                 cpv_cost_per_m2=sim_pars['cpv_cost_per_m2'],
                 inverter_cost_per_MW_DC=sim_pars['cpv_inverter_cost_per_MW_DC'],
                 cpv_fixed_opex_cost_per_m2=sim_pars['cpv_fixed_opex_cost_per_m2']),
-            promotes_inputs=[
-                'area_cpv_receiver_m2'
-            ]
-        )
+        ),
 
-        model.add_subsystem(
+        (
             'cst_cost',
             cst_cost(
                 cst_th_collector_cost_per_m2=sim_pars['cst_th_collector_cost_per_m2'],
@@ -249,15 +172,9 @@ class hpp_model_solarX:
                 steam_turbine_cost_per_MW=sim_pars['steam_turbine_cost_per_MW'],
                 heat_exchnager_cost_per_MW=sim_pars['heat_exchnager_cost_per_MW'],
                 fixed_opex_per_MW=sim_pars['fixed_opex_per_MW']),
-            promotes_inputs=[
-                'p_rated_st',
-                'v_molten_salt_tank_m3',
-                'heat_exchanger_capacity',
-                'area_cst_receiver_m2',
-            ]
-        )
+        ),
 
-        model.add_subsystem(
+        (
             'H2Cost',
             H2Cost(
                 reactor_cost_per_m2=sim_pars['reactor_cost_per_m2'],  # Waiting for Luc input
@@ -271,13 +188,10 @@ class hpp_model_solarX:
                 maintenance_cost_kg_per_h=sim_pars['maintenance_cost_kg_per_h'],
                 life_h=life_h,
             ),
-            promotes_inputs=[
-                'area_el_reactor_biogas_h2',
-                'area_dni_reactor_biogas_h2',
-            ]
-        )
+            {'p_biogas_h2_t': 'p_biogas_h2_t_ext'}
+        ),
 
-        model.add_subsystem(
+        (
             'shared_cost',
             shared_cost(
                 grid_connection_cost_per_mw=sim_pars['grid_connection_cost_mw'],
@@ -287,13 +201,9 @@ class hpp_model_solarX:
                 BOS_soft_cost=sim_pars['BOS_soft_cost_m2'],
                 tower_cost_per_m=sim_pars['tower_cost_per_m'],
             ),
-            promotes_inputs=[
-                'sf_area',
-                'tower_height'
-            ]
-        )
+        ),
 
-        model.add_subsystem(
+        (
             'finance_solarX',
             finance_solarX(
                 N_time=N_time,
@@ -308,99 +218,12 @@ class hpp_model_solarX:
                 phasing_yr=sim_pars['phasing_yr'],
                 phasing_CAPEX=sim_pars['phasing_CAPEX'],
                 life_h=life_h),
-            promotes_inputs=['discount_rate',
-                             'tax_rate'
-                             ],
-            promotes_outputs=['NPV',
-                              'IRR',
-                              'NPV_over_CAPEX',
-                              'LCOE',
-                              'lcove',
-                              'revenues',
-                              'mean_AEP',
-                              'mean_AH2P',
-                              'penalty_lifetime',
-                              'CAPEX',
-                              'OPEX',
-                              'break_even_PPA_price',
-                              'break_even_PPA_price_h2',
-                              ],
-        )
-
-        # Connect subsystems within the model, linking parameters and outputs where needed
-        # sf to cpv
-        model.connect('sf.max_solar_flux_cpv_t', 'cpv.max_solar_flux_cpv_t')
-
-        # sf to cst
-        model.connect('sf.max_solar_flux_cst_t', 'cst.max_solar_flux_cst_t')
-
-        # sf to biogas_h2
-        model.connect('sf.max_solar_flux_biogas_h2_t', 'BiogasH2.max_solar_flux_biogas_h2_t')
-
-        # cpv to ems
-        model.connect('cpv.p_cpv_max_dni_t', 'EmsSolarX.p_cpv_max_dni_t')
-        model.connect('cpv.cpv_inverter_mw', 'EmsSolarX.cpv_inverter_mw')
-        model.connect('cpv.cpv_rated_mw', 'EmsSolarX.cpv_rated_mw')
-
-        # cst to ems
-        model.connect('cst.flow_ms_max_t', 'EmsSolarX.flow_ms_max_t')
-        model.connect('cst.delta_q_hot_cold_ms_per_kg', 'EmsSolarX.delta_q_hot_cold_ms_per_kg')
-        model.connect('cst.flow_ms_max_cst_receiver_capacity', 'EmsSolarX.flow_ms_max_cst_receiver_capacity')
-
-        # biogas_h2 to ems
-        model.connect('BiogasH2.biogas_h2_mass_ratio', 'EmsSolarX.biogas_h2_mass_ratio')
-        model.connect('BiogasH2.water_h2_mass_ratio', 'EmsSolarX.water_h2_mass_ratio')
-        model.connect('BiogasH2.co2_h2_mass_ratio', 'EmsSolarX.co2_h2_mass_ratio')
-        model.connect('BiogasH2.heat_mwht_per_kg_h2', 'EmsSolarX.heat_mwht_per_kg_h2')
-        model.connect('BiogasH2.max_solar_flux_dni_reactor_biogas_h2_t', 'EmsSolarX.max_solar_flux_dni_reactor_biogas_h2_t')
-
-        # ems to costs
-        model.connect('EmsSolarX.price_el_t_ext', 'H2Cost.price_el_t_ext')
-        model.connect('EmsSolarX.price_water_t_ext', 'H2Cost.price_water_t_ext')
-        model.connect('EmsSolarX.price_co2_t_ext', 'H2Cost.price_co2_t_ext')
-        model.connect('EmsSolarX.price_biogas_t_ext', 'H2Cost.price_biogas_t_ext')
-
-        # sf to finance
-        model.connect('sf_cost.CAPEX_sf', 'finance_solarX.CAPEX_sf')
-        model.connect('sf_cost.OPEX_sf', 'finance_solarX.OPEX_sf')
-
-        # cpv to cpv_cost
-        model.connect('cpv.cpv_inverter_mw', 'cpv_cost.cpv_inverter_mw')
-
-        # cpv_cost to finance
-        model.connect('cpv_cost.CAPEX_cpv', 'finance_solarX.CAPEX_cpv')
-        model.connect('cpv_cost.OPEX_cpv', 'finance_solarX.OPEX_cpv')
-
-        # cst_cost to finance
-        model.connect('cst_cost.CAPEX_cst', 'finance_solarX.CAPEX_cst')
-        model.connect('cst_cost.OPEX_cst', 'finance_solarX.OPEX_cst')
-
-        # H2cost to finance
-        model.connect('H2Cost.CAPEX_h2', 'finance_solarX.CAPEX_h2')
-        model.connect('H2Cost.OPEX_h2', 'finance_solarX.OPEX_h2')
-        model.connect('shared_cost.CAPEX_sh', 'finance_solarX.CAPEX_sh')
-        model.connect('shared_cost.OPEX_sh', 'finance_solarX.OPEX_sh')
-
-        # ems to cost
-        model.connect('EmsSolarX.water_t_ext', 'H2Cost.water_t_ext')
-        model.connect('EmsSolarX.biogas_t_ext', 'H2Cost.biogas_t_ext')
-        model.connect('EmsSolarX.co2_t_ext', 'H2Cost.co2_t_ext')
-        model.connect('EmsSolarX.p_biogas_h2_t_ext', 'H2Cost.p_biogas_h2_t')
-
-        # ems to finance
-        model.connect('EmsSolarX.p_cpv_t_ext', 'finance_solarX.cpv_t_ext')
-        model.connect('EmsSolarX.p_st_t_ext', 'finance_solarX.p_st_t_ext')
-        model.connect('EmsSolarX.price_el_t_ext', 'finance_solarX.price_el_t_ext')
-        model.connect('EmsSolarX.price_h2_t_ext', 'finance_solarX.price_h2_t_ext')
-        model.connect('EmsSolarX.price_biogas_t_ext', 'finance_solarX.price_biogas_t_ext')
-        model.connect('EmsSolarX.hpp_curt_t_ext', 'finance_solarX.hpp_curt_t_ext')
-        model.connect('EmsSolarX.penalty_t_ext', 'finance_solarX.penalty_t_ext')
-        model.connect('EmsSolarX.hpp_t_ext', 'finance_solarX.hpp_t_ext')
-        model.connect('EmsSolarX.h2_t_ext', 'finance_solarX.h2_t_ext')
-        model.connect('EmsSolarX.penalty_q_t_ext', 'finance_solarX.penalty_q_t_ext')
+                {'cpv_t_ext': 'p_cpv_t_ext'}
+        ),
+        ]
 
         # Set up the model in OpenMDAO
-        prob = om.Problem(model, reports=None)
+        prob = self.get_prob(comps)
         prob.setup()
 
         # Set initial parameter values, such as system capacities, prices, and efficiencies, from simulation parameters
@@ -436,8 +259,8 @@ class hpp_model_solarX:
         # Store important attributes
         self.sim_pars = sim_pars
         self.prob = prob
-        self.input_ts_fn = input_ts_fn
-        self.altitude = altitude
+        self.input_ts_fn = sim_pars['input_ts_fn']
+        self.altitude = sim_pars['altitude']
         self.dni = dni
 
         # Define lists of output variables and design variables for later reference in evaluation
@@ -546,7 +369,22 @@ class hpp_model_solarX:
         hh : hub height of the wind turbine [m]
         self.num_batteries : Number of allowed replacements of the battery
         """
+        self.inputs = [            sf_area,
+            tower_height,
 
+            # cpv
+            area_cpv_receiver_m2,
+
+            # cst
+            heat_exchanger_capacity,
+            p_rated_st,
+            v_molten_salt_tank_m3,
+            area_cst_receiver_m2,
+
+            # bigas_h2
+            area_dni_reactor_biogas_h2,
+            area_el_reactor_biogas_h2,
+]
         prob = self.prob
         self.dni_total = self.dni * sf_area
 
@@ -574,7 +412,7 @@ class hpp_model_solarX:
         prob.run_model()  # execute the OpenMDAO model
 
         # Collect and return financial metrics, converting units where necessary
-        return np.hstack([
+        outputs = np.hstack([
             prob['NPV_over_CAPEX'],
             prob['NPV'] / 1e6,
             prob['IRR'],
@@ -602,35 +440,8 @@ class hpp_model_solarX:
             prob['break_even_PPA_price'],
             prob['break_even_PPA_price_h2'],
         ])
-
-    def print_design(self, x_opt, outs):
-        """
-        Print a summary of the design, including input design variables and output metrics.
-
-        Parameters
-        ----------
-        x_opt : list of design variables (optimized)
-        outs : list of calculated output metrics
-        """
-        print("\nDesign:\n---------------")
-        for i_v, var in enumerate(self.list_vars):
-            print(f'{var}: {x_opt[i_v]:.3f}')
-
-        print("\nOutputs:\n---------------")
-        for i_v, var in enumerate(self.list_out_vars):
-            try:
-                print(f'{var}: {outs[i_v]:.3f}')
-            except Exception as e:
-                print(f"Error processing {var}: {str(e)}")
-
-    print()
-
-    def evaluation_in_csv(self, name_file, longitude, latitude, altitude, x_opt, outs):
-        design_df = pd.DataFrame(columns=['longitude',
-                                          'latitude',
-                                          'altitude', ] + self.list_vars + self.list_out_vars, index=range(1))
-        design_df.iloc[0] = [longitude, latitude, altitude] + list(x_opt) + list(outs)
-        design_df.to_csv(f'{name_file}.csv')
+        self.outputs = outputs
+        return outputs
 
     def plot_solarX_results(self, n_hours=1 * 24, index_hour_start=0):
         prob = self.prob
@@ -753,18 +564,33 @@ class hpp_model_solarX:
 
         return fig
 
-
-# -----------------------------------------------------------------------
-# Auxiliar functions for ems modelling
-# -----------------------------------------------------------------------
-def mkdir(dir_):
-    if str(dir_).startswith('~'):
-        dir_ = str(dir_).replace('~', os.path.expanduser('~'))
-    try:
-        os.stat(dir_)
-    except BaseException:
-        try:
-            os.mkdir(dir_)
-        except BaseException:
-            pass
-    return dir_
+if __name__ == '__main__':
+    from hydesign.examples import examples_filepath
+    import time
+    name = 'Denmark_good_solar'
+    examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0, sep=';')
+    ex_site = examples_sites.loc[examples_sites.name == name]
+    longitude = ex_site['longitude'].values[0]
+    latitude = ex_site['latitude'].values[0]
+    altitude = ex_site['altitude'].values[0]
+    input_ts_fn = examples_filepath+ex_site['input_ts_fn'].values[0]
+    H2_demand_fn = examples_filepath+ex_site['H2_demand_col'].values[0]
+    batch_size = 1 * 24
+    sim_pars_fn = examples_filepath + "solarX/hpp_pars.yml"
+    hpp = hpp_model_solarX(
+        latitude=latitude,
+        longitude=longitude,
+        altitude=altitude,  # Geographical data for the site
+        sim_pars_fn=sim_pars_fn,  # Simulation parameters
+        input_ts_fn=input_ts_fn,  # Input time series (weather, prices, etc.)
+        batch_size=batch_size,)
+    x = [10000.0, 100, 10, 10, 10, 1000, 10, 5, 5]
+    start = time.time()
+    
+    outs = hpp.evaluate(*x)
+    
+    hpp.print_design()
+    
+    end = time.time()
+    print('exec. time [min]:', (end - start)/60 )
+    

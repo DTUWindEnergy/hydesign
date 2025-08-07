@@ -1,19 +1,13 @@
-import glob
-import os
-import time
 
 # basic libraries
 import numpy as np
-from numpy import newaxis as na
-import numpy_financial as npf
 import pandas as pd
 # import seaborn as sns
-import openmdao.api as om
-import yaml
 import scipy as sp
 from hydesign.finance.finance import calculate_NPV_IRR, calculate_WACC, get_inflation_index, calculate_CAPEX_phasing
+from hydesign.openmdao_wrapper import ComponentWrapper
 
-class finance_P2X_bidirectional(om.ExplicitComponent):
+class finance_P2X_bidirectional_pp:
     """Hybrid power plant financial model to estimate the overall profitability of the hybrid power plant with P2X.
     It considers different weighted average costs of capital (WACC) for wind, PV, battery and P2X. The model calculates
     the yearly cashflow as a function of the average revenue over the year, the tax rate and WACC after tax
@@ -53,7 +47,7 @@ class finance_P2X_bidirectional(om.ExplicitComponent):
         N_time : Number of hours in the representative dataset
         life_h : Lifetime of the plant in hours
         """ 
-        super().__init__()
+        # super().__init__()
         self.N_time = int(N_time)
         self.life_h = int(life_y*365*24)
 
@@ -77,134 +71,198 @@ class finance_P2X_bidirectional(om.ExplicitComponent):
         self.ptg_WACC = ptg_WACC
         self.tax_rate = tax_rate
 
-    def setup(self):
-        self.add_input('price_t_ext',
+    # def setup(self):
+        self.inputs = [
+        ('price_t_ext',
+         dict(
                        desc="Electricity price time series",
                        shape=[self.life_h])
-        
-        self.add_input('hpp_t',
+        ),
+        ('hpp_t',
+         dict(
                        desc="HPP power time series",
                        units='MW',
                        shape=[self.life_h])
-        
-        self.add_input('penalty_t',
-                        desc="penalty for not reaching expected energy productin at peak hours",
-                        shape=[self.life_h])
+        ),
+        ('penalty_t',
+         dict(
+                       desc="penalty for not reaching expected energy productin at peak hours",
+                       shape=[self.life_h])
+        ),
+        ('hpp_curt_t',
+         dict(
+                       desc="HPP curtailed power time series",
+                       units='MW',
+                       shape=[self.life_h])
+        ),
 
-        self.add_input('hpp_curt_t',
-                        desc="HPP curtailed power time series",
-                        units='MW',
-                        shape=[self.life_h])
-        
-        self.add_input('m_H2_t',
+        ('m_H2_t',
+         dict(
                        desc = "Produced Hydrogen",
                        units = 'kg',
                        shape=[self.life_h])
-        self.add_input('m_H2_offtake_t',
+        ),
+        ('m_H2_offtake_t',
+         dict(
                        desc = "Produced Hydrogen",
                        units = 'kg',
                        shape=[self.life_h])
-        
-        
-        self.add_input('P_ptg_grid_t',
+        ),
+
+        ('P_ptg_grid_t',
+         dict(
                        desc = "Power from grid",
                        units = 'MW',
                        shape=[self.life_h])
-        
-        self.add_input('m_H2_demand_t_ext',
+        ),
+        ('m_H2_demand_t_ext',
+         dict(
                        desc = "Hydrogen demand times series",
                        units = 'kg',
                        shape=[self.life_h])
-        
-        self.add_input('P_ptg_t',
+        ),
+
+        ('P_ptg_t',
+         dict(
                        desc = "Electrolyzer power consumption time series",
                        units = 'MW',
                        shape=[self.life_h])
-        
-        
-        self.add_input('CAPEX_w',
+        ),
+
+        ('CAPEX_w',
+         dict(
                        desc="CAPEX wpp")
-        self.add_input('OPEX_w',
+        ),
+        ('OPEX_w',
+         dict(
                        desc="OPEX wpp")
-
-        self.add_input('CAPEX_s',
+        ),
+        ('CAPEX_s',
+         dict(
                        desc="CAPEX solar pvp")
-        self.add_input('OPEX_s',
+        ),
+        ('OPEX_s',
+         dict(
                        desc="OPEX solar pvp")
-
-        self.add_input('CAPEX_b',
+        ),
+        ('CAPEX_b',
+         dict(
                        desc="CAPEX battery")
-        self.add_input('OPEX_b',
+        ),
+        ('OPEX_b',
+         dict(
                        desc="OPEX battery")
-
-        self.add_input('CAPEX_el',
+        ),
+        ('CAPEX_el',
+         dict(
                        desc="CAPEX electrical infrastructure")
-        self.add_input('OPEX_el',
+        ),
+        ('OPEX_el',
+         dict(
                        desc="OPEX electrical infrastructure")
-        
-        self.add_input('CAPEX_ptg',
+        ),
+        ('CAPEX_ptg',
+         dict(
                        desc = "CAPEX ptg plant")
-        self.add_input("OPEX_ptg",
+        ),
+        ("OPEX_ptg",
+         dict(
                        desc = "OPEX ptg plant")
-        self.add_input("water_consumption_cost",
+        ),
+        ("water_consumption_cost",
+         dict(
                        desc = "Water usage and purification for the electrolysis")
+        )
+        ]
+        self.outputs = [
+        
+        ('CAPEX',
+            dict(
+                desc="CAPEX")
+        ),
 
-        
-        self.add_output('CAPEX',
-                        desc="CAPEX")
-        
-        self.add_output('OPEX',
-                        desc="OPEX")
-        
-        self.add_output('NPV',
-                        desc="NPV")
-        
-        self.add_output('IRR',
-                        desc="IRR")
-        
-        self.add_output('NPV_over_CAPEX',
-                        desc="NPV/CAPEX")
-        
-        self.add_output('mean_Power2Grid',
-                        desc="Power to grid")
-        
-        self.add_output('mean_AEP',
-                        desc="mean AEP")
-        
-        self.add_output('annual_H2',
-                        desc = "Annual H2 production")
-        
-        self.add_output('LCOE',
-                        desc="LCOE")
-        
-        self.add_output('LCOH',
-                        desc="LCOH")
-        
-        self.add_output('Revenue',
-                        desc="Revenue")
-        
-        self.add_output('annual_P_ptg',
-                        desc="annual_P_ptg")
-        
-        self.add_output('annual_P_ptg_H2',
-                        desc="annual_P_ptg_H2")
-        
-        self.add_output('penalty_lifetime',
-                        desc="penalty_lifetime")
-        
-        self.add_output('break_even_H2_price',
-                        desc='price of hydrogen that results in NPV=0 with the given hybrid power plant configuration and operation',
-                        val=0)
-        
-        self.add_output('break_even_PPA_price',
-                        desc='PPA price of electricity that results in NPV=0 with the given hybrid power plant configuration and operation',
-                        val=0)
-        
+        ('OPEX',
+            dict(
+                desc="OPEX")
+        ),
 
-    def setup_partials(self):
-        self.declare_partials('*', '*', method='fd')
+        ('NPV',
+            dict(
+                desc="NPV")
+        ),
 
-    def compute(self, inputs, outputs):
+        ('IRR',
+            dict(
+                desc="IRR")
+        ),
+
+        ('NPV_over_CAPEX',
+            dict(
+                desc="NPV/CAPEX")
+        ),
+
+        ('mean_Power2Grid',
+            dict(
+                desc="Power to grid")
+        ),
+
+        ('mean_AEP',
+            dict(
+                desc="mean AEP")
+        ),
+
+        ('annual_H2',
+            dict(
+                desc="Annual H2 production")
+        ),
+
+        ('LCOE',
+            dict(
+                desc="LCOE")
+        ),
+
+        ('LCOH',
+            dict(
+                desc="LCOH")
+        ),
+
+        ('Revenue',
+            dict(
+                desc="Revenue")
+        ),
+
+        ('annual_P_ptg',
+            dict(
+                desc="annual_P_ptg")
+        ),
+
+        ('annual_P_ptg_H2',
+            dict(
+                desc="annual_P_ptg_H2")
+        ),
+
+        ('penalty_lifetime',
+            dict(
+                desc="penalty_lifetime")
+        ),
+
+        ('break_even_H2_price',
+            dict(
+                desc='price of hydrogen that results in NPV=0 with the given hybrid power plant configuration and operation',
+                val=0)
+        ),
+
+        ('break_even_PPA_price',
+            dict(
+                desc='PPA price of electricity that results in NPV=0 with the given hybrid power plant configuration and operation',
+                val=0)
+        )
+        ]
+
+    # def setup_partials(self):
+    #     self.declare_partials('*', '*', method='fd')
+
+    def compute(self, **inputs):
         """ Calculating the financial metrics of the hybrid power plant project.
 
         Parameters
@@ -252,7 +310,7 @@ class finance_P2X_bidirectional(om.ExplicitComponent):
         annual_P_ptg: Mean annual power to electrolyzer to produce hydrogen
         annual_P_ptg_H2: Mean annual power to electrolyzer from grid to produce hydrogen
         """
-        
+        outputs = {}
         N_time = self.N_time
         life_h = self.life_h
         
@@ -439,6 +497,19 @@ class finance_P2X_bidirectional(om.ExplicitComponent):
         outputs['penalty_lifetime'] = df['penalty_t'].sum()
         outputs['break_even_H2_price'] = break_even_H2_price
         outputs['break_even_PPA_price'] = break_even_PPA_price
+
+
+        out_keys = ['CAPEX', 'OPEX', 'NPV', 'IRR', 'NPV_over_CAPEX', 'mean_Power2Grid', 'mean_AEP', 'annual_H2', 'LCOE', 'LCOH', 'Revenue', 
+                    'annual_P_ptg', 'annual_P_ptg_H2', 'penalty_lifetime', 'break_even_H2_price', 'break_even_PPA_price']
+        return [outputs[k] for k in out_keys]
+
+class finance_P2X_bidirectional(ComponentWrapper):
+    def __init__(self, **insta_inp):
+        finance_model = finance_P2X_bidirectional_pp(**insta_inp)
+        super().__init__(inputs=finance_model.inputs,
+                            outputs=finance_model.outputs,
+                            function=finance_model.compute,
+                            partial_options=[{'dependent': False, 'val': 0}],)
 
 
 # -----------------------------------------------------------------------

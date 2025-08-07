@@ -1,16 +1,17 @@
-import os
-import time
+# import os
+# import time
 
 # basic libraries
 import numpy as np
-from numpy import newaxis as na
+# from numpy import newaxis as na
 import numpy_financial as npf
 import pandas as pd
-import openmdao.api as om
+# import openmdao.api as om
 import scipy as sp
-import openpyxl
+# import openpyxl
+from hydesign.openmdao_wrapper import ComponentWrapper
 
-class finance_solarX(om.ExplicitComponent):
+class finance_solarX_pp:
     """
     Financial model to evaluate the profitability of a hybrid power plant (HPP).
 
@@ -62,7 +63,7 @@ class finance_solarX(om.ExplicitComponent):
             CAPEX values associated with each phasing year.
         """
 
-        super().__init__()
+        # super().__init__()
         self.N_time = int(N_time)
         self.life_h = int(life_h)
 
@@ -79,7 +80,7 @@ class finance_solarX(om.ExplicitComponent):
         self.phasing_yr = phasing_yr
         self.phasing_CAPEX = phasing_CAPEX
 
-    def setup(self):
+    # def setup(self):
         """
         Defines inputs and outputs for the financial model in OpenMDAO.
 
@@ -88,120 +89,116 @@ class finance_solarX(om.ExplicitComponent):
         """
         # inputs
         # hpp
-        self.add_input('hpp_t_ext',
-                       desc="HPP power time series",
-                       units='MW',
-                       shape=[self.life_h])
-        self.add_input('hpp_curt_t_ext',
-                       desc="HPP curtailment power time series",
-                       units='MW',
-                       shape=[self.life_h])
+        self.inputs = [
+            ('hpp_t_ext', dict(desc="HPP power time series", units='MW', shape=[self.life_h])),
+            ('hpp_curt_t_ext', dict(desc="HPP curtailment power time series", units='MW', shape=[self.life_h])),
+        
 
         # cpv
-        self.add_input('cpv_t_ext',
+        ('cpv_t_ext', dict(
                        desc="cpv power time series",
                        units='MW',
-                       shape=[self.life_h])
+                       shape=[self.life_h])),
 
 
         # cst
-        self.add_input('p_st_t_ext',
+        ('p_st_t_ext', dict(
                        desc="CSP power time series",
                        units='MW',
-                       shape=[self.life_h])
-        self.add_input('q_t_ext',
+                       shape=[self.life_h])),
+        ('q_t_ext', dict(
                        desc="produced heat time series",
-                       units='MJ',
-                       shape=[self.life_h])
+                       units='MW',
+                       shape=[self.life_h])),
 
 
         # biogas_h2
-        self.add_input('h2_t_ext',
+        ('h2_t_ext', dict(
                        desc="H2 production time series",
                        units='kg/h',
-                       shape=[self.life_h])
-        self.add_input('biogas_t_ext',
+                       shape=[self.life_h])),
+        ('biogas_t_ext', dict(
                        desc="Consumed biogas time series",
                        units='kg/h',
-                       shape=[self.life_h])
+                       shape=[self.life_h])),
 
         # prices
-        self.add_input('price_el_t_ext',
+        ('price_el_t_ext', dict(
                        desc="Electricity price time series",
-                       shape=[self.life_h])
-        self.add_input('price_h2_t_ext',
+                       shape=[self.life_h])),
+        ('price_h2_t_ext', dict(
                        desc="Hydrogen price time series",
-                       shape=[self.life_h])
-    
-        self.add_input('price_biogas_t_ext',
+                       shape=[self.life_h])),
+        ('price_biogas_t_ext', dict(
                        desc="Biogas price time series",
-                       shape=[self.life_h])
+                       shape=[self.life_h])),
 
         # capex and opex
-        self.add_input('CAPEX_sf',
-                       desc="CAPEX solar field")
-        self.add_input('OPEX_sf',
-                       desc="OPEX solar field")
-        self.add_input('CAPEX_cpv',
-                       desc="CAPEX cpv")
-        self.add_input('OPEX_cpv',
-                       desc="OPEX cpv")
-        self.add_input('CAPEX_cst',
-                       desc="CAPEX CST")
-        self.add_input('OPEX_cst',
-                       desc="OPEX CSP")
-        self.add_input('CAPEX_h2',
-                       desc="CAPEX Biogas_H2")
-        self.add_input('OPEX_h2',
-                       desc="OPEX H2")
-        self.add_input('CAPEX_sh',
-                       desc="CAPEX electrical infrastructure")
-        self.add_input('OPEX_sh',
-                       desc="OPEX electrical infrastructure")
+        ('CAPEX_sf', dict(
+                       desc="CAPEX solar field")),
+        ('OPEX_sf', dict(
+                       desc="OPEX solar field")),
+        ('CAPEX_cpv', dict(
+                       desc="CAPEX cpv")),
+        ('OPEX_cpv', dict(
+                       desc="OPEX cpv")),
+        ('CAPEX_cst', dict(
+                       desc="CAPEX CST")),
+        ('OPEX_cst', dict(
+                       desc="OPEX CSP")),
+        ('CAPEX_h2', dict(
+                       desc="CAPEX Biogas_H2")),
+        ('OPEX_h2', dict(
+                       desc="OPEX H2")),
+        ('CAPEX_sh', dict(
+                       desc="CAPEX electrical infrastructure")),
+        ('OPEX_sh', dict(
+                       desc="OPEX electrical infrastructure")),
 
         # other
-        self.add_input('penalty_t_ext',
+        ('penalty_t_ext', dict(
                         desc="penalty for not reaching expected energy production at peak hours",
-                        shape=[self.life_h])
-        self.add_input('penalty_q_t_ext',
+                        shape=[self.life_h])),
+        ('penalty_q_t_ext', dict(
                         desc="penalty for not reaching expected heat production",
-                        shape=[self.life_h])
-        self.add_input('discount_rate',
-                       desc="discount rate")
-        self.add_input('tax_rate',
-                       desc="Corporate tax rate")
-
+                        shape=[self.life_h])),
+        ('discount_rate', dict(
+                       desc="discount rate")),
+        ('tax_rate', dict(
+                       desc="Corporate tax rate"))
+        ]
+        self.outputs = [
         # outputs
-        self.add_output('CAPEX',
-                        desc="CAPEX")
-        self.add_output('OPEX',
-                        desc="OPEX")
-        self.add_output('NPV',
-                        desc="NPV")
-        self.add_output('IRR',
-                        desc="IRR")
-        self.add_output('NPV_over_CAPEX',
-                        desc="NPV/CAPEX")
-        self.add_output('mean_AEP',
-                        desc="mean AEP")
-        self.add_output('mean_AH2P',
-                        desc="mean annual H2 production")
-        self.add_output('LCOE',
-                        desc="LCOE")
-        self.add_output('revenues',
-                        desc="Revenues")
-        self.add_output('penalty_lifetime',
-                        desc="penalty_lifetime")
-        self.add_output('break_even_PPA_price',
-                        desc='PPA price of electricity that results in NPV=0 with the given hybrid power plant configuration and operation')
-        self.add_output('break_even_PPA_price_h2',
-                        desc='PPA price of hydrogen that results in NPV=0 with the given hybrid power plant configuration and operation')
-        self.add_output('break_even_PPA_price_q',
-                        desc='PPA price of heat that results in NPV=0 with the given hybrid power plant configuration and operation')
-        self.add_output('lcove',
-                        desc="cost of valued energy")
-
-    def compute(self, inputs, outputs):
+        ('CAPEX', dict(
+                       desc="CAPEX")),
+        ('OPEX', dict(
+                       desc="OPEX")),
+        ('NPV', dict(
+                       desc="NPV")),
+        ('IRR', dict(
+                       desc="IRR")),
+        ('NPV_over_CAPEX', dict(
+                       desc="NPV/CAPEX")),
+        ('mean_AEP', dict(
+                       desc="mean AEP")),
+        ('mean_AH2P', dict(
+                       desc="mean annual H2 production")),
+        ('LCOE', dict(
+                       desc="LCOE")),
+        ('revenues', dict(
+                       desc="Revenues")),
+        ('penalty_lifetime', dict(
+                       desc="penalty_lifetime")),
+        ('break_even_PPA_price', dict(
+                       desc='PPA price of electricity that results in NPV=0 with the given hybrid power plant configuration and operation')),
+        ('break_even_PPA_price_h2', dict(
+                       desc='PPA price of hydrogen that results in NPV=0 with the given hybrid power plant configuration and operation')),
+        ('break_even_PPA_price_q', dict(
+                       desc='PPA price of heat that results in NPV=0 with the given hybrid power plant configuration and operation')),
+        ('lcove', dict(
+                       desc="cost of valued energy"))   
+        ]
+    def compute(self, **inputs):
         """Computes financial metrics based on revenue, CAPEX, OPEX, and other financial parameters.
 
         The method calculates cash flow using inflation-adjusted revenues, CAPEX phasing, and
@@ -215,7 +212,7 @@ class finance_solarX(om.ExplicitComponent):
         outputs : dict
             Dictionary of computed financial outputs, including CAPEX, OPEX, NPV, IRR, etc.
         """
-
+        outputs = {}
         # Extract inputs and setup time-based parameters
         N_time = self.N_time
         life_h = self.life_h
@@ -314,6 +311,7 @@ class finance_solarX(om.ExplicitComponent):
         break_even_PPA_price_el = np.maximum(0, break_even_price_el)
         break_even_PPA_price_h2 = np.maximum(0, break_even_price_h2)
         break_even_PPA_price_q = np.maximum(0, break_even_price_q)
+        outputs['break_even_PPA_price_q'] = break_even_PPA_price_q
 
         outputs['NPV'] = NPV
         outputs['IRR'] = IRR
@@ -354,6 +352,19 @@ class finance_solarX(om.ExplicitComponent):
         revenues_discount = np.sum(revenues / (1 + inputs['discount_rate'])**iy)
         lcove = level_costs / revenues_discount
         outputs['lcove'] = lcove
+        out_keys = ['CAPEX', 'OPEX', 'NPV', 'IRR', 'NPV_over_CAPEX',
+                    'mean_AEP', 'mean_AH2P', 'LCOE', 'revenues', 'penalty_lifetime',
+                    'break_even_PPA_price', 'break_even_PPA_price_h2', 'break_even_PPA_price_q','lcove']
+        return [outputs[key] for key in out_keys]
+    
+class finance_solarX(ComponentWrapper):
+    def __init__(self, **insta_inp):
+        finance_solarX_model = finance_solarX_pp(**insta_inp)
+        super().__init__(inputs=finance_solarX_model.inputs,
+                            outputs=finance_solarX_model.outputs,
+                            function=finance_solarX_model.compute,
+                            partial_options=[{'dependent': False, 'val': 0}],)
+
 
 # -----------------------------------------------------------------------
 # Auxiliar functions for financial modelling

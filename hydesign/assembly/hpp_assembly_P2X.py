@@ -61,96 +61,60 @@ class hpp_model_P2X(hpp_base):
         eff_curve = my_df[1:].values.astype(float)
         electrolyzer_eff_curve_type = sim_pars['electrolyzer_eff_curve_type']
         
-        model = om.Group()
-        
-        model.add_subsystem(
-            'abl', 
-            ABL(
-                weather_fn=input_ts_fn, 
-                N_time=N_time),
-            promotes_inputs=['hh']
-            )
-        model.add_subsystem(
-            'genericWT', 
-            genericWT_surrogate(
-                genWT_fn=genWT_fn,
-                N_ws = N_ws),
-            promotes_inputs=[
-               'hh',
-               'd',
-               'p_rated',
-            ])
-        
-        model.add_subsystem(
-            'genericWake', 
-            genericWake_surrogate(
-                genWake_fn=genWake_fn,
-                N_ws = N_ws),
-            promotes_inputs=[
-                'Nwt',
-                'Awpp',
-                'd',
-                'p_rated',
-                ])
-        
-        model.add_subsystem(
-            'wpp', 
-            wpp(
-                N_time = N_time,
-                N_ws = N_ws,
-                wpp_efficiency = wpp_efficiency,)
-                )
-        
-        model.add_subsystem(
-            'pvp', 
-            pvp(
-                weather_fn = input_ts_fn, 
-                N_time = N_time,
-                latitude = latitude,
-                longitude = longitude,
-                altitude = altitude,
-                tracking = sim_pars['tracking']
-               ),
-            promotes_inputs=[
-                'surface_tilt',
-                'surface_azimuth',
-                'DC_AC_ratio',
-                'solar_MW',
-                'land_use_per_solar_MW',
-                ])
-        model.add_subsystem(
-            'ems', 
-            ems(
-                N_time = N_time,
-                eff_curve=eff_curve,
-                ems_type=ems_type,
-                electrolyzer_eff_curve_type=electrolyzer_eff_curve_type,
-                price_H2=sim_pars['price_H2'],
-                storage_eff=sim_pars['storage_eff'],
-                hhv=sim_pars['hhv'],
-                penalty_factor_H2=sim_pars['penalty_factor_H2'],
-                min_power_standby=sim_pars['min_power_standby'],
+        # model = om.Group()
+        comps = [
+            (
+                'abl', 
+                ABL(
+                    weather_fn=input_ts_fn, 
+                    N_time=N_time),
+            ),
+            (
+                'genericWT', 
+                genericWT_surrogate(
+                    genWT_fn=genWT_fn,
+                    N_ws = N_ws),
+            ),
+            (
+                'genericWake', 
+                genericWake_surrogate(
+                    genWake_fn=genWake_fn,
+                    N_ws = N_ws),
+            ),
+            (
+                'wpp', 
+                wpp(
+                    N_time = N_time,
+                    N_ws = N_ws,
+                    wpp_efficiency = wpp_efficiency,)
+            ),
+            (
+                'pvp', 
+                pvp(
+                    weather_fn = input_ts_fn, 
+                    N_time = N_time,
+                    latitude = latitude,
+                    longitude = longitude,
+                    altitude = altitude,
+                    tracking = sim_pars['tracking']
                 ),
-            promotes_inputs=[
-                'price_t',
-                'b_P',
-                'b_E',
-                'G_MW',
-                'battery_depth_of_discharge',
-                'battery_charge_efficiency',
-                'peak_hr_quantile',
-                'cost_of_battery_P_fluct_in_peak_price_ratio',
-                'n_full_power_hours_expected_per_day_at_peak_price',
-                'ptg_MW',
-                'HSS_kg',
-                'm_H2_demand_t',
-                ],
-            promotes_outputs=[
-                'total_curtailment'
-            ])
-
+            ),
+            (
+                'ems', 
+                ems(
+                    N_time = N_time,
+                    eff_curve=eff_curve,
+                    ems_type=ems_type,
+                    electrolyzer_eff_curve_type=electrolyzer_eff_curve_type,
+                    price_H2=sim_pars['price_H2'],
+                    storage_eff=sim_pars['storage_eff'],
+                    hhv=sim_pars['hhv'],
+                    penalty_factor_H2=sim_pars['penalty_factor_H2'],
+                    min_power_standby=sim_pars['min_power_standby'],
+                ),
+            ),
         
-        model.add_subsystem(
+        (
             'wpp_cost',
             wpp_cost(
                 wind_turbine_cost=sim_pars['wind_turbine_cost'],
@@ -162,13 +126,9 @@ class hpp_model_P2X(hpp_base):
                 p_rated_ref=sim_pars['p_rated_ref'],
                 N_time = N_time, 
             ),
-            promotes_inputs=[
-                'Nwt',
-                'Awpp',
-                'hh',
-                'd',
-                'p_rated'])
-        model.add_subsystem(
+
+                ),
+        (
             'pvp_cost',
             pvp_cost(
                 solar_PV_cost=sim_pars['solar_PV_cost'],
@@ -176,9 +136,9 @@ class hpp_model_P2X(hpp_base):
                 solar_inverter_cost=sim_pars['solar_inverter_cost'],
                 solar_fixed_onm_cost=sim_pars['solar_fixed_onm_cost'],
             ),
-            promotes_inputs=['solar_MW', 'DC_AC_ratio'])
+            ),
 
-        model.add_subsystem(
+        (
             'battery_cost',
             battery_cost(
                 battery_energy_cost=sim_pars['battery_energy_cost'],
@@ -189,23 +149,17 @@ class hpp_model_P2X(hpp_base):
                 life_y = life_y,
                 battery_price_reduction_per_year = sim_pars['battery_price_reduction_per_year']
             ),
-            promotes_inputs=[
-                'b_P',
-                'b_E',
-                ])
+                ),
 
-        model.add_subsystem(
+        (
             'shared_cost',
             shared_cost(
                 hpp_BOS_soft_cost=sim_pars['hpp_BOS_soft_cost'],
                 hpp_grid_connection_cost=sim_pars['hpp_grid_connection_cost'],
                 land_cost=sim_pars['land_cost'],
             ),
-            promotes_inputs=[
-                'G_MW',
-                'Awpp',
-            ])
-        model.add_subsystem(
+            ),
+        (
             'ptg_cost',
             ptg_cost(
                 electrolyzer_capex_cost = sim_pars['electrolyzer_capex_cost'],
@@ -220,11 +174,8 @@ class hpp_model_P2X(hpp_base):
                 transportation_distance = sim_pars['H2_transportation_distance'],
                 N_time = N_time,
                 ),
-            promotes_inputs=[
-            'ptg_MW',
-            'HSS_kg',
-            ])
-        model.add_subsystem(
+            ),
+        (
             'finance_P2X',
             finance_P2X(
                 N_time = N_time,
@@ -243,76 +194,12 @@ class hpp_model_P2X(hpp_base):
                 ptg_WACC = sim_pars['ptg_WACC'],
                 tax_rate = sim_pars['tax_rate'],
                 ),
-            promotes_inputs=[],
-            promotes_outputs=['NPV',
-                              'IRR',
-                              'NPV_over_CAPEX',
-                              'LCOE',
-                              'LCOH',
-                              'Revenue',
-                              'mean_AEP',
-                              'annual_H2',
-                              'annual_P_ptg',
-                              'penalty_lifetime',
-                              'CAPEX',
-                              'OPEX',
-                              'break_even_H2_price',
-                              'break_even_PPA_price',
-                              ],
-        )
-                  
-                      
-        model.connect('genericWT.ws', 'genericWake.ws')
-        model.connect('genericWT.pc', 'genericWake.pc')
-        model.connect('genericWT.ct', 'genericWake.ct')
-        model.connect('genericWT.ws', 'wpp.ws')
+                    {'CAPEX_el': 'CAPEX_sh',
+                    'OPEX_el': 'OPEX_sh',}
+            ),
+        ]                  
 
-        model.connect('genericWake.pcw', 'wpp.pcw')
-
-        model.connect('abl.wst', 'wpp.wst')
-        
-        model.connect('wpp.wind_t', 'ems.wind_t')
-        model.connect('pvp.solar_t', 'ems.solar_t')
-        
-        
-        model.connect('wpp.wind_t', 'wpp_cost.wind_t')
-        
-        
-        model.connect('pvp.Apvp', 'shared_cost.Apvp')
-        
-        model.connect('wpp_cost.CAPEX_w', 'finance_P2X.CAPEX_w')
-        model.connect('wpp_cost.OPEX_w', 'finance_P2X.OPEX_w')
-
-        model.connect('pvp_cost.CAPEX_s', 'finance_P2X.CAPEX_s')
-        model.connect('pvp_cost.OPEX_s', 'finance_P2X.OPEX_s')
-
-        model.connect('battery_cost.CAPEX_b', 'finance_P2X.CAPEX_b')
-        model.connect('battery_cost.OPEX_b', 'finance_P2X.OPEX_b')
-
-        model.connect('shared_cost.CAPEX_sh', 'finance_P2X.CAPEX_el')
-        model.connect('shared_cost.OPEX_sh', 'finance_P2X.OPEX_el')
-
-        model.connect('ptg_cost.CAPEX_ptg', 'finance_P2X.CAPEX_ptg')
-        model.connect('ptg_cost.OPEX_ptg', 'finance_P2X.OPEX_ptg')
-        model.connect('ptg_cost.water_consumption_cost', 'finance_P2X.water_consumption_cost')
-
-
-        model.connect('ems.price_t_ext', 'finance_P2X.price_t_ext')
-        model.connect('ems.hpp_t', 'finance_P2X.hpp_t')
-        model.connect('ems.penalty_t', 'finance_P2X.penalty_t')
-        model.connect('ems.hpp_curt_t', 'finance_P2X.hpp_curt_t')
-        model.connect('ems.m_H2_t', 'finance_P2X.m_H2_t')
-        model.connect('ems.m_H2_t', 'ptg_cost.m_H2_t' )
-        model.connect('ems.P_ptg_t', 'finance_P2X.P_ptg_t')
-        model.connect('ems.m_H2_demand_t_ext', 'finance_P2X.m_H2_demand_t_ext')
-        model.connect('ems.m_H2_offtake_t', 'finance_P2X.m_H2_offtake_t')
-        model.connect('ems.m_H2_demand_t_ext', 'ptg_cost.m_H2_demand_t_ext')
-        model.connect('ems.m_H2_offtake_t', 'ptg_cost.m_H2_offtake_t')
-        
-        prob = om.Problem(
-            model,
-            reports=None
-        )
+        prob = self.get_prob(comps)
 
         prob.setup()        
         
@@ -440,6 +327,10 @@ class hpp_model_P2X(hpp_base):
         hh : hub height of the wind turbine [m]
         num_batteries : Number of batteries
         """
+        self.inputs = [clearance, sp, p_rated, Nwt, wind_MW_per_km2,
+                        solar_MW,  surface_tilt, surface_azimuth, DC_AC_ratio,
+                        b_P, b_E_h,cost_of_battery_P_fluct_in_peak_price_ratio,
+                        ptg_MW, HSS_kg,]
         prob = self.prob
         
         d = get_rotor_d(p_rated*1e6/sp)
@@ -473,9 +364,9 @@ class hpp_model_P2X(hpp_base):
         if Nwt == 0:
             cf_wind = np.nan
         else:
-            cf_wind = prob.get_val('wpp.wind_t').mean() / p_rated / Nwt  # Capacity factor of wind only
+            cf_wind = prob.get_val('wind_t').mean() / p_rated / Nwt  # Capacity factor of wind only
 
-        return np.hstack([
+        outputs = np.hstack([
             prob['NPV_over_CAPEX'], 
             prob['NPV']/1e6,
             prob['IRR'],
@@ -509,3 +400,44 @@ class hpp_model_P2X(hpp_base):
             prob['break_even_PPA_price'],
             cf_wind,
             ])
+        self.outputs = outputs
+        return outputs
+
+if __name__ == '__main__':
+    import time
+    from hydesign.examples import examples_filepath
+    
+    name = 'France_good_wind'
+    examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0, sep=';')
+    ex_site = examples_sites.loc[examples_sites.name == name]
+    
+    longitude = ex_site['longitude'].values[0]
+    latitude = ex_site['latitude'].values[0]
+    altitude = ex_site['altitude'].values[0]
+    
+    sim_pars_fn = examples_filepath+ex_site['sim_pars_fn'].values[0]
+    input_ts_fn = examples_filepath+ex_site['input_ts_fn'].values[0]
+    H2_demand_fn = examples_filepath+ex_site['H2_demand_col'].values[0]
+    
+    hpp = hpp_model_P2X(
+        latitude=latitude,
+        longitude=longitude,
+        altitude=altitude,
+        max_num_batteries_allowed = 10,
+        work_dir = './',
+        sim_pars_fn = sim_pars_fn,
+        input_ts_fn = input_ts_fn,
+        H2_demand_fn = H2_demand_fn,
+        )
+
+    x=[50, 300, 10, 40, 10, 0, 45, 180, 1.5, 40, 4, 5, 250, 5000]
+    # x=[10.0, 350.0, 5.0, 40.0, 7.0, 0.0, 50.0, 180.0, 1.5, 0.0, 3.0, 5.0, 100.0, 2500.0]
+    start = time.time()
+    
+    outs = hpp.evaluate(*x)
+    
+    hpp.print_design()
+    
+    end = time.time()
+    print('exec. time [min]:', (end - start)/60 )
+    

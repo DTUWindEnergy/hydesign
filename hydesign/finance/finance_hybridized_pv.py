@@ -11,14 +11,15 @@ import pandas as pd
 import openmdao.api as om
 # import yaml
 # import scipy as sp
+from hydesign.openmdao_wrapper import ComponentWrapper
 
 from hydesign.finance.finance import get_inflation_index, calculate_revenues
 
 import matplotlib.pyplot as plt
 
 
-class finance(om.ExplicitComponent):
-    """Hybrid power plant financial model to estimate the overall profitability of the hybrid power plant.
+class finance_pp:
+    """Pure Python Hybrid power plant financial model to estimate the overall profitability of the hybrid power plant.
     It considers different weighted average costs of capital (WACC) for wind, PV and battery. The model calculates
     the yearly cashflow as a function of the average revenue over the year, the tax rate and WACC after tax
     ( = weighted sum of the wind, solar, battery, and electrical infrastracture WACC). Net present value (NPV)
@@ -59,7 +60,7 @@ class finance(om.ExplicitComponent):
         delta_life : difference beteewn the two plants in years
 
         """
-        super().__init__()
+        # super().__init__()
         self.N_limit = int(N_limit)
         self.life_y = int(life_y)
         self.N_time = int(N_time)
@@ -79,97 +80,100 @@ class finance(om.ExplicitComponent):
         # self.phasing_yr = phasing_yr
         # self.phasing_CAPEX = phasing_CAPEX
 
-    def setup(self):
-        self.add_input(
-            'life_h',
-            desc="Lifetime length in hours",
-            units='h')
+    # def setup(self):
+    #     self.add_input(
+    #         'life_h',
+    #         desc="Lifetime length in hours",
+    #         units='h')
 
-        self.add_input('delta_life',
-                       desc="Years between the starting of operations of the existing plant and the new plant",
-                       val=1)
+    #     self.add_input('delta_life',
+    #                    desc="Years between the starting of operations of the existing plant and the new plant",
+    #                    val=1)
 
-        self.add_input('price_t_ext',
-                       desc="Electricity price time series",
-                       shape=[self.life_h])
+    #     self.add_input('price_t_ext',
+    #                    desc="Electricity price time series",
+    #                    shape=[self.life_h])
 
-        self.add_input('hpp_t_with_deg',
-                       desc="HPP power time series",
-                       units='MW',
-                       shape=[self.life_h])
+    #     self.add_input('hpp_t_with_deg',
+    #                    desc="HPP power time series",
+    #                    units='MW',
+    #                    shape=[self.life_h])
 
-        self.add_input('penalty_t',
-                       desc="penalty for not reaching expected energy productin at peak hours",
-                       shape=[self.life_h])
+    #     self.add_input('penalty_t',
+    #                    desc="penalty for not reaching expected energy productin at peak hours",
+    #                    shape=[self.life_h])
 
-        self.add_input('CAPEX_w',
-                       desc="CAPEX wpp")
-        self.add_input('OPEX_w',
-                       desc="OPEX wpp")
+    #     self.add_input('CAPEX_w',
+    #                    desc="CAPEX wpp")
+    #     self.add_input('OPEX_w',
+    #                    desc="OPEX wpp")
 
-        self.add_input('CAPEX_s',
-                       desc="CAPEX solar pvp")
-        self.add_input('OPEX_s',
-                       desc="OPEX solar pvp")
+    #     self.add_input('CAPEX_s',
+    #                    desc="CAPEX solar pvp")
+    #     self.add_input('OPEX_s',
+    #                    desc="OPEX solar pvp")
 
-        self.add_input('CAPEX_b',
-                       desc="CAPEX battery")
-        self.add_input('OPEX_b',
-                       desc="OPEX battery")
+    #     self.add_input('CAPEX_b',
+    #                    desc="CAPEX battery")
+    #     self.add_input('OPEX_b',
+    #                    desc="OPEX battery")
 
-        self.add_input('CAPEX_el_w',
-                       desc="CAPEX electrical infrastructure for wind and batteries")
-        self.add_input('CAPEX_el_s',
-                       desc="CAPEX electrical infrastructure for PV")
-        self.add_input('OPEX_el',
-                       desc="OPEX electrical infrastructure")
+    #     self.add_input('CAPEX_el_w',
+    #                    desc="CAPEX electrical infrastructure for wind and batteries")
+    #     self.add_input('CAPEX_el_s',
+    #                    desc="CAPEX electrical infrastructure for PV")
+    #     self.add_input('OPEX_el',
+    #                    desc="OPEX electrical infrastructure")
 
-        self.add_input('decommissioning_cost_tot_w',
-                        desc="Decommissioning cost of the entire wind plant")
-        self.add_input('decommissioning_cost_tot_s',
-                        desc="Decommissioning cost of the entire PV plant")
+    #     self.add_input('decommissioning_cost_tot_w',
+    #                     desc="Decommissioning cost of the entire wind plant")
+    #     self.add_input('decommissioning_cost_tot_s',
+    #                     desc="Decommissioning cost of the entire PV plant")
 
-        self.add_input('hpp_WACC',
-                       desc="After tax WACC for hybrid power plant")
+    #     self.add_input('hpp_WACC',
+    #                    desc="After tax WACC for hybrid power plant")
 
-        self.add_input('tax_rate',
-                       desc="Corporate tax rate")
+    #     self.add_input('tax_rate',
+    #                    desc="Corporate tax rate")
 
-        self.add_output('CAPEX',
-                        desc="CAPEX")
+    #     self.add_output('CAPEX',
+    #                     desc="CAPEX")
 
-        self.add_output('OPEX',
-                        desc="OPEX")
+    #     self.add_output('OPEX',
+    #                     desc="OPEX")
 
-        self.add_output('NPV',
-                        desc="NPV")
+    #     self.add_output('NPV',
+    #                     desc="NPV")
 
-        self.add_output('IRR',
-                        desc="IRR")
+    #     self.add_output('IRR',
+    #                     desc="IRR")
 
-        self.add_output('NPV_over_CAPEX',
-                        desc="NPV/CAPEX")
+    #     self.add_output('NPV_over_CAPEX',
+    #                     desc="NPV/CAPEX")
 
-        self.add_output('mean_AEP',
-                        desc="mean AEP")
+    #     self.add_output('mean_AEP',
+    #                     desc="mean AEP")
 
-        self.add_output('LCOE',
-                        desc="LCOE")
+    #     self.add_output('LCOE',
+    #                     desc="LCOE")
 
-        self.add_output('COVE',
-                        desc="COVE")
+    #     self.add_output('COVE',
+    #                     desc="COVE")
 
-        self.add_output('penalty_lifetime',
-                        desc="penalty_lifetime")
+    #     self.add_output('penalty_lifetime',
+    #                     desc="penalty_lifetime")
 
-        self.add_output('break_even_PPA_price',
-                        desc='PPA price of electricity that results in NPV=0 with the given hybrid power plant configuration and operation',
-                        val=0)
+    #     self.add_output('break_even_PPA_price',
+    #                     desc='PPA price of electricity that results in NPV=0 with the given hybrid power plant configuration and operation',
+    #                     val=0)
 
-    def setup_partials(self):
-        self.declare_partials('*', '*', method='fd')
+    # def setup_partials(self):
+    #     self.declare_partials('*', '*', method='fd')
 
-    def compute(self, inputs, outputs):
+    def compute(self, life_h, delta_life, price_t_ext, hpp_t_with_deg, penalty_t,
+                  CAPEX_w, OPEX_w, CAPEX_s, OPEX_s,
+                  CAPEX_b, OPEX_b, CAPEX_el_w, CAPEX_el_s,
+                  decommissioning_cost_tot_s, hpp_WACC, tax_rate, **kwargs):
         """ Calculating the financial metrics of the hybrid power plant project.
 
         Parameters
@@ -207,7 +211,8 @@ class finance(om.ExplicitComponent):
         penalty_lifetime : total penalty
         """
 
-        delta_life = int(inputs['delta_life'][0])
+        # delta_life = int(inputs['delta_life'][0])
+        delta_life = int(delta_life)
 
         N_limit = int(self.N_limit)
         life_y = int(self.life_y)
@@ -228,21 +233,29 @@ class finance(om.ExplicitComponent):
 
         df = pd.DataFrame()
 
-        df['hpp_t'] = inputs['hpp_t_with_deg']
+        # df['hpp_t'] = inputs['hpp_t_with_deg']
+        df['hpp_t'] = hpp_t_with_deg
         # df['price_t'] = inputs['price_t_ext']
-        df['penalty_t'] = inputs['penalty_t']
+        # df['penalty_t'] = inputs['penalty_t']
+        df['penalty_t'] = penalty_t
         # df['revenue'] = df['hpp_t'] * df['price_t'] - df['penalty_t']
 
         df['i_year'] = np.hstack([np.array([ii] * N_time) for ii in range(life_yr)])[:life_h]
 
         # Compute yearly revenues and cashflow
-        revenues = calculate_revenues(inputs['price_t_ext'], df)
+        # revenues = calculate_revenues(inputs['price_t_ext'], df)
+        revenues = calculate_revenues(price_t_ext, df)
 
         # Construction of the OPEX vector along the lifetime
-        OPEX_only_pv = inputs['OPEX_s']
+        # OPEX_only_pv = inputs['OPEX_s']
 
-        OPEX_wind = inputs['OPEX_w'] + \
-                    inputs['OPEX_b']
+        # OPEX_wind = inputs['OPEX_w'] + \
+        #             inputs['OPEX_b']
+
+        OPEX_only_pv = OPEX_s
+
+        OPEX_wind = OPEX_w + \
+                    OPEX_b
 
         OPEX = OPEX_only_pv + OPEX_wind  # Total OPEX
 
@@ -252,10 +265,15 @@ class finance(om.ExplicitComponent):
                                    np.ones(delta_life) * OPEX_wind, np.zeros(N_limit - delta_life)))
 
         # Construction of the CAPEX vector along the lifetime
-        CAPEX_only_pv = inputs['CAPEX_s'] + \
-                          inputs['CAPEX_el_s']
+        # CAPEX_only_pv = inputs['CAPEX_s'] + \
+        #                   inputs['CAPEX_el_s']
 
-        CAPEX_wind = inputs['CAPEX_w'] + inputs['CAPEX_el_w'] + inputs['CAPEX_b']
+        # CAPEX_wind = inputs['CAPEX_w'] + inputs['CAPEX_el_w'] + inputs['CAPEX_b']
+
+        CAPEX_only_pv = CAPEX_s + \
+                        CAPEX_el_s
+
+        CAPEX_wind = CAPEX_w + CAPEX_el_w + CAPEX_b
 
         CAPEX = CAPEX_only_pv + CAPEX_wind  # This is the total CAPEX, used to calculate NPV/CAPEX
 
@@ -269,10 +287,12 @@ class finance(om.ExplicitComponent):
                                          np.ones(delta_life) * CAPEX_wind, np.zeros(N_limit-delta_life))),0,0)
 
         # Definition of the decommissioning cost vector
-        decommissioning_vec = np.concatenate((np.zeros(life_y), np.ones(1) * inputs['decommissioning_cost_tot_s'], np.zeros(N_limit)))
+        # decommissioning_vec = np.concatenate((np.zeros(life_y), np.ones(1) * inputs['decommissioning_cost_tot_s'], np.zeros(N_limit)))
+        decommissioning_vec = np.concatenate((np.zeros(life_y), np.ones(1) * decommissioning_cost_tot_s, np.zeros(N_limit)))
 
         # Discount rate
-        hpp_discount_factor = inputs['hpp_WACC']
+        # hpp_discount_factor = inputs['hpp_WACC']
+        hpp_discount_factor = hpp_WACC
 
         # len of revenues = years of life
         iy = np.arange(
@@ -287,6 +307,7 @@ class finance(om.ExplicitComponent):
         )
 
         revenues = revenues.values.flatten()
+        outputs = {}
         outputs['CAPEX'] = CAPEX
         outputs['OPEX'] = OPEX
 
@@ -301,7 +322,8 @@ class finance(om.ExplicitComponent):
             maintenance_cost_per_year=OPEX_vec,
             capex_vector=CAPEX_vec,
             capex_for_depreciation=CAPEX_for_depre,
-            tax_rate=inputs['tax_rate'][0],
+            # tax_rate=inputs['tax_rate'][0],
+            tax_rate=tax_rate,
             discount_rate=hpp_discount_factor,
             depreciation_yr=depreciation_yr,
             depreciation=depreciation,
@@ -334,7 +356,54 @@ class finance(om.ExplicitComponent):
 
         outputs['penalty_lifetime'] = df['penalty_t'].sum()
         outputs['break_even_PPA_price'] = 5  # break_even_PPA_price
+        output_keys = ['CAPEX', 'OPEX', 'NPV', 'IRR', 'NPV_over_CAPEX',
+                       'mean_AEP', 'LCOE', 'COVE', 'penalty_lifetime',
+                       'break_even_PPA_price']
+        return [outputs[o] for o in output_keys]
 
+class finance(ComponentWrapper):
+    def __init__(self, **inst_inp):
+        life_h = inst_inp['life_h']
+        Finance = finance_pp(**inst_inp)
+        # key_map_dict = {'CAPEX_sh_w':'CAPEX_el_w','CAPEX_sh_s':'CAPEX_el_s','penalty_t_with_deg':'penalty_t',}
+        # def func(**inputs):
+        #     inputs = {(key_map_dict[k] if k in key_map_dict else k):v  for (k,v) in inputs.items()}
+        #     return Finance.compute(**inputs)
+        super().__init__(
+            inputs=[
+                ('life_h', {'units': 'h', 'desc': 'Lifetime length in hours'}),
+                ('delta_life', {'desc': 'Years between the starting of operations of the existing plant and the new plant', 'val': 1}),
+                ('price_t_ext', {'desc': 'Electricity price time series', 'shape': [life_h]}),
+                ('hpp_t_with_deg', {'desc': 'HPP power time series', 'units': 'MW', 'shape': [life_h]}),
+                ('penalty_t', {'desc': 'penalty for not reaching expected energy productin at peak hours', 'shape': [life_h]}),
+                ('CAPEX_w', {'desc': 'CAPEX wpp'}),
+                ('OPEX_w', {'desc': 'OPEX wpp'}),
+                ('CAPEX_s', {'desc': 'CAPEX solar pvp'}),
+                ('OPEX_s', {'desc': 'OPEX solar pvp'}),
+                ('CAPEX_b', {'desc': 'CAPEX battery'}),
+                ('OPEX_b', {'desc': 'OPEX battery'}),
+                ('CAPEX_el_w', {'desc': 'CAPEX electrical infrastructure for wind and batteries'}),
+                ('CAPEX_el_s', {'desc': 'CAPEX electrical infrastructure for PV'}),
+                ('decommissioning_cost_tot_w', {'desc': 'Decommissioning cost of the entire wind plant'}),
+                ('decommissioning_cost_tot_s', {'desc': 'Decommissioning cost of the entire PV plant'}),
+                ('hpp_WACC', {'desc': 'After tax WACC for hybrid power plant'}),
+                ('tax_rate', {'desc': 'Corporate tax rate'})
+            ],
+            outputs=[
+                ('CAPEX', {'desc': 'Total capital expenditure costs of the HPP'}),
+                ('OPEX', {'desc': 'Operational and maintenance costs of the HPP'}),
+                ('NPV', {'desc': 'Net present value'}),
+                ('IRR', {'desc': 'Internal rate of return'}),
+                ('NPV_over_CAPEX', {'desc': 'NPV over CAPEX'}),
+                ('mean_AEP', {'desc': 'Mean annual energy production'}),
+                ('LCOE', {'desc': 'Levelized cost of energy'}),
+                ('COVE', {'desc': 'Cost of valued energy'}),
+                ('penalty_lifetime', {'desc': 'total penalty'}),
+                ('break_even_PPA_price', {'desc': 'PPA price of electricity that results in NPV=0 with the given hybrid power plant configuration and operation', 'val': 0})
+            ],
+            function=Finance.compute,
+            partial_options=[{'dependent': False, 'val': 0}],
+        )
 
 # -----------------------------------------------------------------------
 # Auxiliar functions for financial modelling

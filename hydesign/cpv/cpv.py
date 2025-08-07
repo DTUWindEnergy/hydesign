@@ -1,59 +1,62 @@
-# %%
 import time
 
-# basic libraries
-import numpy as np
-from scipy.interpolate import interp1d
-import openmdao.api as om
+from hydesign.openmdao_wrapper import ComponentWrapper
 
 # Define a class for cpv (Concentrated Photovoltaics) component within OpenMDAO framework
-class cpv(om.ExplicitComponent):
+class cpv_pp:
     def __init__(self,
                  N_time,
                  cpv_efficiency,
                  p_max_cpv_mw_per_m2,
                  ):
         # Initialize the superclass and assign instance variables
-        super().__init__()
+        # super().__init__()
         self.N_time = N_time
         self.cpv_efficiency = cpv_efficiency
         self.p_max_cpv_mw_per_m2 = p_max_cpv_mw_per_m2
 
-    def setup(self):
+    # def setup(self):
         # Define inputs and outputs to the component
         # inputs
-        self.add_input(
+        self.inputs = [
+        (
             'max_solar_flux_cpv_t',
+            dict(
             val=0,
             desc="maximum solar flux on cpv reciever time series",
             shape=[self.N_time],
             units='MW'
-        )
-        self.add_input('area_cpv_receiver_m2', desc="area_cpv_receiver", units='m**2')
-        self.add_input('cpv_dc_ac_ratio',
-                       desc="ratio of the dc_ac inverter respect to the rated power of installed cpv",
-                       units='MW')
-
+        )),
+        ('area_cpv_receiver_m2', dict(desc="area_cpv_receiver", units='m**2')),
+        ('cpv_dc_ac_ratio', dict(desc="ratio of the dc_ac inverter respect to the rated power of installed cpv", units='MW'))
+        ]
+        self.outputs = [
         # outputs
-        self.add_output(
+        (
             'p_cpv_max_dni_t',
-            desc="maximum cpv power time series (Gross value, i.e. assuming all flux_sf_t goes to cpv)",
-            units='MW',
-            shape=[self.N_time]
-        )
-
-        self.add_output(
+            dict(
+                desc="maximum cpv power time series (Gross value, i.e. assuming all flux_sf_t goes to cpv)",
+                units='MW',
+            shape=[self.N_time]),
+        ),
+        (
             'cpv_inverter_mw',
-            desc="rated power of the cpv inverter",
-            units='MW',
-        )
-        self.add_output(
+            dict(
+                desc="rated power of the cpv inverter",
+                units='MW',
+            )
+        ),
+        (
             'cpv_rated_mw',
-            desc="rated power of the cpv reciever",
-            units='MW',
+            dict(
+                desc="rated power of the cpv reciever",
+                units='MW',
+            )
         )
+        ]
 
-    def compute(self, inputs, outputs):
+    def compute(self, **inputs):
+        outputs = {}
         area_cpv_receiver_m2 = inputs['area_cpv_receiver_m2']
         cpv_dc_ac_ratio = inputs['cpv_dc_ac_ratio']
 
@@ -70,3 +73,14 @@ class cpv(om.ExplicitComponent):
         outputs['p_cpv_max_dni_t'] = p_cpv_max_dni_t
         outputs['cpv_inverter_mw'] = cpv_inverter_mw
         outputs['cpv_rated_mw'] = cpv_rated_mw
+        out_keys = ['p_cpv_max_dni_t', 'cpv_inverter_mw', 'cpv_rated_mw']
+        return [outputs[key] for key in out_keys]
+    
+class cpv(ComponentWrapper):
+    def __init__(self, **insta_inp):
+        cpv_model = cpv_pp(**insta_inp)
+        super().__init__(inputs=cpv_model.inputs,
+                            outputs=cpv_model.outputs,
+                            function=cpv_model.compute,
+                            partial_options=[{'dependent': False, 'val': 0}],)
+

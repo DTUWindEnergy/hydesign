@@ -20,58 +20,59 @@ if not importlib.util.find_spec("finitediff"):
     from hydesign.utils import get_weights
 else:
     from finitediff import get_weights
+from hydesign.openmdao_wrapper import ComponentWrapper
 
 
 
-class ABL(om.ExplicitComponent):
-    """Atmospheric boundary layer WS interpolation and gradient
+# class ABL(om.ExplicitComponent):
+#     """Atmospheric boundary layer WS interpolation and gradient
     
-    Parameters
-    ----------
-    hh : Turbine's hub height
+#     Parameters
+#     ----------
+#     hh : Turbine's hub height
 
-    Returns
-    -------
-    wst : wind speed time series at the hub height
+#     Returns
+#     -------
+#     wst : wind speed time series at the hub height
 
-    """
+#     """
 
 
-    def __init__(self, weather_fn, N_time):
-        super().__init__()
-        self.weather_fn = weather_fn
-        self.N_time = N_time
+#     def __init__(self, weather_fn, N_time):
+#         super().__init__()
+#         self.weather_fn = weather_fn
+#         self.N_time = N_time
 
-    def setup(self):
-        self.add_input('hh',
-                       desc="Turbine's hub height",
-                       units='m')
-        self.add_output('wst',
-                        desc="ws time series at the hub height",
-                        units='m/s',
-                        shape=[self.N_time])
+#     def setup(self):
+#         self.add_input('hh',
+#                        desc="Turbine's hub height",
+#                        units='m')
+#         self.add_output('wst',
+#                         desc="ws time series at the hub height",
+#                         units='m/s',
+#                         shape=[self.N_time])
 
-    def setup_partials(self):
-        self.declare_partials('*', '*')
+#     def setup_partials(self):
+#         self.declare_partials('*', '*')
 
-    def precompute(self, hh):
+#     def precompute(self, hh):
 
-        weather = pd.read_csv(self.weather_fn, index_col=0, parse_dates=True)
-        ds_interpolated = interpolate_WS_loglog(weather, hh=hh)
-        return ds_interpolated
+#         weather = pd.read_csv(self.weather_fn, index_col=0, parse_dates=True)
+#         ds_interpolated = interpolate_WS_loglog(weather, hh=hh)
+#         return ds_interpolated
 
-    def compute(self, inputs, outputs):
+#     def compute(self, inputs, outputs):
 
-        ds_interpolated = self.precompute(inputs['hh'])
-        self.ds_interpolated = ds_interpolated
+#         ds_interpolated = self.precompute(inputs['hh'])
+#         self.ds_interpolated = ds_interpolated
 
-        outputs['wst'] = np.nan_to_num(ds_interpolated.WS.values.flatten())
+#         outputs['wst'] = np.nan_to_num(ds_interpolated.WS.values.flatten())
 
-    def compute_partials(self, inputs, partials):
+#     def compute_partials(self, inputs, partials):
 
-        ds_interpolated = self.ds_interpolated
+#         ds_interpolated = self.ds_interpolated
 
-        partials['wst', 'hh'] = ds_interpolated.dWS_dz.values.flatten()
+#         partials['wst', 'hh'] = ds_interpolated.dWS_dz.values.flatten()
 
 class ABL_pp:
     """Pure Python Atmospheric boundary layer WS interpolation and gradient
@@ -112,6 +113,21 @@ class ABL_pp:
         ds_interpolated = self.ds_interpolated
         d_wst_d_hh = ds_interpolated.dWS_dz.values.flatten()
         return d_wst_d_hh
+
+class ABL(ComponentWrapper):
+    def __init__(self, weather_fn, N_time, interpolate_wd=False):
+        ABL_pp_instance = ABL_pp(weather_fn, N_time, interpolate_wd=interpolate_wd)
+        inputs = [('hh', {'desc': "Turbine's hub height", 'units': 'm'})]
+        outputs = [('wst', {'desc': "ws time series at the hub height", 'units': 'm/s', 'shape': [N_time]})]
+        if interpolate_wd:
+            outputs.append(('wd', {'desc': "wind direction time series at the hub height", 'units': 'deg', 'shape': [N_time]}))
+        super().__init__(
+            inputs=inputs,
+            outputs=outputs,
+            function=ABL_pp_instance.compute,
+            # partials=ABL_pp_instance.compute_partials,
+            partial_options=[{'dependent': False, 'val': 0}],
+        )
 
 # def precompute(hh, weather_fn, interpolate_wd=False):
 #     weather = pd.read_csv(weather_fn, index_col=0, parse_dates=True)

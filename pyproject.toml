@@ -38,7 +38,6 @@ dependencies = [
     "h5py>=3.13",
     "py_wake",
     "topfarm",
-    "surrogates-interface",
 ]
 
 [project.optional-dependencies]
@@ -54,7 +53,9 @@ docs = [
     "sphinx-autoapi",
     "sphinx-tags",
 ]
-
+loads = [
+    "surrogates-interface",
+]
 [project.urls]
 Documentation = "https://topfarm.pages.windenergy.dtu.dk/hydesign/"
 Source = "https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign"

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import openmdao.api as om
+from hydesign.openmdao_wrapper import ComponentWrapper
 
 def get_weights(grid, xtgt, maxorder):
     """Return finite-difference weights on an arbitrary grid.
@@ -64,7 +65,7 @@ def get_weights(grid, xtgt, maxorder):
     return c
 
 
-class hybridization_shifted(om.ExplicitComponent):
+class hybridization_shifted_pp:
     def __init__(self,
             N_limit,
             life_y,
@@ -87,38 +88,38 @@ class hybridization_shifted(om.ExplicitComponent):
         None.
 
         """
-        super().__init__()
         self.N_limit = N_limit
         self.life_y = life_y
         self.life_h = life_h
         self.N_time = N_time
 
-    def setup(self):
-        self.add_input('delta_life',
-            desc="Years between the starting of operations of the existing plant and the new plant",
-            val=1)
-        self.add_input(
-            'SoH',
-            desc="Battery state of health at discretization levels",
-            shape=[self.life_h])
-
-        # -------------------------------------------------------
-
-        self.add_output(
-            'SoH_shifted',
-            desc="Battery state of health at discretization levels shifted of delta_life",
-            shape=[self.life_h])
-
-    def compute(self, inputs, outputs):
+    def compute(self, delta_life, SoH, **kwargs):
 
         N_limit = self.N_limit
         life_y = self.life_y
         # life_h = self.life_h
 
-        SoH = inputs['SoH']
-        delta_life = int(inputs['delta_life'][0])
+        # SoH = inputs['SoH']
+        delta_life = int(delta_life)
 
-        outputs['SoH_shifted'] = np.concatenate((np.zeros(delta_life * 365 * 24), SoH[0:life_y * 365 * 24], np.zeros((N_limit-delta_life) * 365 * 24)))
+        SoH_shifted = np.concatenate((np.zeros(delta_life * 365 * 24), SoH[0:life_y * 365 * 24], np.zeros((N_limit-delta_life) * 365 * 24)))
+        return SoH_shifted
+
+class hybridization_shifted(ComponentWrapper):
+    def __init__(self, N_limit, life_y, N_time, life_h):
+        Hybridization_Shifted = hybridization_shifted_pp(N_limit, life_y, N_time, life_h)
+        super().__init__(
+            inputs=[
+                ('delta_life', {'desc': 'Years between the starting of operations of the existing plant and the new plant'}),
+                ('SoH', {'desc': 'Battery state of health at discretization levels', 'shape': [life_h]})
+            ],
+            outputs=[
+                ('SoH_shifted', {'desc': 'Battery state of health at discretization levels shifted of delta_life', 'shape': [life_h]})
+            ],
+            function=Hybridization_Shifted.compute,
+            partial_options=[{'dependent': False, 'val': 0}],
+        )
+
 
 def sample_mean(outs):
     """Return the mean of all samples along the first axis.

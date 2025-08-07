@@ -1,12 +1,8 @@
-# %%
-import time
-# basic libraries
 import numpy as np
-import openmdao.api as om
 from scipy.interpolate import RegularGridInterpolator
-
+from hydesign.openmdao_wrapper import ComponentWrapper
 # Define a class for CST (Concentrated Solar Thermal) component within OpenMDAO framework
-class cst(om.ExplicitComponent):
+class cst_pp:
     def __init__(self,
                  N_time,
                  cst_ms_receiver_efficiency_table,
@@ -22,7 +18,7 @@ class cst(om.ExplicitComponent):
                  steam_turbine_efficiency,
                  flow_ms_max_cst_receiver_per_m2,
                  ):
-        super().__init__()
+        # super().__init__()
         self.N_time = N_time
         self.cst_ms_receiver_efficiency_table = cst_ms_receiver_efficiency_table
         self.wind_speed = wind_speed
@@ -36,39 +32,49 @@ class cst(om.ExplicitComponent):
         self.steam_turbine_efficiency=steam_turbine_efficiency
         self.flow_ms_max_cst_receiver_per_m2 = flow_ms_max_cst_receiver_per_m2
 
-    def setup(self):
+    # def setup(self):
         # inputs
-        self.add_input('area_cst_receiver_m2',
+        self.inputs = [
+        ('area_cst_receiver_m2',
+         dict(
                        desc="area of the cst receiver on the tower",
                        units='m**2',)
-        self.add_input(
+        ),
+        (
             'max_solar_flux_cst_t',
-            val=0,
-            desc="Maximum solar flux towards cst reciever timeseries",
-            shape=[self.N_time],
+            dict(
+                val=0,
+                desc="Maximum solar flux towards cst reciever timeseries",
+                shape=[self.N_time],
             units='MW'
-        )
-
+        )),]
         # outputs
-        self.add_output(
+        self.outputs = [
+        (
             'flow_ms_max_t',
-            desc="Flow of molten salt time series (Gross value, i.e. asuuing all flux_sf_t goes to CSP)",
-            units='kg/h',
-            shape=[self.N_time]
-        )
-        self.add_output(
+            dict(
+                desc="Flow of molten salt time series (Gross value, i.e. asuuing all flux_sf_t goes to CSP)",
+                units='kg/h',
+                shape=[self.N_time]
+            )
+        ),
+        (
             'delta_q_hot_cold_ms_per_kg',
-            desc="Heat (kJ) difference between hot and cold molten salt per kg",
-            units='kJ/kg'
-        )
-        self.add_output(
+            dict(
+                desc="Heat (kJ) difference between hot and cold molten salt per kg",
+                units='kJ/kg'
+            )
+        ),
+        (
             'flow_ms_max_cst_receiver_capacity',
-            desc="Capacity of the reciever for molten salt flow",
-            units='kg/h',
-        )
+            dict(
+                desc="Capacity of the reciever for molten salt flow",
+                units='kg/h',
+            )),
+        ]
 
-
-    def compute(self, inputs, outputs):
+    def compute(self, **inputs):
+        outputs = {}
         area_cst_receiver_m2 = inputs['area_cst_receiver_m2']
 
         # Retrieve molten salt parameters
@@ -106,3 +112,13 @@ class cst(om.ExplicitComponent):
         outputs['delta_q_hot_cold_ms_per_kg'] = delta_q_hot_cold_ms_per_kg
         outputs['flow_ms_max_t'] = flow_ms_max_t
         outputs['flow_ms_max_cst_receiver_capacity'] = flow_ms_max_cst_receiver_capacity
+        out_keys = ['flow_ms_max_t', 'delta_q_hot_cold_ms_per_kg', 'flow_ms_max_cst_receiver_capacity']
+        return [outputs[key] for key in out_keys]
+    
+class cst(ComponentWrapper):
+    def __init__(self, **insta_inp):
+        cst_model = cst_pp(**insta_inp)
+        super().__init__(inputs=cst_model.inputs,
+                            outputs=cst_model.outputs,
+                            function=cst_model.compute,
+                            partial_options=[{'dependent': False, 'val': 0}],)

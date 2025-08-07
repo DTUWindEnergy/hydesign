@@ -354,7 +354,7 @@ def model_evaluation(inputs): # Evaluates the model
     x = kwargs['scaler'].inverse_transform(x)
     x_eval = expand_x_for_model_eval(x, kwargs)
     try: 
-    	return np.array(
+        return np.array(
         kwargs['opt_sign']*hpp_m.evaluate(*x_eval[0,:])[kwargs['op_var_index']])
     except:
         print('There was an error with this case (or potentially memory error): ')
@@ -394,39 +394,6 @@ class ParallelEvaluator(Evaluator):
         with Pool(n_procs) as p:
             return np.vstack(p.map(fun, [(x[[ii],:], kwargs) for ii in range(x.shape[0])]))
     
-# def derive_example_info(kwargs):
-#     example = kwargs['example']
-#     sim_pars_fn = kwargs['sim_pars_fn']
-    
-#     if example == None:
-#         pass
-#     else:
-#         examples_sites = pd.read_csv(f'{examples_filepath}examples_sites.csv', index_col=0, sep=';')
-        
-#         try:
-#             ex_site = examples_sites.iloc[int(example),:]
-    
-#             print('Selected example site:')
-#             print('---------------------------------------------------')
-#             print(ex_site.T)
-    
-#             kwargs['name'] = ex_site['name']
-#             kwargs['longitude'] = ex_site['longitude']
-#             kwargs['latitude'] = ex_site['latitude']
-#             kwargs['altitude'] = ex_site['altitude']
-#             kwargs['input_ts_fn'] = examples_filepath+ex_site['input_ts_fn']
-#             kwargs['H2_demand_fn'] = examples_filepath+ex_site['H2_demand_col']
-#             kwargs['input_HA_ts_fn'] = examples_filepath+str(ex_site['input_HA_ts_fn'])
-#             kwargs['price_up_ts_fn'] = examples_filepath+str(ex_site['price_up_ts'])
-#             kwargs['price_dwn_ts_fn'] = examples_filepath+str(ex_site['price_dwn_ts'])
-#             kwargs['price_col'] = ex_site['price_col']
-#             if sim_pars_fn == None:
-#                 kwargs['sim_pars_fn'] = examples_filepath+ex_site['sim_pars_fn']
-            
-#         except:
-#             raise(f'Not a valid example: {int(example)}')
-    
-#     return kwargs
            
 
 def check_types(kwargs):

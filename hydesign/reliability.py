@@ -9,9 +9,9 @@ import numpy as np
 import chaospy as cp
 import pandas as pd
 import xarray as xr
+from hydesign.openmdao_wrapper import ComponentWrapper
 
-
-class battery_with_reliability(om.ExplicitComponent):
+class battery_with_reliability_pp:
     def __init__(
         self,
         life_y = 25,
@@ -33,32 +33,29 @@ class battery_with_reliability(om.ExplicitComponent):
             Time series describing transformer availability.
         """
 
-        super().__init__()
         self.life_intervals = life_y * 365 * 24 * intervals_per_hour
         self.reliability_ts_battery = reliability_ts_battery
         self.reliability_ts_trans = reliability_ts_trans
         
-    def setup(self):
-        self.add_input(
-            'b_t',
-            desc="Battery charge/discharge power time series w/o reliability",
-            units='MW',
-            shape=[self.life_intervals])
-
-        self.add_output(
-            'b_t_rel',
-            desc="Battery charge/discharge power time series with reliability",
-            units='MW',
-            shape=[self.life_intervals])
-
-    def compute(self, inputs, outputs):
+    def compute(self, b_t, **kwargs):
         if ((self.reliability_ts_battery is None) or (self.reliability_ts_trans is None)):
-            outputs['b_t_rel'] = inputs['b_t']
-            return
-        outputs['b_t_rel'] = inputs['b_t'] * self.reliability_ts_battery[:self.life_intervals] * self.reliability_ts_trans[:self.life_intervals]
-    
+            b_t_rel = b_t
+            return b_t_rel
+        b_t_rel = b_t * self.reliability_ts_battery[:self.life_intervals] * self.reliability_ts_trans[:self.life_intervals]
+        return b_t_rel
 
-class wpp_with_reliability(om.ExplicitComponent):
+class battery_with_reliability(ComponentWrapper):
+    def __init__(self, **insta_inp):
+        battery_with_reliability = battery_with_reliability_pp(**insta_inp)
+        super().__init__(inputs=[('b_t',{'shape': [battery_with_reliability.life_intervals],
+                                  'units': 'MW',})],
+                         outputs=[('b_t_rel',{'shape': [battery_with_reliability.life_intervals],
+                                  'units': 'MW',})],
+            function=battery_with_reliability.compute,
+            partial_options=[{'dependent': False, 'val': 0}],)
+
+
+class wpp_with_reliability_pp:
     def __init__(
         self, 
         life_y = 25,
@@ -80,31 +77,28 @@ class wpp_with_reliability(om.ExplicitComponent):
             Time series describing transformer availability.
         """
 
-        super().__init__()
         self.life_intervals = life_y * 365 * 24 * intervals_per_hour
         self.reliability_ts_wind = reliability_ts_wind
         self.reliability_ts_trans = reliability_ts_trans
         
-    def setup(self):
-        self.add_input(
-            'wind_t',
-            desc="WPP power time series w/o reliability",
-            units='MW',
-            shape=[self.life_intervals])
-        self.add_output(
-            'wind_t_rel',
-            desc="WPP power time series with reliability",
-            units='MW',
-            shape=[self.life_intervals])
-
-    def compute(self, inputs, outputs):
+    def compute(self, wind_t, **kwargs):
         if ((self.reliability_ts_wind is None) or (self.reliability_ts_trans is None)):
-            outputs['wind_t_rel'] = inputs['wind_t']
-            return
-        outputs['wind_t_rel'] = inputs['wind_t'] * self.reliability_ts_wind[:self.life_intervals] * self.reliability_ts_trans[:self.life_intervals]
+            wind_t_rel = wind_t
+            return wind_t_rel
+        wind_t_rel = wind_t * self.reliability_ts_wind[:self.life_intervals] * self.reliability_ts_trans[:self.life_intervals]
+        return wind_t_rel
     
+class wpp_with_reliability(ComponentWrapper):
+    def __init__(self, **insta_inp):
+        wpp_with_reliability = wpp_with_reliability_pp(**insta_inp)
+        super().__init__(inputs=[('wind_t',{'shape': [wpp_with_reliability.life_intervals],
+                                  'units': 'MW',})],
+                         outputs=[('wind_t_rel',{'shape': [wpp_with_reliability.life_intervals],
+                                  'units': 'MW',})],
+            function=wpp_with_reliability.compute,
+            partial_options=[{'dependent': False, 'val': 0}],)
 
-class pvp_with_reliability(om.ExplicitComponent):
+class pvp_with_reliability_pp:
     def __init__(
         self, 
         life_y = 25,
@@ -126,29 +120,26 @@ class pvp_with_reliability(om.ExplicitComponent):
             Time series describing transformer availability.
         """
 
-        super().__init__()
         self.life_intervals = life_y * 365 * 24 * intervals_per_hour
         self.reliability_ts_pv = reliability_ts_pv
         self.reliability_ts_trans = reliability_ts_trans
         
-    def setup(self):
-        self.add_input(
-            'solar_t',
-            desc="PVP power time series w/o reliability",
-            units='MW',
-            shape=[self.life_intervals])
-        self.add_output(
-            'solar_t_rel',
-            desc="PVP power time series with reliability",
-            units='MW',
-            shape=[self.life_intervals])
-
-    def compute(self, inputs, outputs):
+    def compute(self, solar_t, **kwargs):
         if ((self.reliability_ts_pv is None) or (self.reliability_ts_trans is None)):
-            outputs['solar_t_rel'] = inputs['solar_t']
-            return
-        outputs['solar_t_rel'] = inputs['solar_t'] * self.reliability_ts_pv[:self.life_intervals] * self.reliability_ts_trans[:self.life_intervals]
+            solar_t_rel = solar_t
+            return solar_t_rel
+        solar_t_rel = solar_t * self.reliability_ts_pv[:self.life_intervals] * self.reliability_ts_trans[:self.life_intervals]
+        return solar_t_rel
 
+class pvp_with_reliability(ComponentWrapper):
+    def __init__(self, **insta_inp):
+        pvp_with_reliability = pvp_with_reliability_pp(**insta_inp)
+        super().__init__(inputs=[('solar_t',{'shape': [pvp_with_reliability.life_intervals],
+                                  'units': 'MW',})],
+                         outputs=[('solar_t_rel',{'shape': [pvp_with_reliability.life_intervals],
+                                  'units': 'MW',})],
+            function=pvp_with_reliability.compute,
+            partial_options=[{'dependent': False, 'val': 0}],)
 
 def availability_data_set(pdf_TTF, pdf_TTR, N_components, seed, ts_start, ts_end, ts_freq, sampling_const, component_name, **kwargs):
     """

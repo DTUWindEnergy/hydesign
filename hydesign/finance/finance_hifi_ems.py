@@ -5,8 +5,9 @@ import pandas as pd
 import openmdao.api as om
 import scipy as sp
 from hydesign.HiFiEMS.utils import _revenue_calculation
+from hydesign.openmdao_wrapper import ComponentWrapper
 
-class finance(om.ExplicitComponent):
+class finance_pp:
     """Hybrid power plant financial model to estimate the overall profitability of the hybrid power plant.
     It considers different weighted average costs of capital (WACC) for wind, PV and battery. The model calculates
     the yearly cashflow as a function of the average revenue over the year, the tax rate and WACC after tax
@@ -43,7 +44,7 @@ class finance(om.ExplicitComponent):
         N_time : Number of hours in the representative dataset
         life_h : Lifetime of the plant in hours
         """ 
-        super().__init__()
+        # super().__init__()
         self.parameter_dict = parameter_dict
         self.life_y = life_y
         self.intervals_per_hour = intervals_per_hour
@@ -63,128 +64,16 @@ class finance(om.ExplicitComponent):
         self.phasing_yr = phasing_yr
         self.phasing_CAPEX = phasing_CAPEX
 
-    def setup(self):
-        self.add_input('G_MW',
-                       units='MW',
-                       desc='Grid size')
-        
-        self.add_input('wind_MW',
-                       units='MW',
-                       desc='Wind plant nominal size')
-        
-        self.add_input('solar_MW',
-                       units='MW',
-                       desc='Solar plant nominal size')
-        
-        self.add_input('b_E',
-                       desc="Battery energy storage capacity")
-        
+    # def setup(self):
+ 
 
-        self.add_input('battery_depth_of_discharge',
-                       desc="battery depth of discharge",
-                       units='MW')
+    # def setup_partials(self):
+    #     self.declare_partials('*', '*', dependent=False, val=0)
 
+    # def compute_partials(self, inputs, partials):
+    #     pass        
 
-        self.add_input('b_P',
-                       desc="Battery power capacity",
-                       units='MW')
-        # self.add_input('price_t_ext',
-        #                desc="Electricity price time series",
-        #                shape=[self.life_h])
-        
-        self.add_input('hpp_t_with_deg',
-                       desc="HPP power time series",
-                       units='MW',
-                       shape=[self.life_intervals])
-        
-        # self.add_input('penalty_t',
-        #                 desc="penalty for not reaching expected energy productin at peak hours",
-        #                 shape=[self.life_intervals])
-
-        self.add_input('CAPEX_w',
-                       desc="CAPEX wpp")
-        self.add_input('OPEX_w',
-                       desc="OPEX wpp")
-
-        self.add_input('CAPEX_s',
-                       desc="CAPEX solar pvp")
-        self.add_input('OPEX_s',
-                       desc="OPEX solar pvp")
-
-        self.add_input('CAPEX_b',
-                       desc="CAPEX battery")
-        self.add_input('OPEX_b',
-                       desc="OPEX battery")
-
-        self.add_input('CAPEX_el',
-                       desc="CAPEX electrical infrastructure")
-        self.add_input('OPEX_el',
-                       desc="OPEX electrical infrastructure")
-
-        self.add_input('wind_WACC',
-                       desc="After tax WACC for onshore WT")
-        
-        self.add_input('solar_WACC',
-                       desc="After tax WACC for solar PV")
-        
-        self.add_input('battery_WACC',
-                       desc="After tax WACC for stationary storge li-ion batteries")
-        
-        self.add_input('tax_rate',
-                       desc="Corporate tax rate")
-        
-        self.add_input('P_HPP_SM_t_opt',desc='',shape=[self.life_intervals],)
-        self.add_input('SM_price_cleared',desc='',shape=[self.life_h],)
-        self.add_input('BM_dw_price_cleared',desc='',shape=[self.life_h],)
-        self.add_input('BM_up_price_cleared',desc='',shape=[self.life_h],)
-        self.add_input('P_HPP_RT_refs',desc='',shape=[self.life_intervals],)
-        self.add_input('P_HPP_UP_bid_ts',desc='',shape=[self.life_intervals],)
-        self.add_input('P_HPP_DW_bid_ts',desc='',shape=[self.life_intervals],)
-        self.add_input('s_UP_t',desc='',shape=[self.life_intervals],)
-        self.add_input('s_DW_t',desc='',shape=[self.life_intervals],)
-        self.add_input('residual_imbalance',desc='',shape=[self.life_intervals],)
-        self.add_input('P_HPP_ts',desc='',shape=[self.life_intervals],)
-        self.add_input('P_curtailment_ts',desc='',shape=[self.life_intervals],)
-        self.add_input('P_charge_discharge_ts',desc='',shape=[self.life_intervals],)
-        self.add_input('E_SOC_ts',desc='',shape=[self.life_intervals + 1],)
-
-        self.add_output('CAPEX',
-                        desc="CAPEX")
-        
-        self.add_output('OPEX',
-                        desc="OPEX")
-        
-        self.add_output('NPV',
-                        desc="NPV")
-        
-        self.add_output('IRR',
-                        desc="IRR")
-        
-        self.add_output('NPV_over_CAPEX',
-                        desc="NPV/CAPEX")
-        
-        self.add_output('mean_AEP',
-                        desc="mean AEP")
-        
-        self.add_output('LCOE',
-                        desc="LCOE")
-        self.add_output('revenues',
-                        desc="Revenues")
-        
-        self.add_output('penalty_lifetime',
-                        desc="penalty_lifetime")
-
-        self.add_output('break_even_PPA_price',
-                        desc='PPA price of electricity that results in NPV=0 with the given hybrid power plant configuration and operation',
-                        val=0)
-
-    def setup_partials(self):
-        self.declare_partials('*', '*', dependent=False, val=0)
-
-    def compute_partials(self, inputs, partials):
-        pass        
-
-    def compute(self, inputs, outputs):
+    def compute(self, **inputs):
         """ Calculating the financial metrics of the hybrid power plant project.
 
         Parameters
@@ -216,6 +105,7 @@ class finance(om.ExplicitComponent):
         LCOE : Levelized cost of energy
         penalty_lifetime : total penalty
         """
+        outputs = {}
         parameter_dict = self.parameter_dict
         parameter_dict.update({
             # hpp parameters
@@ -249,7 +139,7 @@ class finance(om.ExplicitComponent):
         
         df = pd.DataFrame()
         
-        df['hpp_t'] = inputs['hpp_t_with_deg']
+        df['hpp_t'] = inputs['P_HPP_ts']
         
         df['i_year'] = np.hstack([np.array([ii]*intervals_per_year) for ii in range(life_yr)])[:life_intervals]
 
@@ -371,6 +261,124 @@ class finance(om.ExplicitComponent):
         
         # outputs['penalty_lifetime'] = df['penalty_t'].sum()
         outputs['break_even_PPA_price'] = break_even_PPA_price
+        out_keys = ['CAPEX', 'OPEX', 'NPV', 'IRR', 'NPV_over_CAPEX',
+                    'mean_AEP', 'LCOE', 'revenues', 'break_even_PPA_price']
+        return [outputs[key] for key in out_keys]
+
+class finance(ComponentWrapper):
+    def __init__(self, **insta_inp):
+        finance_model = finance_pp(**insta_inp)
+        super().__init__(
+            inputs = [
+        ('G_MW',
+                       dict(units='MW',
+                       desc='Grid size')),
+        
+        ('wind_MW',
+                       dict(units='MW',
+                       desc='Wind plant nominal size')),
+        
+        ('solar_MW',
+                       dict(units='MW',
+                       desc='Solar plant nominal size')),
+        
+        ('b_E',
+                       dict(desc="Battery energy storage capacity")),
+        
+
+        ('battery_depth_of_discharge',
+                       dict(desc="battery depth of discharge",
+                       units='MW')),
+
+
+        ('b_P',
+                       dict(desc="Battery power capacity",
+                       units='MW')),
+        
+        # ('hpp_t_with_deg',
+        #                dict(desc="HPP power time series",
+        #                units='MW',
+        #                shape=[finance_model.life_intervals])),
+        
+
+        ('CAPEX_w',
+                       dict(desc="CAPEX wpp")),
+        ('OPEX_w',
+                       dict(desc="OPEX wpp")),
+
+        ('CAPEX_s',
+                       dict(desc="CAPEX solar pvp")),
+        ('OPEX_s',
+                       dict(desc="OPEX solar pvp")),
+
+        ('CAPEX_b',
+                       dict(desc="CAPEX battery")),
+        ('OPEX_b',
+                       dict(desc="OPEX battery")),
+
+        ('CAPEX_el',
+                       dict(desc="CAPEX electrical infrastructure")),
+        ('OPEX_el',
+                       dict(desc="OPEX electrical infrastructure")),
+
+        ('wind_WACC',
+                       dict(desc="After tax WACC for onshore WT")),
+        
+        ('solar_WACC',
+                       dict(desc="After tax WACC for solar PV")),
+        
+        ('battery_WACC',
+                       dict(desc="After tax WACC for stationary storge li-ion batteries")),
+        
+        ('tax_rate',
+                       dict(desc="Corporate tax rate")),
+        
+        ('P_HPP_SM_t_opt',dict(desc='',shape=[finance_model.life_intervals],)),
+        ('SM_price_cleared',dict(desc='',shape=[finance_model.life_h],)),
+        ('BM_dw_price_cleared',dict(desc='',shape=[finance_model.life_h],)),
+        ('BM_up_price_cleared',dict(desc='',shape=[finance_model.life_h],)),
+        ('P_HPP_RT_refs',dict(desc='',shape=[finance_model.life_intervals],)),
+        ('P_HPP_UP_bid_ts',dict(desc='',shape=[finance_model.life_intervals],)),
+        ('P_HPP_DW_bid_ts',dict(desc='',shape=[finance_model.life_intervals],)),
+        ('s_UP_t',dict(desc='',shape=[finance_model.life_intervals],)),
+        ('s_DW_t',dict(desc='',shape=[finance_model.life_intervals],)),
+        ('residual_imbalance',dict(desc='',shape=[finance_model.life_intervals],)),
+        ('P_HPP_ts',dict(desc='',shape=[finance_model.life_intervals],)),
+        ('P_curtailment_ts',dict(desc='',shape=[finance_model.life_intervals],)),
+        ('P_charge_discharge_ts',dict(desc='',shape=[finance_model.life_intervals],)),
+        ('E_SOC_ts',dict(desc='',shape=[finance_model.life_intervals + 1],)),
+        ],
+        outputs = [
+        ('CAPEX',
+                        dict(desc="CAPEX")),
+        
+        ('OPEX',
+                        dict(desc="OPEX")),
+        
+        ('NPV',
+                        dict(desc="NPV")),
+        
+        ('IRR',
+                        dict(desc="IRR")),
+        
+        ('NPV_over_CAPEX',
+                        dict(desc="NPV/CAPEX")),
+        
+        ('mean_AEP',
+                        dict(desc="mean AEP")),
+        
+        ('LCOE',
+                        dict(desc="LCOE")),
+        ('revenues',
+                        dict(desc="Revenues")),
+        
+        ('break_even_PPA_price',
+                        dict(desc='PPA price of electricity that results in NPV=0 with the given hybrid power plant configuration and operation',
+                        val=0)),
+        ],
+        function=finance_model.compute,
+        partial_options=[{'dependent': False, 'val': 0}],
+        )
 
 
 # -----------------------------------------------------------------------
