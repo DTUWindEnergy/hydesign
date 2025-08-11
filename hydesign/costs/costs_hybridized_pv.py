@@ -1,7 +1,7 @@
 import openmdao.api as om
 from hydesign.openmdao_wrapper import ComponentWrapper
 
-class shared_cost_pp:
+class shared_cost:
     """Pure Python Electrical infrastructure and land rent cost model"""
 
     def __init__(self,
@@ -53,9 +53,9 @@ class shared_cost_pp:
         outputs['OPEX_sh'] = 0
         return outputs['CAPEX_sh_s'], outputs['CAPEX_sh_w'], outputs['OPEX_sh']
 
-class shared_cost(ComponentWrapper):
+class shared_cost_comp(ComponentWrapper):
     def __init__(self, hpp_BOS_soft_cost, hpp_grid_connection_cost, land_cost):
-        Shared_Cost = shared_cost_pp(hpp_BOS_soft_cost, hpp_grid_connection_cost, land_cost)
+        model = shared_cost(hpp_BOS_soft_cost, hpp_grid_connection_cost, land_cost)
         super().__init__(
             inputs=[
                 ('solar_MW', {'units': 'MW', 'desc': 'AC nominal capacity of the PV plant'}),
@@ -67,11 +67,11 @@ class shared_cost(ComponentWrapper):
                 ('CAPEX_sh_w', {'desc': 'CAPEX electrical infrastructure/ land rent for the wind stand-alone'}),
                 ('OPEX_sh', {'desc': 'OPEX electrical infrastructure/ land rent'})
             ],
-            function=Shared_Cost.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],
             )
 
-class decommissioning_cost_pp:
+class decommissioning_cost:
     """Pure Python Decommissioning cost model"""
 
     def __init__(self,
@@ -110,9 +110,9 @@ class decommissioning_cost_pp:
         outputs['decommissioning_cost_tot_s'] = decommissioning_cost_s * solar_MW
         return outputs['decommissioning_cost_tot_w'], outputs['decommissioning_cost_tot_s']
     
-class decommissioning_cost(ComponentWrapper):
+class decommissioning_cost_comp(ComponentWrapper):
     def __init__(self, decommissioning_cost_w, decommissioning_cost_s):
-        Decommissioning_Cost = decommissioning_cost_pp(decommissioning_cost_w, decommissioning_cost_s)
+        model = decommissioning_cost(decommissioning_cost_w, decommissioning_cost_s)
         super().__init__(
             inputs=[
                 ('CAPEX_w', {'desc': 'CAPEX of the wind plant'}),
@@ -122,7 +122,7 @@ class decommissioning_cost(ComponentWrapper):
                 ('decommissioning_cost_tot_w', {'desc': 'Decommissioning cost of the entire wind plant'}),
                 ('decommissioning_cost_tot_s', {'desc': 'Decommissioning cost of the entire PV plant'})
             ],
-            function=Decommissioning_Cost.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],
         )
 

@@ -6,7 +6,7 @@
 import numpy as np
 from hydesign.openmdao_wrapper import ComponentWrapper
 # Define a class for Biogas to H2 production within OpenMDAO framework
-class BiogasH2_pp:
+class BiogasH2:
     def __init__(self,
                  N_time,
                  heat_mwht_per_kg_h2,
@@ -64,11 +64,11 @@ class BiogasH2_pp:
                     'max_solar_flux_dni_reactor_biogas_h2_t']
         return [outputs[key] for key in out_keys]
 
-class BiogasH2(ComponentWrapper):
+class BiogasH2_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        BiogasH2_model = BiogasH2_pp(**insta_inp)
-        super().__init__(inputs=BiogasH2_model.inputs,
-                            outputs=BiogasH2_model.outputs,
-                            function=BiogasH2_model.compute,
+        model = BiogasH2(**insta_inp)
+        super().__init__(inputs=model.inputs,
+                            outputs=model.outputs,
+                            function=model.compute,
                             partial_options=[{'dependent': False, 'val': 0}],)
 

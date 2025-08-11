@@ -65,7 +65,7 @@ def get_weights(grid, xtgt, maxorder):
     return c
 
 
-class hybridization_shifted_pp:
+class hybridization_shifted:
     def __init__(self,
             N_limit,
             life_y,
@@ -105,9 +105,9 @@ class hybridization_shifted_pp:
         SoH_shifted = np.concatenate((np.zeros(delta_life * 365 * 24), SoH[0:life_y * 365 * 24], np.zeros((N_limit-delta_life) * 365 * 24)))
         return SoH_shifted
 
-class hybridization_shifted(ComponentWrapper):
+class hybridization_shifted_comp(ComponentWrapper):
     def __init__(self, N_limit, life_y, N_time, life_h):
-        Hybridization_Shifted = hybridization_shifted_pp(N_limit, life_y, N_time, life_h)
+        model = hybridization_shifted(N_limit, life_y, N_time, life_h)
         super().__init__(
             inputs=[
                 ('delta_life', {'desc': 'Years between the starting of operations of the existing plant and the new plant'}),
@@ -116,7 +116,7 @@ class hybridization_shifted(ComponentWrapper):
             outputs=[
                 ('SoH_shifted', {'desc': 'Battery state of health at discretization levels shifted of delta_life', 'shape': [life_h]})
             ],
-            function=Hybridization_Shifted.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],
         )
 

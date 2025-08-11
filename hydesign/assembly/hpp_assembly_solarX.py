@@ -1,22 +1,16 @@
-import os
-
-# basic libraries
 import numpy as np
 import pandas as pd
-import openmdao.api as om
-import yaml
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 
-# specific library imports from 'hydesign'
-from hydesign.sf.sf import sf
-from hydesign.cpv.cpv import cpv
-from hydesign.cst.cst import cst
-from hydesign.h2.h2 import BiogasH2
-from hydesign.ems.EmsSolarX import EmsSolarX
-from hydesign.costs.costs_solarX import sf_cost, cpv_cost, cst_cost, H2Cost, shared_cost
-from hydesign.finance.finance_solarX import finance_solarX
-from hydesign.assembly.hpp_assembly import hpp_base, mkdir
+from hydesign.sf.sf import sf_comp as sf
+from hydesign.cpv.cpv import cpv_comp as cpv
+from hydesign.cst.cst import cst_comp as cst
+from hydesign.h2.h2 import BiogasH2_comp as BiogasH2
+from hydesign.ems.EmsSolarX import EmsSolarX_comp as EmsSolarX
+from hydesign.costs.costs_solarX import sf_cost_comp as sf_cost, cpv_cost_comp as cpv_cost, cst_cost_comp as cst_cost, H2Cost_comp as H2Cost, shared_cost_comp as shared_cost
+from hydesign.finance.finance_solarX import finance_solarX_comp as finance_solarX
+from hydesign.assembly.hpp_assembly import hpp_base
 
 
 class hpp_model_solarX(hpp_base):

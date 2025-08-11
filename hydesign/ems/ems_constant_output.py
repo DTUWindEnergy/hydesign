@@ -10,7 +10,7 @@ from docplex.mp.model import Model
 from hydesign.ems.ems import expand_to_lifetime, split_in_batch
 from hydesign.openmdao_wrapper import ComponentWrapper
 
-class ems_long_term_operation_pp:
+class ems_long_term_operation:
     """Long term operation EMS. Predicts the operation of the plant throughout the entire lifetime, taking into account the battery
     and PV degradations.
     
@@ -120,42 +120,42 @@ class ems_long_term_operation_pp:
         out_keys = ['hpp_t_with_deg', 'hpp_curt_t_with_deg', 'b_t_with_deg', 'b_E_SOC_t_with_deg', 'penalty_t_with_deg', 'total_curtailment']
         return [outputs[k] for k in out_keys]
 
-class ems_long_term_operation(ComponentWrapper):
+class ems_long_term_operation_comp(ComponentWrapper):
     def __init__(self, **inst_inp):
-        ems_long_term_operation_model = ems_long_term_operation_pp(**inst_inp)
+        model = ems_long_term_operation(**inst_inp)
         super().__init__(
             inputs = [
             (
                 'SoH',dict(
                 desc="Battery state of health at discretization levels",
-                shape=[ems_long_term_operation_model.life_h])
+                shape=[model.life_h])
             ),
             (
                 'wind_t_ext_deg',dict(
                 desc="Wind time series including degradation",
                 units='MW',
-                shape=[ems_long_term_operation_model.life_h]) 
+                shape=[model.life_h]) 
             ),
             (
                 'solar_t_ext_deg',dict(
                 desc="PV time series including degradation",
                 units='MW',
-                shape=[ems_long_term_operation_model.life_h]) ),
+                shape=[model.life_h]) ),
             (
                 'wind_t_ext', dict(
                 desc="WPP power time series",
                 units='MW',
-                shape=[ems_long_term_operation_model.life_h])
+                shape=[model.life_h])
             ),
             (
                 'solar_t_ext', dict(
                 desc="PVP power time series",
                 units='MW',
-                shape=[ems_long_term_operation_model.life_h]),),
+                shape=[model.life_h]),),
             (
                 'price_t_ext', dict(
                 desc="Electricity price time series",
-                shape=[ems_long_term_operation_model.life_h])
+                shape=[model.life_h])
             ),
             (
                 'b_P', dict(
@@ -181,16 +181,16 @@ class ems_long_term_operation(ComponentWrapper):
                 'hpp_curt_t', dict(
                 desc="HPP curtailed power time series",
                 units='MW',
-                shape=[ems_long_term_operation_model.life_h])),
+                shape=[model.life_h])),
             (
                 'b_t', dict(
                 desc="Battery charge/discharge power time series",
                 units='MW',
-                shape=[ems_long_term_operation_model.life_h])),
+                shape=[model.life_h])),
             (
                 'b_E_SOC_t', dict(
                 desc="Battery energy SOC time series",
-                shape=[ems_long_term_operation_model.life_h + 1])),
+                shape=[model.life_h + 1])),
             (
                 'peak_hr_quantile', dict(
                 desc="Quantile of price time series to define peak price hours (above this quantile).\n"+
@@ -211,33 +211,33 @@ class ems_long_term_operation(ComponentWrapper):
                 dict(
                     desc="HPP power time series",
                     units='MW',
-                    shape=[ems_long_term_operation_model.life_h])
+                    shape=[model.life_h])
             ),
             (
                 'hpp_curt_t_with_deg',
                 dict(
                     desc="HPP curtailed power time series",
                     units='MW',
-                    shape=[ems_long_term_operation_model.life_h])
+                    shape=[model.life_h])
             ),
             (
                 'b_t_with_deg',
                 dict(
                     desc="Battery charge/discharge power time series",
                     units='MW',
-                    shape=[ems_long_term_operation_model.life_h])
+                    shape=[model.life_h])
             ),
             (
                 'b_E_SOC_t_with_deg',
                 dict(
                     desc="Battery energy SOC time series",
-                    shape=[ems_long_term_operation_model.life_h + 1])
+                    shape=[model.life_h + 1])
             ),
             (
                 'penalty_t_with_deg',
                 dict(
                     desc="penalty for not reaching expected energy production at peak hours",
-                    shape=[ems_long_term_operation_model.life_h])
+                    shape=[model.life_h])
             ),
             (
                 'total_curtailment',
@@ -247,11 +247,11 @@ class ems_long_term_operation(ComponentWrapper):
                 )
             )   
             ],
-            function=ems_long_term_operation_model.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],
         )
 
-class ems_constantoutput_pp:
+class ems_constantoutput:
     """Energy management optimization model
     The energy management system optimization model consists in maximizing the revenue generated by the plant over a period of time,
     including a possible penalty for not meeting the requirement of energy generation during peak hours over the period. It also assigns
@@ -380,23 +380,23 @@ class ems_constantoutput_pp:
         ]
         return [outputs[k] for k in out_keys]
 
-class ems_constantoutput(ComponentWrapper):
+class ems_constantoutput_comp(ComponentWrapper):
     def __init__(self, **inst_inp):
-        ems_constantoutput_model = ems_constantoutput_pp(**inst_inp)
+        model = ems_constantoutput(**inst_inp)
         super().__init__(
                 inputs = [ ('wind_t',dict(
             desc="WPP power time series",
             units='MW',
-            shape=[ems_constantoutput_model.N_time]
+            shape=[model.N_time]
         ),),
            ('solar_t',dict(
             desc="PVP power time series",
             units='MW',
-            shape=[ems_constantoutput_model.N_time]
+            shape=[model.N_time]
         ),),
            ('price_t',dict(
             desc="Electricity price time series",
-            shape=[ems_constantoutput_model.N_time]
+            shape=[model.N_time]
         ),),
            ('b_P',dict(
             desc="Battery power capacity",
@@ -435,43 +435,43 @@ class ems_constantoutput(ComponentWrapper):
             ('wind_t_ext',dict(
             desc="WPP power time series",
             units='MW',
-            shape=[ems_constantoutput_model.life_h])
+            shape=[model.life_h])
         ),
             ('solar_t_ext',dict(
             desc="PVP power time series",
             units='MW',
-            shape=[ems_constantoutput_model.life_h])
+            shape=[model.life_h])
         ),
             ('price_t_ext',dict(
             desc="Electricity price time series",
-            shape=[ems_constantoutput_model.life_h])
+            shape=[model.life_h])
         ),
 
             ('hpp_t',dict(
             desc="HPP power time series",
             units='MW',
-            shape=[ems_constantoutput_model.life_h])
+            shape=[model.life_h])
         ),
             ('hpp_curt_t',dict(
             desc="HPP curtailed power time series",
             units='MW',
-            shape=[ems_constantoutput_model.life_h])
+            shape=[model.life_h])
         ),
             ('b_t',dict(
             desc="Battery charge/discharge power time series",
             units='MW',
-            shape=[ems_constantoutput_model.life_h])
+            shape=[model.life_h])
         ),
             ('b_E_SOC_t',dict(
             desc="Battery energy SOC time series",
-            shape=[ems_constantoutput_model.life_h + 1])
+            shape=[model.life_h + 1])
         ),
             ('penalty_t',dict(
             desc="penalty for not reaching expected energy production at peak hours",
-            shape=[ems_constantoutput_model.life_h])
+            shape=[model.life_h])
         ),
         ],
-        function = ems_constantoutput_model.compute,
+        function = model.compute,
         partial_options=[{'dependent': False, 'val': 0}],)
     
 def ems_cplex_constantoutput(

@@ -21,7 +21,7 @@ import rainflow
 from hydesign.ems.ems import expand_to_lifetime
 from hydesign.openmdao_wrapper import ComponentWrapper
 
-class battery_degradation_pp:
+class battery_degradation:
     """OpenMDAO component modelling the battery degradation over the plant life.
 
     Parameters
@@ -51,7 +51,6 @@ class battery_degradation_pp:
         battery_deg = True,
     ):
 
-        # super().__init__()
         self.life_h = 365 * 24 * life_y
         self.life_intervals = self.life_h * intervals_per_hour
         self.yearly_intervals = 365 * 24 * intervals_per_hour
@@ -72,27 +71,7 @@ class battery_degradation_pp:
             weeks_per_season_per_year = weeks_per_season_per_year)
 
         self.air_temp_K_t = air_temp_K_t
-        # print(life_y, self.life_h)
 
-    # def setup(self):
-    #     self.add_input(
-    #         'b_E_SOC_t',
-    #         desc="Battery energy SOC time series",
-    #         shape=[self.life_intervals + 1])
-    #     self.add_input(
-    #         'min_LoH',
-    #         desc="minimum level of health before death of battery")
-        
-    #     # -------------------------------------------------------
-
-    #     self.add_output(
-    #         'SoH',
-    #         desc="Battery state of health at discretization levels",
-    #         shape=[self.life_intervals])
-    #     self.add_output(
-    #         'n_batteries',
-    #         desc="Number of batteries used.",
-    #         )
 
     def compute(self, b_E_SOC_t, min_LoH, **kwargs):
 
@@ -135,23 +114,23 @@ class battery_degradation_pp:
             outputs['n_batteries'] = 1
         return outputs['SoH'], outputs['n_batteries']
     
-class battery_degradation(ComponentWrapper):
+class battery_degradation_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        BatDeg = battery_degradation_pp(**insta_inp)
+        model = battery_degradation(**insta_inp)
         super().__init__(inputs=[
-            ('b_E_SOC_t', {'desc': 'Battery energy SOC time series', 'shape':[BatDeg.life_intervals + 1]}),
+            ('b_E_SOC_t', {'desc': 'Battery energy SOC time series', 'shape':[model.life_intervals + 1]}),
             ('min_LoH', {'desc': 'Minimum level of health before death of battery'})
         ],
             outputs=[
-                ('SoH', {'desc': 'Battery state of health at discretization levels', 'shape':[BatDeg.life_intervals]}),
+                ('SoH', {'desc': 'Battery state of health at discretization levels', 'shape':[model.life_intervals]}),
                 ('n_batteries', {'desc': 'Number of batteries used.'})
             ],
-            function=BatDeg.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],
         )
 
 
-class battery_loss_in_capacity_due_to_temp_pp:
+class battery_loss_in_capacity_due_to_temp:
     """OpenMDAO component for temporary capacity loss due to low temperatures.
 
     Parameters
@@ -181,7 +160,6 @@ class battery_loss_in_capacity_due_to_temp_pp:
         battery_deg = True,
     ):
 
-        # super().__init__()
         self.life_h = 365 * 24 * life_y
         self.yearly_intervals = 365 * 24 * intervals_per_hour
         self.life_intervals = self.life_h * intervals_per_hour
@@ -216,16 +194,16 @@ class battery_loss_in_capacity_due_to_temp_pp:
             SoH_all = np.ones(self.life_intervals)
         return SoH_all
 
-class battery_loss_in_capacity_due_to_temp(ComponentWrapper):
+class battery_loss_in_capacity_due_to_temp_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        BatLossTemp = battery_loss_in_capacity_due_to_temp_pp(**insta_inp)
+        model = battery_loss_in_capacity_due_to_temp(**insta_inp)
         super().__init__(inputs=[
-            ('SoH', {'desc': 'Battery state of health at discretization levels', 'shape':BatLossTemp.life_intervals})
+            ('SoH', {'desc': 'Battery state of health at discretization levels', 'shape':model.life_intervals})
         ],
             outputs=[
-                ('SoH_all', {'desc': 'Battery state of health at discretization levels', 'shape':BatLossTemp.life_intervals})
+                ('SoH_all', {'desc': 'Battery state of health at discretization levels', 'shape':model.life_intervals})
             ],
-            function=BatLossTemp.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],
         )
 

@@ -18,7 +18,7 @@ from hydesign.finance.finance import get_inflation_index, calculate_revenues
 import matplotlib.pyplot as plt
 
 
-class finance_pp:
+class finance:
     """Pure Python Hybrid power plant financial model to estimate the overall profitability of the hybrid power plant.
     It considers different weighted average costs of capital (WACC) for wind, PV and battery. The model calculates
     the yearly cashflow as a function of the average revenue over the year, the tax rate and WACC after tax
@@ -361,10 +361,10 @@ class finance_pp:
                        'break_even_PPA_price']
         return [outputs[o] for o in output_keys]
 
-class finance(ComponentWrapper):
+class finance_comp(ComponentWrapper):
     def __init__(self, **inst_inp):
         life_h = inst_inp['life_h']
-        Finance = finance_pp(**inst_inp)
+        model = finance(**inst_inp)
         # key_map_dict = {'CAPEX_sh_w':'CAPEX_el_w','CAPEX_sh_s':'CAPEX_el_s','penalty_t_with_deg':'penalty_t',}
         # def func(**inputs):
         #     inputs = {(key_map_dict[k] if k in key_map_dict else k):v  for (k,v) in inputs.items()}
@@ -401,7 +401,7 @@ class finance(ComponentWrapper):
                 ('penalty_lifetime', {'desc': 'total penalty'}),
                 ('break_even_PPA_price', {'desc': 'PPA price of electricity that results in NPV=0 with the given hybrid power plant configuration and operation', 'val': 0})
             ],
-            function=Finance.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],
         )
 

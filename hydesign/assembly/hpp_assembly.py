@@ -1,7 +1,4 @@
-# %%
 import os
-
-# basic libraries
 import numpy as np
 import pandas as pd
 import openmdao.api as om
@@ -9,15 +6,15 @@ import yaml
 import xarray as xr
 import datetime
 
-from hydesign.weather.weather import extract_weather_for_HPP, ABL, select_years
-from hydesign.wind.wind import genericWT_surrogate, genericWake_surrogate, wpp, wpp_with_degradation, get_rotor_d  # , get_rotor_area
-from hydesign.pv.pv import pvp, pvp_with_degradation
-from hydesign.ems.ems import ems, ems_long_term_operation
-from hydesign.battery_degradation import battery_degradation, battery_loss_in_capacity_due_to_temp
-from hydesign.costs.costs import wpp_cost, pvp_cost, battery_cost, shared_cost
-from hydesign.finance.finance import finance
+from hydesign.weather.weather import extract_weather_for_HPP, ABL_comp as ABL, select_years
+from hydesign.wind.wind import genericWT_surrogate_comp as genericWT_surrogate, genericWake_surrogate_comp as genericWake_surrogate, wpp_comp as wpp, wpp_with_degradation_comp as wpp_with_degradation, get_rotor_d  
+from hydesign.pv.pv import pvp_comp as pvp, pvp_with_degradation_comp as pvp_with_degradation
+from hydesign.ems.ems import ems_comp as ems, ems_long_term_operation_comp as ems_long_term_operation
+from hydesign.battery_degradation import battery_degradation_comp as battery_degradation, battery_loss_in_capacity_due_to_temp_comp as battery_loss_in_capacity_due_to_temp
+from hydesign.costs.costs import wpp_cost_comp as wpp_cost, pvp_cost_comp as pvp_cost, battery_cost_comp as battery_cost, shared_cost_comp as shared_cost
+from hydesign.finance.finance import finance_comp as finance
 from hydesign.look_up_tables import lut_filepath
-from hydesign.reliability import battery_with_reliability, wpp_with_reliability, pvp_with_reliability
+from hydesign.reliability import battery_with_reliability_comp as battery_with_reliability, wpp_with_reliability_comp as wpp_with_reliability, pvp_with_reliability_comp as pvp_with_reliability
 
 class hpp_base:
     def __init__(self,

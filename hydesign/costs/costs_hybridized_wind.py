@@ -1,6 +1,7 @@
 import openmdao.api as om
+from hydesign.openmdao_wrapper import ComponentWrapper
 
-class shared_cost(om.ExplicitComponent):
+class shared_cost:
     """Electrical infrastructure and land rent cost model"""
 
     def __init__(self,
@@ -21,36 +22,33 @@ class shared_cost(om.ExplicitComponent):
         self.hpp_grid_connection_cost = hpp_grid_connection_cost
         self.land_cost = land_cost
 
-    def setup(self):
-        self.add_input('G_MW',
-                       desc="Grid capacity",
-                       units='MW')
-        self.add_input('p_rated',
-                       desc="Power rated",
-                       units='MW')
-        self.add_input('Nwt',
-                       desc="Number of wind turbines",
-                       )
-        self.add_input('solar_MW',
-                       desc="Solar capacity",
-                       units='MW')
-        self.add_input('Awpp',
-                       desc="Land use area of WPP",
-                       units='km**2')
-        self.add_input('Apvp',
-                       desc="Land use area of SP",
-                       units='km**2')
-        self.add_output('CAPEX_sh_w',
-                        desc="CAPEX electrical infrastructure/ land rent for wind")
-        self.add_output('CAPEX_sh_s',
-                        desc="CAPEX electrical infrastructure/ land rent for PV and batteries")
-        self.add_output('OPEX_sh',
-                        desc="OPEX electrical infrastructure/ land rent")
+        self.inputs = [
+       ('G_MW',
+                       dict(desc="Grid capacity",
+                       units='MW')),
+        ('p_rated',
+                       dict(desc="Power rated,",
+                       units='MW')),
+        ('Nwt',
+                       dict(desc="Number of wind turbines",
+                       )),
+        ('solar_MW',
+                       dict(desc="Solar capacity",
+                       units='MW')),
+        ('Awpp',
+                       dict(desc="Land use area of WPP",
+                       units='km**2')),
+        ('Apvp',
+                       dict(desc="Land use area of SP",
+                       units='km**2')),
+                       ]
+        self.outputs = [
+            ('CAPEX_sh_w', {'desc': 'CAPEX electrical infrastructure/ land rent for the wind stand-alone'}),
+            ('CAPEX_sh_s', {'desc': 'CAPEX electrical infrastructure/ land rent for the added PV'}),
+            ('OPEX_sh', {'desc': 'OPEX electrical infrastructure/ land rent'})]
 
-    def setup_partials(self):
-        self.declare_partials('*', '*', method='fd')
 
-    def compute(self, inputs, outputs):
+    def compute(self, **inputs):
         """ Computing the CAPEX and OPEX of the shared land and infrastructure.
 
         Parameters
@@ -65,6 +63,7 @@ class shared_cost(om.ExplicitComponent):
         CAPEX_sh_s : CAPEX electrical infrastructure/ land rent for the added pv [Eur]
         OPEX_sh : OPEX electrical infrastructure/ land rent [Eur/year]
         """
+        outputs = {}
         Nwt = inputs['Nwt']
         p_rated = inputs['p_rated']
         # solar_MW = inputs['solar_MW']
@@ -90,29 +89,23 @@ class shared_cost(om.ExplicitComponent):
             outputs['CAPEX_sh_s'] = 0
 
         outputs['OPEX_sh'] = 0
+        out_keys = ['CAPEX_sh_w', 'CAPEX_sh_s', 'OPEX_sh']
+        return [outputs[key] for key in out_keys]
+
+class shared_cost_comp(ComponentWrapper):
+    def __init__(self, hpp_BOS_soft_cost, hpp_grid_connection_cost, land_cost):
+        model = shared_cost(hpp_BOS_soft_cost, hpp_grid_connection_cost, land_cost)
+        super().__init__(
+            inputs=model.inputs,
+            outputs=model.outputs,
+            function=model.compute,
+            partial_options=[{'dependent': False, 'val': 0}],
+        )
 
 
-    def compute_partials(self, inputs, partials):
-        # G_MW = inputs['G_MW']
-        Awpp = inputs['Awpp']
-        Apvp = inputs['Apvp']
-        land_cost = self.land_cost
-        hpp_BOS_soft_cost = self.hpp_BOS_soft_cost
-        hpp_grid_connection_cost = self.hpp_grid_connection_cost
-
-        partials['CAPEX_sh', 'G_MW'] = hpp_BOS_soft_cost + hpp_grid_connection_cost
-        if (Awpp >= Apvp):
-            partials['CAPEX_sh', 'Awpp'] = land_cost
-            partials['CAPEX_sh', 'Apvp'] = 0
-        else:
-            partials['CAPEX_sh', 'Awpp'] = 0
-            partials['CAPEX_sh', 'Apvp'] = land_cost
-        partials['OPEX_sh', 'G_MW'] = 0
-        partials['OPEX_sh', 'Awpp'] = 0
-        partials['OPEX_sh', 'Apvp'] = 0
 
 
-class decommissioning_cost(om.ExplicitComponent):
+class decommissioning_cost:
     """Decommissioning cost model"""
 
     def __init__(self,
@@ -127,26 +120,27 @@ class decommissioning_cost(om.ExplicitComponent):
         decommissioning_cost_s : Decommissioning cost of the PV [Euro/MW]
 
         """
-        super().__init__()
+        # super().__init__()
         self.decommissioning_cost_w = decommissioning_cost_w
         self.decommissioning_cost_s = decommissioning_cost_s
 
-    def setup(self):
+    # def setup(self):
+        self.inputs = [
+        ('CAPEX_w',
+                        dict(desc="CAPEX wpp")),
+        ('solar_MW',
+                       dict(desc="Solar capacity",
+                       units='MW')),
+        ]
+        self.outputs = [
+        ('decommissioning_cost_tot_w',
+                        dict(desc="Decommissioning cost of the entire wind plant")),
+        ('decommissioning_cost_tot_s',
+                        dict(desc="Decommissioning cost of the entire PV plant")),
+        ]
 
-        self.add_input('CAPEX_w',
-                        desc="CAPEX wpp")
-        self.add_input('solar_MW',
-                       desc="Solar capacity",
-                       units='MW')
-        self.add_output('decommissioning_cost_tot_w',
-                        desc="Decommissioning cost of the entire wind plant")
-        self.add_output('decommissioning_cost_tot_s',
-                        desc="Decommissioning cost of the entire PV plant")
 
-    def setup_partials(self):
-        self.declare_partials('*', '*', method='fd')
-
-    def compute(self, inputs, outputs):
+    def compute(self, **inputs):
         """ Computing the decommissioning costs of the entire wind plant and PV plant.
 
         Parameters
@@ -159,7 +153,7 @@ class decommissioning_cost(om.ExplicitComponent):
         decommissioning_cost_tot_w : Decommissioning cost of the entire wind plant [Eur]
         decommissioning_cost_tot_s : Decommissioning cost of the entire PV plant [Eur]
         """
-
+        outputs = {}
         CAPEX_w = inputs['CAPEX_w']
         solar_MW = inputs['solar_MW']
 
@@ -168,5 +162,15 @@ class decommissioning_cost(om.ExplicitComponent):
 
         outputs['decommissioning_cost_tot_w'] = decommissioning_cost_w * CAPEX_w
         outputs['decommissioning_cost_tot_s'] = decommissioning_cost_s * solar_MW
+        out_keys = ['decommissioning_cost_tot_w', 'decommissioning_cost_tot_s']
+        return [outputs[key] for key in out_keys]
 
-
+class decommissioning_cost_comp(ComponentWrapper):
+    def __init__(self, decommissioning_cost_w, decommissioning_cost_s):
+        model = decommissioning_cost(decommissioning_cost_w, decommissioning_cost_s)
+        super().__init__(
+            inputs=model.inputs,
+            outputs=model.outputs,
+            function=model.compute,
+            partial_options=[{'dependent': False, 'val': 0}],
+        )

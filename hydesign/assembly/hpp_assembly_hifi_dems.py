@@ -3,15 +3,12 @@ import numpy as np
 import openmdao.api as om
 import os
 
-from hydesign.weather.weather import ABL
-from hydesign.wind.wind import genericWT_surrogate, genericWake_surrogate, wpp, wpp_with_degradation, get_rotor_d  # , get_rotor_area
-from hydesign.pv.pv import pvp, pvp_with_degradation
-from hydesign.ems.ems_hifi_dems import ems
-from hydesign.ems.ems import ems_long_term_operation
-from hydesign.battery_degradation import battery_degradation, battery_loss_in_capacity_due_to_temp
-from hydesign.costs.costs import wpp_cost, pvp_cost, battery_cost, shared_cost
-from hydesign.finance.finance_hifi_ems import finance
-from hydesign.reliability import battery_with_reliability, wpp_with_reliability, pvp_with_reliability
+from hydesign.weather.weather import ABL_comp as ABL
+from hydesign.wind.wind import genericWT_surrogate_comp as genericWT_surrogate, genericWake_surrogate_comp as genericWake_surrogate, wpp_comp as wpp, get_rotor_d  # , get_rotor_area
+from hydesign.pv.pv import pvp_comp as pvp
+from hydesign.ems.ems_hifi_dems import ems_comp as ems
+from hydesign.costs.costs import wpp_cost_comp as wpp_cost, pvp_cost_comp as pvp_cost, battery_cost_comp as battery_cost, shared_cost_comp as shared_cost
+from hydesign.finance.finance_hifi_ems import finance_comp as finance
 from hydesign.assembly.hpp_assembly import hpp_base
 from hydesign.examples import examples_filepath
 

@@ -8,7 +8,7 @@ import openmdao.api as om
 from hydesign.nrel_csm_wrapper import wt_cost
 from hydesign.openmdao_wrapper import ComponentWrapper
 
-class wpp_cost_pp:
+class wpp_cost:
     """Pure Python Wind power plant cost model is used to assess the overall wind plant cost. It is based on the The NREL Cost and Scaling model [1].
     It estimates the total capital expenditure costs and operational and maintenance costs, as a function of the installed capacity, the cost of the
     turbine, intallation costs and O&M costs.
@@ -107,27 +107,27 @@ class wpp_cost_pp:
                             mean_aep_wind * wind_variable_onm_cost * p_rated/p_rated_ref
         return CAPEX_w, OPEX_w
 
-class wpp_cost(ComponentWrapper):
+class wpp_cost_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        WPP_Cost = wpp_cost_pp(**insta_inp)
+        model = wpp_cost(**insta_inp)
         super().__init__(
             inputs=[
                 ('Nwt', {'desc': 'Number of wind turbines'}),
                 ('hh', {'units': 'm', 'desc': "Turbine's hub height"}),
                 ('d', {'units': 'm', 'desc': "Turbine's diameter"}),
                 ('p_rated', {'units': 'MW', 'desc': "Turbine's rated power"}),
-                ('wind_t', {'units': 'MW', 'desc': "WPP power time series", 'shape': [WPP_Cost.N_time]})
+                ('wind_t', {'units': 'MW', 'desc': "WPP power time series", 'shape': [model.N_time]})
             ],
             outputs=[
                 ('CAPEX_w', {'desc': 'CAPEX of the wind power plant'}),
                 ('OPEX_w', {'desc': 'OPEX of the wind power plant'})
             ],
-            function=WPP_Cost.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],
         )
 
 
-class pvp_cost_pp:
+class pvp_cost:
     """Pure Python PV plant cost model is used to calculate the overall PV plant cost. The cost model estimates the total solar capital expenditure costs
     and  operational and maintenance costs as a function of the installed solar capacity and the PV cost per MW installation costs (extracted from the danish energy agency data catalogue).
     """
@@ -191,9 +191,9 @@ class pvp_cost_pp:
         d_OPEX_s_d_DC_AC_ratio = solar_fixed_onm_cost * solar_MW
         return d_CAPEX_s_d_solar_MW, d_CAPEX_s_d_DC_AC_ratio, d_OPEX_s_d_solar_MW, d_OPEX_s_d_DC_AC_ratio
 
-class pvp_cost(ComponentWrapper):
+class pvp_cost_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        PVP_Cost = pvp_cost_pp(**insta_inp)
+        model = pvp_cost(**insta_inp)
         super().__init__(
             inputs=[
                 ('solar_MW', {'units': 'MW', 'desc': 'AC nominal capacity of the PV plant'}),
@@ -203,12 +203,12 @@ class pvp_cost(ComponentWrapper):
                 ('CAPEX_s', {'desc': 'CAPEX of the PV power plant'}),
                 ('OPEX_s', {'desc': 'OPEX of the PV power plant'})
             ],
-            function=PVP_Cost.compute,
-            # partial_function=PVP_Cost.compute_partials,
+            function=model.compute,
+            # partial_function=model.compute_partials,
             partial_options=[{'dependent': False, 'val': 0}],
         )
 
-class battery_cost_pp:
+class battery_cost:
     """Pure Python Battery cost model calculates the storage unit costs. It uses technology costs extracted from the danish energy agency data catalogue."""
 
     def __init__(self,
@@ -292,25 +292,25 @@ class battery_cost_pp:
         OPEX_b = OPEX_b
         return CAPEX_b, OPEX_b
 
-class battery_cost(ComponentWrapper):
+class battery_cost_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        Battery_Cost = battery_cost_pp(**insta_inp)
+        model = battery_cost(**insta_inp)
         super().__init__(
             inputs=[
                 ('b_P', {'units': 'MW', 'desc': 'Battery power capacity'}),
                 ('b_E', {'desc': 'Battery energy storage capacity'}),
-                ('SoH', {'desc': 'Battery state of health at discretization levels', 'shape': [Battery_Cost.life_intervals]})
+                ('SoH', {'desc': 'Battery state of health at discretization levels', 'shape': [model.life_intervals]})
             ],
             outputs=[
                 ('CAPEX_b', {'desc': 'CAPEX of the storage unit'}),
                 ('OPEX_b', {'desc': 'OPEX of the storage unit'})
             ],
-            function=Battery_Cost.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],
         )
 
 
-class shared_cost_pp:
+class shared_cost:
     """Pure Python Electrical infrastructure and land rent cost model"""
 
     def __init__(self,
@@ -375,9 +375,9 @@ class shared_cost_pp:
         partials['OPEX_sh', 'Apvp'] = 0
         return partials
 
-class shared_cost(ComponentWrapper):
+class shared_cost_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        Shared_Cost = shared_cost_pp(**insta_inp)
+        model = shared_cost(**insta_inp)
         super().__init__(
             inputs=[
                 ('G_MW', {'units': 'MW', 'desc': 'Grid capacity'}),
@@ -388,12 +388,12 @@ class shared_cost(ComponentWrapper):
                 ('CAPEX_sh', {'desc': 'CAPEX electrical infrastructure/ land rent'}),
                 ('OPEX_sh', {'desc': 'OPEX electrical infrastructure/ land rent'})
             ],
-            function=Shared_Cost.compute,
-            partial_function=Shared_Cost.compute_partials,
+            function=model.compute,
+            partial_function=model.compute_partials,
             partial_options=[{'dependent': False, 'val': 0}],
         )
 
-class ptg_cost_pp:
+class ptg_cost:
     """Pure Python Power to H2 plant cost model is used to calculate the overall H2 plant cost. The cost model includes cost of electrolyzer
      and compressor for storing Hydrogen (data extracted from the danish energy agency data catalogue and IRENA reports).
     """
@@ -447,21 +447,21 @@ class ptg_cost_pp:
         water_consumption_cost = (m_H2_offtake_t.mean()*self.yearly_intervals * water_consumption * (water_cost + water_treatment_cost)/1000) # annual mean water consumption to produce hydrogen over an year
         return CAPEX_ptg, OPEX_ptg, water_consumption_cost
 
-class ptg_cost(ComponentWrapper):
+class ptg_cost_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        PTG_Cost = ptg_cost_pp(**insta_inp)
+        model = ptg_cost(**insta_inp)
         super().__init__(
             inputs=[
                 ('ptg_MW', {'units': 'MW', 'desc': 'Installed capacity for the power to gas plant'}),
                 ('HSS_kg', {'units': 'kg', 'desc': 'Installed capacity of Hydrogen storage'}),
-                ('m_H2_offtake_t', {'units': 'kg', 'desc': 'Offtake hydrogen', 'shape': [PTG_Cost.life_intervals]})
+                ('m_H2_offtake_t', {'units': 'kg', 'desc': 'Offtake hydrogen', 'shape': [model.life_intervals]})
             ],
             outputs=[
                 ('CAPEX_ptg', {'desc': 'CAPEX of the power to gas plant'}),
                 ('OPEX_ptg', {'desc': 'OPEX of the power to gas plant'}),
                 ('water_consumption_cost', {'desc': 'Annual water consumption and treatment cost'})
             ],
-            function=PTG_Cost.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],
         )
        

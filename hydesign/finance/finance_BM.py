@@ -6,7 +6,7 @@ import scipy as sp
 from hydesign.finance.finance import calculate_WACC, get_inflation_index, calculate_CAPEX_phasing, calculate_NPV_IRR
 from hydesign.openmdao_wrapper import ComponentWrapper
 
-class finance_pp:
+class finance:
     """Hybrid power plant financial model to estimate the overall profitability of the hybrid power plant.
     It considers different weighted average costs of capital (WACC) for wind, PV and battery. The model calculates
     the yearly cashflow as a function of the average revenue over the year, the tax rate and WACC after tax
@@ -350,22 +350,22 @@ class finance_pp:
         out_keys = ['CAPEX', 'OPEX', 'revenues_without_deg', 'revenues', 'NPV', 'IRR', 'NPV_over_CAPEX', 'LCOE', 'mean_AEP', 'penalty_lifetime', 'break_even_PPA_price']
         return [outputs[k] for k in out_keys]
 
-class finance(ComponentWrapper):
+class finance_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        FIN = finance_pp(**insta_inp)
+        model = finance(**insta_inp)
         super().__init__(
             inputs=[
-                ('price_t_ext', {'desc': 'Electricity price time series', 'shape': [FIN.life_h]}),
-                ('hpp_t', {'desc': 'HPP power time series', 'units': 'MW', 'shape': [FIN.life_h]}),
-                ('hpp_up_reg_t', {'desc': 'HPP up regulation power time series', 'units': 'MW', 'shape': [FIN.life_h]}),
-                ('hpp_dwn_reg_t', {'desc': 'HPP down regulation power time series', 'units': 'MW', 'shape': [FIN.life_h]}),
-                ('price_up_reg_t_ext', {'desc': 'Up regulation price time series', 'shape': [FIN.life_h]}),
-                ('price_dwn_reg_t_ext', {'desc': 'Down regulation price time series', 'shape': [FIN.life_h]}),
-                ('penalty_t', {'desc': 'penalty for not reaching expected energy productin at peak hours', 'shape': [FIN.life_h]}),
-                ('hpp_t_deg', {'desc': 'HPP power time series with degradation', 'units': 'MW', 'shape': [FIN.life_h]}),
-                ('hpp_up_reg_t_deg', {'desc': 'HPP up regulation power time series with degradation', 'units': 'MW', 'shape': [FIN.life_h]}),
-                ('hpp_dwn_reg_t_deg', {'desc': 'HPP down regulation power time series with degradation', 'units': 'MW', 'shape': [FIN.life_h]}),
-                ('penalty_t_deg', {'desc': 'penalty for not reaching expected energy productin at peak hours with degradation', 'shape': [FIN.life_h]}),
+                ('price_t_ext', {'desc': 'Electricity price time series', 'shape': [model.life_h]}),
+                ('hpp_t', {'desc': 'HPP power time series', 'units': 'MW', 'shape': [model.life_h]}),
+                ('hpp_up_reg_t', {'desc': 'HPP up regulation power time series', 'units': 'MW', 'shape': [model.life_h]}),
+                ('hpp_dwn_reg_t', {'desc': 'HPP down regulation power time series', 'units': 'MW', 'shape': [model.life_h]}),
+                ('price_up_reg_t_ext', {'desc': 'Up regulation price time series', 'shape': [model.life_h]}),
+                ('price_dwn_reg_t_ext', {'desc': 'Down regulation price time series', 'shape': [model.life_h]}),
+                ('penalty_t', {'desc': 'penalty for not reaching expected energy productin at peak hours', 'shape': [model.life_h]}),
+                ('hpp_t_deg', {'desc': 'HPP power time series with degradation', 'units': 'MW', 'shape': [model.life_h]}),
+                ('hpp_up_reg_t_deg', {'desc': 'HPP up regulation power time series with degradation', 'units': 'MW', 'shape': [model.life_h]}),
+                ('hpp_dwn_reg_t_deg', {'desc': 'HPP down regulation power time series with degradation', 'units': 'MW', 'shape': [model.life_h]}),
+                ('penalty_t_deg', {'desc': 'penalty for not reaching expected energy productin at peak hours with degradation', 'shape': [model.life_h]}),
                 ('CAPEX_w', {'desc': 'CAPEX wpp'}),
                 ('OPEX_w', {'desc': 'OPEX wpp'}),
                 ('CAPEX_s', {'desc': 'CAPEX solar pvp'}),
@@ -392,8 +392,8 @@ class finance(ComponentWrapper):
                 ('penalty_lifetime', {'desc': 'Total penalty over lifetime'}),
                 ('break_even_PPA_price', {'desc': 'Break-even Power Purchase Agreement price'}),
             ],
-            function=FIN.compute,
-            partial_options=[{'dependent': False, 'val': 0},  
+            function=model.compute,
+            partial_options=[{'dependent': False, 'val': 0},
             ],)
 
 # -----------------------------------------------------------------------

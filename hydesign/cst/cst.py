@@ -2,7 +2,7 @@ import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 from hydesign.openmdao_wrapper import ComponentWrapper
 # Define a class for CST (Concentrated Solar Thermal) component within OpenMDAO framework
-class cst_pp:
+class cst:
     def __init__(self,
                  N_time,
                  cst_ms_receiver_efficiency_table,
@@ -114,11 +114,11 @@ class cst_pp:
         outputs['flow_ms_max_cst_receiver_capacity'] = flow_ms_max_cst_receiver_capacity
         out_keys = ['flow_ms_max_t', 'delta_q_hot_cold_ms_per_kg', 'flow_ms_max_cst_receiver_capacity']
         return [outputs[key] for key in out_keys]
-    
-class cst(ComponentWrapper):
+
+class cst_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        cst_model = cst_pp(**insta_inp)
-        super().__init__(inputs=cst_model.inputs,
-                            outputs=cst_model.outputs,
-                            function=cst_model.compute,
+        model = cst(**insta_inp)
+        super().__init__(inputs=model.inputs,
+                            outputs=model.outputs,
+                            function=model.compute,
                             partial_options=[{'dependent': False, 'val': 0}],)

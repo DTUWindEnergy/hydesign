@@ -6,13 +6,13 @@ import os
 from hydesign.wind.wind import get_rotor_d, get_wind_ts_degradation_2d, get_pywake_farm_pc
 from hydesign.assembly.hpp_assembly import hpp_base
 from hydesign.openmdao_wrapper import ComponentWrapper
-from hydesign.weather.weather import ABL_pp
+from hydesign.weather.weather import ABL as ABL_pp
 from hydesign.ems.ems import expand_to_lifetime
-from hydesign.pv.pv import pvp_pp, pvp_with_degradation_pp
-from hydesign.ems.ems_P2X import ems_P2X_pp, ems_long_term_operation_p2x_pp
-from hydesign.battery_degradation import battery_degradation_pp, battery_loss_in_capacity_due_to_temp_pp
-from hydesign.costs.costs import battery_cost_pp, pvp_cost_pp, shared_cost_pp, wpp_cost_pp, ptg_cost_pp
-from hydesign.finance.finance_P2X import finance_P2X_pp
+from hydesign.pv.pv import pvp as pvp_pp, pvp_with_degradation as pvp_with_degradation_pp
+from hydesign.ems.ems_P2X import ems_P2X as ems_P2X_pp, ems_long_term_operation_p2x as ems_long_term_operation_p2x_pp
+from hydesign.battery_degradation import battery_degradation as battery_degradation_pp, battery_loss_in_capacity_due_to_temp as battery_loss_in_capacity_due_to_temp_pp
+from hydesign.costs.costs import battery_cost as battery_cost_pp, pvp_cost as pvp_cost_pp, shared_cost as shared_cost_pp, wpp_cost as wpp_cost_pp, ptg_cost as ptg_cost_pp
+from hydesign.finance.finance_P2X import finance_P2X as finance_P2X_pp
 
 from wind_farm_loads.py_wake import compute_flow_map, predict_loads_pod
 
@@ -693,7 +693,16 @@ class hpp_model(hpp_base):
         hh : hub height of the wind turbine [m]
         self.num_batteries : Number of allowed replacements of the battery
         """
-
+        self.inputs = [        clearance, sp, p_rated, Nwt, wind_MW_per_km2,
+        # PV plant design
+        solar_MW,  surface_tilt, surface_azimuth, DC_AC_ratio,
+        # Energy storage & EMS price constrains
+        b_P, b_E_h, cost_of_battery_P_fluct_in_peak_price_ratio,
+        # PtG plant design
+        ptg_MW, HSS_kg,
+        # Wind turbine control
+        yaw,
+]
         prob = self.prob
 
         d = get_rotor_d(p_rated*1e6/sp)
@@ -733,7 +742,7 @@ class hpp_model(hpp_base):
         else:
             cf_wind = prob['wind_t_ext'].mean() / p_rated / Nwt  # Capacity factor of wind only
 
-        return np.hstack([
+        outputs = np.hstack([
             prob['NPV_over_CAPEX'], 
             prob['NPV']/1e6,
             prob['IRR'],
@@ -776,6 +785,8 @@ class hpp_model(hpp_base):
             HSS_kg,
             prob['break_even_H2_price'],
             ])
+        self.outputs = outputs
+        return outputs
 
  
 if __name__ == '__main__':

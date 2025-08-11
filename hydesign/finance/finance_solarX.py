@@ -11,7 +11,7 @@ import scipy as sp
 # import openpyxl
 from hydesign.openmdao_wrapper import ComponentWrapper
 
-class finance_solarX_pp:
+class finance_solarX:
     """
     Financial model to evaluate the profitability of a hybrid power plant (HPP).
 
@@ -357,12 +357,12 @@ class finance_solarX_pp:
                     'break_even_PPA_price', 'break_even_PPA_price_h2', 'break_even_PPA_price_q','lcove']
         return [outputs[key] for key in out_keys]
     
-class finance_solarX(ComponentWrapper):
+class finance_solarX_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        finance_solarX_model = finance_solarX_pp(**insta_inp)
-        super().__init__(inputs=finance_solarX_model.inputs,
-                            outputs=finance_solarX_model.outputs,
-                            function=finance_solarX_model.compute,
+        model = finance_solarX(**insta_inp)
+        super().__init__(inputs=model.inputs,
+                            outputs=model.outputs,
+                            function=model.compute,
                             partial_options=[{'dependent': False, 'val': 0}],)
 
 

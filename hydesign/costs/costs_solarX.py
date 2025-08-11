@@ -2,7 +2,7 @@
 import scipy as sp
 from hydesign.openmdao_wrapper import ComponentWrapper
 
-class sf_cost_pp:
+class sf_cost:
     """
     Solar Field (SF) Cost Model - Calculates the capital and operational expenses
     for a solar field based on the input parameters.
@@ -36,15 +36,15 @@ class sf_cost_pp:
         out_keys = ['CAPEX_sf', 'OPEX_sf']
         return [outputs[key] for key in out_keys]
 
-class sf_cost(ComponentWrapper):
+class sf_cost_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        sf_cost_model = sf_cost_pp(**insta_inp)
-        super().__init__(inputs=sf_cost_model.inputs,
-                            outputs=sf_cost_model.outputs,
-                            function=sf_cost_model.compute,
+        model = sf_cost(**insta_inp)
+        super().__init__(inputs=model.inputs,
+                            outputs=model.outputs,
+                            function=model.compute,
                             partial_options=[{'dependent': False, 'val': 0}],)
 
-class cpv_cost_pp:
+class cpv_cost:
     """
     Concentrated Photovoltaic (cpv) Cost Model - Calculates CAPEX and OPEX
     for cpv systems based on installation and equipment costs.
@@ -82,16 +82,16 @@ class cpv_cost_pp:
         out_keys = ['CAPEX_cpv', 'OPEX_cpv']
         return [outputs[key] for key in out_keys]
 
-class cpv_cost(ComponentWrapper):
+class cpv_cost_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        cpv_cost_model = cpv_cost_pp(**insta_inp)
-        super().__init__(inputs=cpv_cost_model.inputs,
-                            outputs=cpv_cost_model.outputs,
-                            function=cpv_cost_model.compute,
+        model = cpv_cost(**insta_inp)
+        super().__init__(inputs=model.inputs,
+                            outputs=model.outputs,
+                            function=model.compute,
                             partial_options=[{'dependent': False, 'val': 0}],)
 
 
-class cst_cost_pp:
+class cst_cost:
     """
     Concentrated Solar Thermal (cst) Cost Model - Calculates the capital and
     operational expenses for cst systems based on collector, molten salt tank,
@@ -150,17 +150,17 @@ class cst_cost_pp:
         out_keys = ['CAPEX_cst', 'OPEX_cst']
         return [outputs[key] for key in out_keys]
 
-class cst_cost(ComponentWrapper):
+class cst_cost_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        cst_cost_model = cst_cost_pp(**insta_inp)
-        super().__init__(inputs=cst_cost_model.inputs,
-                            outputs=cst_cost_model.outputs,
-                            function=cst_cost_model.compute,
+        model = cst_cost(**insta_inp)
+        super().__init__(inputs=model.inputs,
+                            outputs=model.outputs,
+                            function=model.compute,
                             partial_options=[{'dependent': False, 'val': 0}],)
 
 
 
-class H2Cost_pp:
+class H2Cost:
     """
     Hydrogen Production Cost Model - Calculates the capital and operational expenses
     for H2 production based on reactor, installation, and maintenance costs.
@@ -274,16 +274,16 @@ class H2Cost_pp:
         out_keys = ['CAPEX_h2', 'OPEX_h2', 'OPEX_el']
         return [outputs[key] for key in out_keys]
 
-class H2Cost(ComponentWrapper):
+class H2Cost_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        H2Cost_model = H2Cost_pp(**insta_inp)
-        super().__init__(inputs=H2Cost_model.inputs,
-                            outputs=H2Cost_model.outputs,
-                            function=H2Cost_model.compute,
+        model = H2Cost(**insta_inp)
+        super().__init__(inputs=model.inputs,
+                            outputs=model.outputs,
+                            function=model.compute,
                             partial_options=[{'dependent': False, 'val': 0}],)
 
 
-class shared_cost_pp:
+class shared_cost:
     """
     Shared Cost Model - Calculates costs for electrical infrastructure, land rental, and tower.
     """
@@ -343,12 +343,12 @@ class shared_cost_pp:
         out_keys = ['CAPEX_sh', 'OPEX_sh']
         return [outputs[key] for key in out_keys]
     
-class shared_cost(ComponentWrapper):
+class shared_cost_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        shared_cost_model = shared_cost_pp(**insta_inp)
-        super().__init__(inputs=shared_cost_model.inputs,
-                            outputs=shared_cost_model.outputs,
-                            function=shared_cost_model.compute,
+        model = shared_cost(**insta_inp)
+        super().__init__(inputs=model.inputs,
+                            outputs=model.outputs,
+                            function=model.compute,
                             partial_options=[{'dependent': False, 'val': 0}],)
   
 

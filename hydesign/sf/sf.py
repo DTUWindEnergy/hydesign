@@ -10,7 +10,7 @@ import pvlib
 from hydesign.openmdao_wrapper import ComponentWrapper
 
 # Solar Field (sf) Class using OpenMDAO for explicit components
-class sf_pp:
+class sf:
     def __init__(self,
                  N_time,  # Number of time steps
                  sf_azimuth_altitude_efficiency_table,  # Efficiency table for the solar field
@@ -207,10 +207,10 @@ class sf_pp:
 
         return flux_sf_t
 
-class sf(ComponentWrapper):
+class sf_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        sf_model = sf_pp(**insta_inp)
-        super().__init__(inputs=sf_model.inputs,
-                            outputs=sf_model.outputs,
-                            function=sf_model.compute,
+        model = sf(**insta_inp)
+        super().__init__(inputs=model.inputs,
+                            outputs=model.outputs,
+                            function=model.compute,
                             partial_options=[{'dependent': False, 'val': 0}],)

@@ -7,7 +7,7 @@ import scipy as sp
 from hydesign.HiFiEMS.utils import _revenue_calculation
 from hydesign.openmdao_wrapper import ComponentWrapper
 
-class finance_pp:
+class finance:
     """Hybrid power plant financial model to estimate the overall profitability of the hybrid power plant.
     It considers different weighted average costs of capital (WACC) for wind, PV and battery. The model calculates
     the yearly cashflow as a function of the average revenue over the year, the tax rate and WACC after tax
@@ -265,9 +265,9 @@ class finance_pp:
                     'mean_AEP', 'LCOE', 'revenues', 'break_even_PPA_price']
         return [outputs[key] for key in out_keys]
 
-class finance(ComponentWrapper):
+class finance_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        finance_model = finance_pp(**insta_inp)
+        model = finance(**insta_inp)
         super().__init__(
             inputs = [
         ('G_MW',
@@ -298,7 +298,7 @@ class finance(ComponentWrapper):
         # ('hpp_t_with_deg',
         #                dict(desc="HPP power time series",
         #                units='MW',
-        #                shape=[finance_model.life_intervals])),
+        #                shape=[model.life_intervals])),
         
 
         ('CAPEX_w',
@@ -333,20 +333,20 @@ class finance(ComponentWrapper):
         ('tax_rate',
                        dict(desc="Corporate tax rate")),
         
-        ('P_HPP_SM_t_opt',dict(desc='',shape=[finance_model.life_intervals],)),
-        ('SM_price_cleared',dict(desc='',shape=[finance_model.life_h],)),
-        ('BM_dw_price_cleared',dict(desc='',shape=[finance_model.life_h],)),
-        ('BM_up_price_cleared',dict(desc='',shape=[finance_model.life_h],)),
-        ('P_HPP_RT_refs',dict(desc='',shape=[finance_model.life_intervals],)),
-        ('P_HPP_UP_bid_ts',dict(desc='',shape=[finance_model.life_intervals],)),
-        ('P_HPP_DW_bid_ts',dict(desc='',shape=[finance_model.life_intervals],)),
-        ('s_UP_t',dict(desc='',shape=[finance_model.life_intervals],)),
-        ('s_DW_t',dict(desc='',shape=[finance_model.life_intervals],)),
-        ('residual_imbalance',dict(desc='',shape=[finance_model.life_intervals],)),
-        ('P_HPP_ts',dict(desc='',shape=[finance_model.life_intervals],)),
-        ('P_curtailment_ts',dict(desc='',shape=[finance_model.life_intervals],)),
-        ('P_charge_discharge_ts',dict(desc='',shape=[finance_model.life_intervals],)),
-        ('E_SOC_ts',dict(desc='',shape=[finance_model.life_intervals + 1],)),
+        ('P_HPP_SM_t_opt',dict(desc='',shape=[model.life_intervals],)),
+        ('SM_price_cleared',dict(desc='',shape=[model.life_h],)),
+        ('BM_dw_price_cleared',dict(desc='',shape=[model.life_h],)),
+        ('BM_up_price_cleared',dict(desc='',shape=[model.life_h],)),
+        ('P_HPP_RT_refs',dict(desc='',shape=[model.life_intervals],)),
+        ('P_HPP_UP_bid_ts',dict(desc='',shape=[model.life_intervals],)),
+        ('P_HPP_DW_bid_ts',dict(desc='',shape=[model.life_intervals],)),
+        ('s_UP_t',dict(desc='',shape=[model.life_intervals],)),
+        ('s_DW_t',dict(desc='',shape=[model.life_intervals],)),
+        ('residual_imbalance',dict(desc='',shape=[model.life_intervals],)),
+        ('P_HPP_ts',dict(desc='',shape=[model.life_intervals],)),
+        ('P_curtailment_ts',dict(desc='',shape=[model.life_intervals],)),
+        ('P_charge_discharge_ts',dict(desc='',shape=[model.life_intervals],)),
+        ('E_SOC_ts',dict(desc='',shape=[model.life_intervals + 1],)),
         ],
         outputs = [
         ('CAPEX',
@@ -376,7 +376,7 @@ class finance(ComponentWrapper):
                         dict(desc='PPA price of electricity that results in NPV=0 with the given hybrid power plant configuration and operation',
                         val=0)),
         ],
-        function=finance_model.compute,
+        function=model.compute,
         partial_options=[{'dependent': False, 'val': 0}],
         )
 

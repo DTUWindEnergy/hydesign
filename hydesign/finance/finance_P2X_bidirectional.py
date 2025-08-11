@@ -7,7 +7,7 @@ import scipy as sp
 from hydesign.finance.finance import calculate_NPV_IRR, calculate_WACC, get_inflation_index, calculate_CAPEX_phasing
 from hydesign.openmdao_wrapper import ComponentWrapper
 
-class finance_P2X_bidirectional_pp:
+class finance_P2X_bidirectional:
     """Hybrid power plant financial model to estimate the overall profitability of the hybrid power plant with P2X.
     It considers different weighted average costs of capital (WACC) for wind, PV, battery and P2X. The model calculates
     the yearly cashflow as a function of the average revenue over the year, the tax rate and WACC after tax
@@ -503,12 +503,12 @@ class finance_P2X_bidirectional_pp:
                     'annual_P_ptg', 'annual_P_ptg_H2', 'penalty_lifetime', 'break_even_H2_price', 'break_even_PPA_price']
         return [outputs[k] for k in out_keys]
 
-class finance_P2X_bidirectional(ComponentWrapper):
+class finance_P2X_bidirectional_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        finance_model = finance_P2X_bidirectional_pp(**insta_inp)
-        super().__init__(inputs=finance_model.inputs,
-                            outputs=finance_model.outputs,
-                            function=finance_model.compute,
+        model = finance_P2X_bidirectional(**insta_inp)
+        super().__init__(inputs=model.inputs,
+                            outputs=model.outputs,
+                            function=model.compute,
                             partial_options=[{'dependent': False, 'val': 0}],)
 
 

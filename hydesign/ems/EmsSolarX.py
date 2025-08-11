@@ -8,7 +8,7 @@ from docplex.mp.model import Model
 from hydesign.openmdao_wrapper import ComponentWrapper
 
 # Define EmsSolarX Class
-class EmsSolarX_pp:
+class EmsSolarX:
     """
     Energy Management Optimization Model for SolarX.
 
@@ -824,12 +824,12 @@ class EmsSolarX_pp:
                     'penalty_t_ext', 'penalty_q_t_ext']
         return [outputs[key] for key in out_keys]
 
-class EmsSolarX(ComponentWrapper):
+class EmsSolarX_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        EmsSolarX_model = EmsSolarX_pp(**insta_inp)
-        super().__init__(inputs=EmsSolarX_model.inputs,
-                            outputs=EmsSolarX_model.outputs,
-                            function=EmsSolarX_model.compute,
+        model = EmsSolarX(**insta_inp)
+        super().__init__(inputs=model.inputs,
+                            outputs=model.outputs,
+                            function=model.compute,
                             partial_options=[{'dependent': False, 'val': 0}],)
 
 # Optimization function for the energy management system

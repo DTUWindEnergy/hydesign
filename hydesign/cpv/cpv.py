@@ -3,7 +3,7 @@ import time
 from hydesign.openmdao_wrapper import ComponentWrapper
 
 # Define a class for cpv (Concentrated Photovoltaics) component within OpenMDAO framework
-class cpv_pp:
+class cpv:
     def __init__(self,
                  N_time,
                  cpv_efficiency,
@@ -75,12 +75,12 @@ class cpv_pp:
         outputs['cpv_rated_mw'] = cpv_rated_mw
         out_keys = ['p_cpv_max_dni_t', 'cpv_inverter_mw', 'cpv_rated_mw']
         return [outputs[key] for key in out_keys]
-    
-class cpv(ComponentWrapper):
+
+class cpv_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        cpv_model = cpv_pp(**insta_inp)
-        super().__init__(inputs=cpv_model.inputs,
-                            outputs=cpv_model.outputs,
-                            function=cpv_model.compute,
+        model = cpv(**insta_inp)
+        super().__init__(inputs=model.inputs,
+                            outputs=model.outputs,
+                            function=model.compute,
                             partial_options=[{'dependent': False, 'val': 0}],)
 

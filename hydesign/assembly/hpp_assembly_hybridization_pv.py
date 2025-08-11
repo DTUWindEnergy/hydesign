@@ -5,17 +5,17 @@ import numpy as np
 import pandas as pd
 import openmdao.api as om
 
-from hydesign.weather.weather import ABL
-from hydesign.wind.wind import genericWT_surrogate, genericWake_surrogate, wpp, get_rotor_d #, get_rotor_area
-from hydesign.wind.wind_hybridization import wpp_with_degradation
-from hydesign.pv.pv import pvp_with_degradation
-from hydesign.pv.pv_hybridization import existing_pvp #, existing_pvp_with_degradation
-from hydesign.ems.ems import ems, ems_long_term_operation
-from hydesign.utils import hybridization_shifted
-from hydesign.battery_degradation import battery_degradation, battery_loss_in_capacity_due_to_temp
-from hydesign.costs.costs import wpp_cost, pvp_cost, battery_cost
-from hydesign.costs.costs_hybridized_pv import shared_cost, decommissioning_cost
-from hydesign.finance.finance_hybridized_pv import finance
+from hydesign.weather.weather import ABL_comp as ABL
+from hydesign.wind.wind import genericWT_surrogate_comp as genericWT_surrogate, genericWake_surrogate_comp as genericWake_surrogate, wpp_comp as wpp, get_rotor_d  # , get_rotor_area
+from hydesign.wind.wind_hybridization import wpp_with_degradation_comp as wpp_with_degradation
+from hydesign.pv.pv import pvp_with_degradation_comp as pvp_with_degradation
+from hydesign.pv.pv_hybridization import existing_pvp_comp as existing_pvp #, existing_pvp_with_degradation
+from hydesign.ems.ems import ems_comp as ems, ems_long_term_operation_comp as ems_long_term_operation
+from hydesign.utils import hybridization_shifted_comp as hybridization_shifted
+from hydesign.battery_degradation import battery_degradation_comp as battery_degradation, battery_loss_in_capacity_due_to_temp_comp as battery_loss_in_capacity_due_to_temp
+from hydesign.costs.costs import wpp_cost_comp as wpp_cost, pvp_cost_comp as pvp_cost, battery_cost_comp as battery_cost
+from hydesign.costs.costs_hybridized_pv import shared_cost_comp as shared_cost, decommissioning_cost_comp as decommissioning_cost
+from hydesign.finance.finance_hybridized_pv import finance_comp as finance
 from hydesign.assembly.hpp_assembly import hpp_base
 
 
@@ -373,7 +373,8 @@ class hpp_model(hpp_base):
         hh : hub height of the wind turbine [m]
         self.num_batteries : Number of allowed replacements of the battery
         """
-
+        self.inputs = [clearance, sp, p_rated, Nwt, wind_MW_per_km2,
+                        b_P, b_E_h, cost_of_battery_P_fluct_in_peak_price_ratio, delta_life,]
         prob = self.prob
 
         d = get_rotor_d(p_rated*1e6/sp)
@@ -406,7 +407,7 @@ class hpp_model(hpp_base):
             cf_wind = prob.get_val(
                 'wpp_with_degradation.wind_t_ext_deg').mean() / p_rated / Nwt  # Capacity factor of wind only
 
-        return np.hstack([
+        outputs = np.hstack([
             prob['NPV_over_CAPEX'], 
             prob['NPV']/1e6,
             prob['IRR'],
@@ -442,3 +443,5 @@ class hpp_model(hpp_base):
             prob['break_even_PPA_price'],
             cf_wind,
             ])
+        self.outputs = outputs
+        return outputs

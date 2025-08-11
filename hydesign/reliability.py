@@ -11,7 +11,7 @@ import pandas as pd
 import xarray as xr
 from hydesign.openmdao_wrapper import ComponentWrapper
 
-class battery_with_reliability_pp:
+class battery_with_reliability:
     def __init__(
         self,
         life_y = 25,
@@ -44,18 +44,18 @@ class battery_with_reliability_pp:
         b_t_rel = b_t * self.reliability_ts_battery[:self.life_intervals] * self.reliability_ts_trans[:self.life_intervals]
         return b_t_rel
 
-class battery_with_reliability(ComponentWrapper):
+class battery_with_reliability_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        battery_with_reliability = battery_with_reliability_pp(**insta_inp)
-        super().__init__(inputs=[('b_t',{'shape': [battery_with_reliability.life_intervals],
+        model = battery_with_reliability(**insta_inp)
+        super().__init__(inputs=[('b_t',{'shape': [model.life_intervals],
                                   'units': 'MW',})],
-                         outputs=[('b_t_rel',{'shape': [battery_with_reliability.life_intervals],
+                         outputs=[('b_t_rel',{'shape': [model.life_intervals],
                                   'units': 'MW',})],
-            function=battery_with_reliability.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],)
 
 
-class wpp_with_reliability_pp:
+class wpp_with_reliability:
     def __init__(
         self, 
         life_y = 25,
@@ -87,18 +87,18 @@ class wpp_with_reliability_pp:
             return wind_t_rel
         wind_t_rel = wind_t * self.reliability_ts_wind[:self.life_intervals] * self.reliability_ts_trans[:self.life_intervals]
         return wind_t_rel
-    
-class wpp_with_reliability(ComponentWrapper):
+
+class wpp_with_reliability_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        wpp_with_reliability = wpp_with_reliability_pp(**insta_inp)
-        super().__init__(inputs=[('wind_t',{'shape': [wpp_with_reliability.life_intervals],
+        model = wpp_with_reliability(**insta_inp)
+        super().__init__(inputs=[('wind_t',{'shape': [model.life_intervals],
                                   'units': 'MW',})],
-                         outputs=[('wind_t_rel',{'shape': [wpp_with_reliability.life_intervals],
+                         outputs=[('wind_t_rel',{'shape': [model.life_intervals],
                                   'units': 'MW',})],
-            function=wpp_with_reliability.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],)
 
-class pvp_with_reliability_pp:
+class pvp_with_reliability:
     def __init__(
         self, 
         life_y = 25,
@@ -131,14 +131,14 @@ class pvp_with_reliability_pp:
         solar_t_rel = solar_t * self.reliability_ts_pv[:self.life_intervals] * self.reliability_ts_trans[:self.life_intervals]
         return solar_t_rel
 
-class pvp_with_reliability(ComponentWrapper):
+class pvp_with_reliability_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        pvp_with_reliability = pvp_with_reliability_pp(**insta_inp)
-        super().__init__(inputs=[('solar_t',{'shape': [pvp_with_reliability.life_intervals],
+        model = pvp_with_reliability(**insta_inp)
+        super().__init__(inputs=[('solar_t',{'shape': [model.life_intervals],
                                   'units': 'MW',})],
-                         outputs=[('solar_t_rel',{'shape': [pvp_with_reliability.life_intervals],
+                         outputs=[('solar_t_rel',{'shape': [model.life_intervals],
                                   'units': 'MW',})],
-            function=pvp_with_reliability.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],)
 
 def availability_data_set(pdf_TTF, pdf_TTR, N_components, seed, ts_start, ts_end, ts_freq, sampling_const, component_name, **kwargs):

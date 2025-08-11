@@ -3,12 +3,12 @@ import openmdao.api as om
 import tempfile
 import pandas as pd
 
-from hydesign.utils import get_weights, hybridization_shifted, sample_mean
+from hydesign.utils import get_weights, hybridization_shifted_comp as hybridization_shifted, sample_mean
 from hydesign.openmdao_wrapper import ComponentWrapper
-from hydesign.weather.weather_wind_hybridization import ABL_WD, interpolate_WD_linear
+from hydesign.weather.weather_wind_hybridization import ABL_WD_comp as ABL_WD, interpolate_WD_linear
 from hydesign.weather.weather import interpolate_WS_loglog
-from hydesign.pv.pv_hybridization import pvp_with_degradation
-from hydesign.wind.wind_hybridization import wpp_with_degradation, get_wind_ts_degradation
+from hydesign.pv.pv_hybridization import pvp_with_degradation_comp as pvp_with_degradation
+from hydesign.wind.wind_hybridization import wpp_with_degradation_comp as wpp_with_degradation, get_wind_ts_degradation
 from hydesign.ems.ems import expand_to_lifetime
 from hydesign.reliability import generate_availability_ensamble
 import chaospy as cp
@@ -77,7 +77,7 @@ def test_weather_interpolation_and_abl_wd(tmp_path):
     interp = interpolate_WD_linear(weather, 30)
     assert np.allclose(interp['WD'].values, [45.0, 135.0])
     ws_interp = interpolate_WS_loglog(weather, 30)
-    abl = ABL_WD(str(fn), N_time=2)
+    abl = ABL_WD(weather_fn=str(fn), N_time=2)
     prob = om.Problem()
     prob.model.add_subsystem('abl', abl)
     prob.setup()

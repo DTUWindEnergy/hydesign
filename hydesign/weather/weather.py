@@ -24,57 +24,8 @@ from hydesign.openmdao_wrapper import ComponentWrapper
 
 
 
-# class ABL(om.ExplicitComponent):
-#     """Atmospheric boundary layer WS interpolation and gradient
-    
-#     Parameters
-#     ----------
-#     hh : Turbine's hub height
 
-#     Returns
-#     -------
-#     wst : wind speed time series at the hub height
-
-#     """
-
-
-#     def __init__(self, weather_fn, N_time):
-#         super().__init__()
-#         self.weather_fn = weather_fn
-#         self.N_time = N_time
-
-#     def setup(self):
-#         self.add_input('hh',
-#                        desc="Turbine's hub height",
-#                        units='m')
-#         self.add_output('wst',
-#                         desc="ws time series at the hub height",
-#                         units='m/s',
-#                         shape=[self.N_time])
-
-#     def setup_partials(self):
-#         self.declare_partials('*', '*')
-
-#     def precompute(self, hh):
-
-#         weather = pd.read_csv(self.weather_fn, index_col=0, parse_dates=True)
-#         ds_interpolated = interpolate_WS_loglog(weather, hh=hh)
-#         return ds_interpolated
-
-#     def compute(self, inputs, outputs):
-
-#         ds_interpolated = self.precompute(inputs['hh'])
-#         self.ds_interpolated = ds_interpolated
-
-#         outputs['wst'] = np.nan_to_num(ds_interpolated.WS.values.flatten())
-
-#     def compute_partials(self, inputs, partials):
-
-#         ds_interpolated = self.ds_interpolated
-
-#         partials['wst', 'hh'] = ds_interpolated.dWS_dz.values.flatten()
-
-class ABL_pp:
+class ABL:
     """Pure Python Atmospheric boundary layer WS interpolation and gradient
     
     Parameters
@@ -114,9 +65,9 @@ class ABL_pp:
         d_wst_d_hh = ds_interpolated.dWS_dz.values.flatten()
         return d_wst_d_hh
 
-class ABL(ComponentWrapper):
+class ABL_comp(ComponentWrapper):
     def __init__(self, weather_fn, N_time, interpolate_wd=False):
-        ABL_pp_instance = ABL_pp(weather_fn, N_time, interpolate_wd=interpolate_wd)
+        model = ABL(weather_fn, N_time, interpolate_wd=interpolate_wd)
         inputs = [('hh', {'desc': "Turbine's hub height", 'units': 'm'})]
         outputs = [('wst', {'desc': "ws time series at the hub height", 'units': 'm/s', 'shape': [N_time]})]
         if interpolate_wd:
@@ -124,29 +75,11 @@ class ABL(ComponentWrapper):
         super().__init__(
             inputs=inputs,
             outputs=outputs,
-            function=ABL_pp_instance.compute,
-            # partials=ABL_pp_instance.compute_partials,
+            function=model.compute,
+            # partials=model.compute_partials,
             partial_options=[{'dependent': False, 'val': 0}],
         )
 
-# def precompute(hh, weather_fn, interpolate_wd=False):
-#     weather = pd.read_csv(weather_fn, index_col=0, parse_dates=True)
-#     ds_interpolated = interpolate_WS_loglog(weather, hh=hh)
-#     if interpolate_wd:
-#         ds_interpolated['WD'] = (('time',), interpolate_WD(weather, hh=hh))
-#     return ds_interpolated
-   
-
-# def abl(hh, weather_fn, N_time):
-#     ds_interpolated = precompute(hh, weather_fn)
-#     wst = np.nan_to_num(ds_interpolated.WS.values.flatten())
-#     return wst
-
-# def abl_ws_wd(hh, weather_fn, N_time):
-#     ds_interpolated = precompute(hh, weather_fn, interpolate_wd=True)
-#     ws = np.nan_to_num(ds_interpolated.WS.values.flatten())
-#     wd = ds_interpolated.WD.values.ravel()
-#     return ws, wd
     
 
 # -----------------------------------------------------------------------

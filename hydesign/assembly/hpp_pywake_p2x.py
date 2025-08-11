@@ -6,13 +6,13 @@ import os
 from hydesign.wind.wind import get_rotor_d, get_wind_ts_degradation_2d, get_pywake_farm_pc
 from hydesign.assembly.hpp_assembly import hpp_base
 from hydesign.openmdao_wrapper import ComponentWrapper
-from hydesign.weather.weather import ABL_pp
+from hydesign.weather.weather import ABL as ABL_pp
 from hydesign.ems.ems import expand_to_lifetime
-from hydesign.pv.pv import pvp_pp, pvp_with_degradation_pp
-from hydesign.ems.ems_P2X import ems_P2X_pp, ems_long_term_operation_p2x_pp, ems_P2X, ems_long_term_operation_p2x
-from hydesign.battery_degradation import battery_degradation_pp, battery_loss_in_capacity_due_to_temp_pp
-from hydesign.costs.costs import battery_cost_pp, pvp_cost_pp, shared_cost_pp, wpp_cost_pp, ptg_cost_pp, ptg_cost
-from hydesign.finance.finance_P2X import finance_P2X_pp, finance_P2X
+from hydesign.pv.pv import pvp as pvp_pp, pvp_with_degradation as pvp_with_degradation_pp
+from hydesign.ems.ems_P2X import ems_P2X_comp as ems_P2X, ems_long_term_operation_p2x_comp as ems_long_term_operation_p2x
+from hydesign.battery_degradation import battery_degradation as battery_degradation_pp, battery_loss_in_capacity_due_to_temp as battery_loss_in_capacity_due_to_temp_pp
+from hydesign.costs.costs import battery_cost as battery_cost_pp, pvp_cost as pvp_cost_pp, shared_cost as shared_cost_pp, wpp_cost as wpp_cost_pp, ptg_cost_comp as ptg_cost
+from hydesign.finance.finance_P2X import finance_P2X_comp as finance_P2X
     
 class hpp_model(hpp_base):
     """HPP design evaluator"""

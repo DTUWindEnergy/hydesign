@@ -23,7 +23,7 @@ from pvlib.temperature import TEMPERATURE_MODEL_PARAMETERS
 from hydesign.openmdao_wrapper import ComponentWrapper
 
 
-class pvp_with_degradation_pp:
+class pvp_with_degradation:
     """
     PV degradation model providing the PV degradation time series throughout the lifetime of the plant
     """
@@ -51,22 +51,6 @@ class pvp_with_degradation_pp:
         # PV degradation curve
         self.pv_deg = pv_deg
 
-    # def setup(self):
-    #     self.add_input('delta_life',
-    #                    desc="Years between the starting of operations of the existing plant and the new plant",
-    #                    val=1)
-
-    #     self.add_input(
-    #         'solar_t_ext',
-    #         desc="PVP power time series",
-    #         units='MW',
-    #         shape=[self.life_h])
-
-    #     self.add_output(
-    #         'solar_t_ext_deg',
-    #         desc="PVP power time series with degradation",
-    #         units='MW',
-    #         shape=[self.life_h])
 
     def compute(self, delta_life, solar_t_ext, **kwargs):
         N_limit = self.N_limit
@@ -85,9 +69,9 @@ class pvp_with_degradation_pp:
 
         return solar_t_ext_deg
 
-class pvp_with_degradation(ComponentWrapper):
+class pvp_with_degradation_comp(ComponentWrapper):
     def __init__(self, N_limit, life_y, life_h, pv_deg=[0, 25 * 1 / 100]):
-        PVP_with_degradation = pvp_with_degradation_pp(N_limit, life_y, life_h, pv_deg)
+        model = pvp_with_degradation(N_limit, life_y, life_h, pv_deg)
         super().__init__(
             inputs=[
                 ('delta_life', {'desc': 'Years between the starting of operations of the existing plant and the new plant', 'val': 1}),
@@ -96,12 +80,12 @@ class pvp_with_degradation(ComponentWrapper):
             outputs=[
                 ('solar_t_ext_deg', {'units': 'MW', 'desc': 'PVP power time series with degradation', 'shape': [life_h]})
             ],
-            function=PVP_with_degradation.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],
         )
 
 
-class existing_pvp_pp:
+class existing_pvp:
     """
     PV power plant model : It computes the solar power output during the lifetime of the plant using data from the datasheet
 
@@ -254,43 +238,6 @@ class existing_pvp_pp:
         self.weather = weather
         self.pvloc = pvloc
 
-    # def setup(self):
-    #     self.add_input(
-    #         'surface_tilt',
-    #         val=20,
-    #         desc="Solar PV tilt angle in degs")
-
-    #     self.add_input(
-    #         'surface_azimuth',
-    #         val=180,
-    #         desc="Solar PV azimuth angle in degs, 180=south facing")
-
-    #     self.add_input(
-    #         'DC_AC_ratio',
-    #         desc="DC/AC PV ratio")
-
-    #     self.add_input(
-    #         'land_use_per_solar_MW',
-    #         val=1,
-    #         desc="Solar land use per solar MW",
-    #         units='km**2/MW')
-
-    #     self.add_output(
-    #         'solar_t',
-    #         desc="PV power time series",
-    #         units='MW',
-    #         shape=[self.N_time])
-
-    #     self.add_output(
-    #         'solar_MW',
-    #         val=1,
-    #         desc="Solar PV plant installed capacity",
-    #         units='MW')
-
-    #     self.add_output(
-    #         'Apvp',
-    #         desc="Land use area of WPP",
-    #         units='km**2')
 
     def compute(self, surface_tilt, surface_azimuth, DC_AC_ratio, land_use_per_solar_MW, **kwargs):
         # surface_tilt = inputs['surface_tilt']
@@ -371,9 +318,9 @@ class existing_pvp_pp:
         # outputs['Apvp'] = Apvp
         return solar_t, solar_MW, Apvp
 
-class existing_pvp(ComponentWrapper):
+class existing_pvp_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
-        Existing_PVP = existing_pvp_pp(**insta_inp)
+        model = existing_pvp(**insta_inp)
         super().__init__(
             inputs=[
                 ('surface_tilt', {'val': 20.0}),
@@ -382,61 +329,17 @@ class existing_pvp(ComponentWrapper):
                 ('land_use_per_solar_MW', {'val': 1.0})
             ],
             outputs=[
-                ('solar_t', {'units': 'MW', 'shape': [Existing_PVP.N_time]}),
+                ('solar_t', {'units': 'MW', 'shape': [model.N_time]}),
                 ('solar_MW', {'units': 'MW'}),
                 ('Apvp', {'units': 'km**2'})
             ],
-            function=Existing_PVP.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],)
         
 
 
-# class existing_pvp_with_degradation(om.ExplicitComponent):
-#     """
-#     PV degradation model providing the PV degradation time series throughout the lifetime of the plant
-#     """
-
-#     def __init__(
-#             self,
-#             life_h,
-#             pv_deg_yr,
-#             pv_deg=[0, 25 * 1 / 100],
-#     ):
-#         """Initialization of the PV degradation model
-
-#         Parameters
-#         ----------
-#         life_h : lifetime of the plant
-
-#         """
-#         super().__init__()
-#         self.life_h = life_h
-
-#         # PV degradation curve
-#         self.pv_deg_yr = pv_deg_yr
-#         self.pv_deg = pv_deg
-
-#     def setup(self):
-#         self.add_input(
-#             'solar_t_ext',
-#             desc="PVP power time series",
-#             units='MW',
-#             shape=[self.life_h])
-
-#         self.add_output(
-#             'solar_t_ext_deg',
-#             desc="PVP power time series with degradation",
-#             units='MW',
-#             shape=[self.life_h])
-
-#     def compute(self, inputs, outputs):
-#         solar_t_ext = inputs['solar_t_ext']
-#         t_over_year = np.arange(self.life_h) / (365 * 24)
-#         degradation = np.interp(t_over_year, self.pv_deg_yr, self.pv_deg)
-
-#         outputs['solar_t_ext_deg'] = (1 - degradation) * solar_t_ext
     
-class pvp_degradation_linear_pp:
+class pvp_degradation_linear:
     """
     PV degradation model providing the PV degradation time series throughout the lifetime of the plant, 
     considering a fixed linear degradation of the PV panels
@@ -461,9 +364,9 @@ class pvp_degradation_linear_pp:
         SoH_pv = get_linear_solar_degradation(pv_deg_per_year, self.life_h)   
         return SoH_pv
 
-class pvp_degradation_linear(ComponentWrapper):
+class pvp_degradation_linear_comp(ComponentWrapper):
     def __init__(self, life_h):
-        PVP_degradation_linear = pvp_degradation_linear_pp(life_h)
+        model = pvp_degradation_linear(life_h)
         super().__init__(
             inputs=[
                 ('pv_deg_per_year', {'desc': 'PV degradation per year', 'val': 0.5 / 100})
@@ -471,11 +374,11 @@ class pvp_degradation_linear(ComponentWrapper):
             outputs=[
                 ('SoH_pv', {'desc': 'PV state of health time series', 'shape': [life_h]})
             ],
-            function=PVP_degradation_linear.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],
         )
 
-class shadow_pp:
+class shadow:
     """pv loss model due to shadows of wt"""
 
     # TODO implement degradation model in pcw
@@ -513,9 +416,9 @@ class shadow_pp:
         solar_deg_shad_t = solar_deg_t
         return solar_deg_shad_t
 
-class shadow(ComponentWrapper):
+class shadow_comp(ComponentWrapper):
     def __init__(self, N_time):
-        Shadow = shadow_pp(N_time)
+        model = shadow(N_time)
         super().__init__(
             inputs=[
                 ('solar_deg_t', {'desc': 'PV power time series with degradation', 'units': 'W', 'shape': [N_time]})
@@ -523,7 +426,7 @@ class shadow(ComponentWrapper):
             outputs=[
                 ('solar_deg_shad_t', {'desc': 'PV power time series with degradation and shadow losses', 'units': 'W', 'shape': [N_time]})
             ],
-            function=Shadow.compute,
+            function=model.compute,
             partial_options=[{'dependent': False, 'val': 0}],
         )
 

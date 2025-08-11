@@ -3,12 +3,12 @@ import numpy as np
 import pandas as pd
 import openmdao.api as om
 
-from hydesign.weather.weather import ABL
-from hydesign.wind.wind import genericWT_surrogate, genericWake_surrogate, wpp, get_rotor_d # , wpp_with_degradation, get_rotor_area
-from hydesign.pv.pv import pvp #, pvp_with_degradation
-from hydesign.ems.ems_P2X_bidirectional import ems_P2X_bidirectional as ems
-from hydesign.costs.costs import wpp_cost, pvp_cost, battery_cost, shared_cost, ptg_cost
-from hydesign.finance.finance_P2X_bidirectional import finance_P2X_bidirectional as finance
+from hydesign.weather.weather import ABL_comp as ABL
+from hydesign.wind.wind import genericWT_surrogate_comp as genericWT_surrogate, genericWake_surrogate_comp as genericWake_surrogate, wpp_comp as wpp, get_rotor_d # , wpp_with_degradation, get_rotor_area
+from hydesign.pv.pv import pvp_comp as pvp
+from hydesign.ems.ems_P2X_bidirectional import ems_P2X_bidirectional_comp as ems
+from hydesign.costs.costs import wpp_cost_comp as wpp_cost, pvp_cost_comp as pvp_cost, battery_cost_comp as battery_cost, shared_cost_comp as shared_cost, ptg_cost_comp as ptg_cost
+from hydesign.finance.finance_P2X_bidirectional import finance_P2X_bidirectional_comp as finance
 from hydesign.assembly.hpp_assembly_P2X import hpp_model_P2X
 
 

@@ -22,9 +22,9 @@ from hydesign.weather.weather import interpolate_WS_loglog
 #     from hydesign.utils import get_weights
 # else:
 #     from finitediff import get_weights
+from hydesign.openmdao_wrapper import ComponentWrapper
 
-
-class ABL_WD(om.ExplicitComponent):
+class ABL_WD:
     """Atmospheric boundary layer WS and WD interpolation
     
     Parameters
@@ -39,26 +39,25 @@ class ABL_WD(om.ExplicitComponent):
 
 
     def __init__(self, weather_fn, N_time):
-        super().__init__()
+        # super().__init__()
         self.weather_fn = weather_fn
         self.N_time = N_time
 
-    def setup(self):
-        self.add_input('hh',
-                       desc="Turbine's hub height",
-                       units='m')
-        self.add_output('wst',
-                        desc="ws time series at the hub height",
-                        units='m/s',
-                        shape=[self.N_time])
-        self.add_output('wdt',
-                        desc="wd time series at the hub height",
-                        units='deg',
-                        shape=[self.N_time])
-
-
-    def compute(self, inputs, outputs):
-
+    # def setup(self):
+        self.inputs = [
+        ('hh', dict(desc="Turbine's hub height",
+                     units='m')),
+        ]
+        self.outputs = [
+        ('wst', dict(desc="ws time series at the hub height",
+                      units='m/s',
+                      shape=[self.N_time])),
+        ('wdt', dict(desc="wd time series at the hub height",
+                      units='deg',
+                      shape=[self.N_time])),
+        ]
+    def compute(self, **inputs):
+        outputs = {}
         hh = inputs['hh']
         weather = pd.read_csv(self.weather_fn, index_col=0, parse_dates=True)
         ds_interpolated = interpolate_WS_loglog(weather, hh=hh)
@@ -69,6 +68,16 @@ class ABL_WD(om.ExplicitComponent):
 
         outputs['wst'] = ds_interpolated.WS.values.flatten()
         outputs['wdt'] = ds_interpolated.WD.values.flatten()
+        out_keys = ['wst', 'wdt']
+        return [outputs[key] for key in out_keys]
+
+class ABL_WD_comp(ComponentWrapper):
+    def __init__(self, **insta_inp):
+        model = ABL_WD(**insta_inp)
+        super().__init__(inputs=model.inputs,
+                            outputs=model.outputs,
+                            function=model.compute,
+                            partial_options=[{'dependent': False, 'val': 0}],)
 
 # -----------------------------------------------------------------------
 # Auxiliar functions for weather handling
