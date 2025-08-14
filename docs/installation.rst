@@ -33,12 +33,11 @@ It is also recommended that you install cplex first before installing HyDesign. 
 
 If your combination of platform and Python version is not available on PyPi you need to go through the IBM website: https://www.ibm.com/products/ilog-cplex-optimization-studio/pricing to download and install the package. Here you can also find the full license (not free) of CPLEX that can solve larger problems.
 
+hydesign’s base code is open-sourced and freely available on `GitLab 
+<https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign>`_ (MIT license).
 
 Simple Installation
 ----------------------------
-
-hydesign’s base code is open-sourced and freely available on `GitLab 
-<https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign>`_ (MIT license).
 
 * Install from PyPi.org (official releases)::
   
@@ -49,12 +48,19 @@ hydesign’s base code is open-sourced and freely available on `GitLab
     pip install git+https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign.git
         
 
-
-Developer Installation
--------------------------------
-
-We highly recommend developers to install hydesign into the environment created previously. The commands to clone and install hydesign with developer options into the current active environment in an Anaconda Prompt are as follows::
+Editable Basic Installation
+----------------------------
 
    git clone https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign.git
    cd hydesign
    pip install -e .
+
+
+Developer Installation
+-------------------------------
+
+   git clone https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign.git
+   cd hydesign
+   pip install -e .[all] 
+   
+The [all] suffix provides a complete installation for e.g. testing, generating reliability data, working with turbine loads, using HPC etc.

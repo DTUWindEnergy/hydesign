@@ -29,3 +29,14 @@ __pycache__/*
 */*/__pycache__
 */*/__pycache__/*
 hydesign/_version.py
+
+.pytest_cache/
+htmlcov/
+.coverage
+.vscode/
+test_pip_install/
+.mypy_cache
+*.pstats
+*.out
+docs/_tags/*
+hydesign/tests/test_files/tmp/*

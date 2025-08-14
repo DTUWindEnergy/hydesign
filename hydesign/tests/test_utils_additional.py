@@ -10,7 +10,7 @@ from hydesign.weather.weather import interpolate_WS_loglog
 from hydesign.pv.pv_hybridization import pvp_with_degradation_comp as pvp_with_degradation
 from hydesign.wind.wind_hybridization import wpp_with_degradation_comp as wpp_with_degradation, get_wind_ts_degradation
 from hydesign.ems.ems import expand_to_lifetime
-from hydesign.reliability import generate_availability_ensamble
+from hydesign.reliability_utils import generate_availability_ensamble
 import chaospy as cp
 
 

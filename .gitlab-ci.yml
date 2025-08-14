@@ -5,7 +5,7 @@ test_hydesign:
   stage: 
     test
   script:
-  - pip install .[test]
+  - pip install .[all]
   - python -m pytest
   tags:
   - linux
@@ -20,7 +20,7 @@ test_hydesign_windows:
   - conda init powershell
   - "if (test-path $PROFILE.CurrentUserAllHosts) { & $PROFILE.CurrentUserAllHosts}"
   - conda activate py311
-  - pip install -e .[test]
+  - pip install -e .[all]
   - pytest --cov-report term-missing:skip-covered --cov=hydesign --cov-config .coveragerc
   tags:
   - docker-windows
@@ -37,7 +37,7 @@ pages:
 #  - pip install nbconvert --upgrade
 #  - pip install sphinx_rtd_theme
   - ipython kernel install --name "python3" --user
-  - pip install .[docs] --upgrade
+  - pip install .[all] --upgrade
   - cd docs; make html
   - cd ../; mv docs/build/html public/
   artifacts:
@@ -82,7 +82,7 @@ pypi_linux:
   script:
     - apt-get update
     - pip install --upgrade pip
-    - pip install -e . --upgrade
+    - pip install -e .[all] --upgrade
     - pip install --upgrade build
     - pip install --upgrade twine packaging
     - python3 -m build
