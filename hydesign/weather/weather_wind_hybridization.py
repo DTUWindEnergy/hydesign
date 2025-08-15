@@ -5,28 +5,30 @@
 
 # basic libraries
 import numpy as np
-# from numpy import newaxis as na
-import pandas as pd
-import xarray as xr
+
 # import yaml
 # import scipy
 # import importlib
 import openmdao.api as om
 
-# from sklearn.neighbors import NearestNeighbors
-# from statsmodels.distributions.empirical_distribution import ECDF, monotone_fn_inverter
-
-from hydesign.weather.weather import interpolate_WS_loglog
+# from numpy import newaxis as na
+import pandas as pd
+import xarray as xr
 
 # if not importlib.util.find_spec("finitediff"):
 #     from hydesign.utils import get_weights
 # else:
 #     from finitediff import get_weights
 from hydesign.openmdao_wrapper import ComponentWrapper
+from hydesign.weather.weather import interpolate_WS_loglog
+
+# from sklearn.neighbors import NearestNeighbors
+# from statsmodels.distributions.empirical_distribution import ECDF, monotone_fn_inverter
+
 
 class ABL_WD:
     """Atmospheric boundary layer WS and WD interpolation
-    
+
     Parameters
     ----------
     hh : Turbine's hub height
@@ -37,47 +39,60 @@ class ABL_WD:
 
     """
 
-
     def __init__(self, weather_fn, N_time):
         # super().__init__()
         self.weather_fn = weather_fn
         self.N_time = N_time
 
-    # def setup(self):
+        # def setup(self):
         self.inputs = [
-        ('hh', dict(desc="Turbine's hub height",
-                     units='m')),
+            ("hh", dict(desc="Turbine's hub height", units="m")),
         ]
         self.outputs = [
-        ('wst', dict(desc="ws time series at the hub height",
-                      units='m/s',
-                      shape=[self.N_time])),
-        ('wdt', dict(desc="wd time series at the hub height",
-                      units='deg',
-                      shape=[self.N_time])),
+            (
+                "wst",
+                dict(
+                    desc="ws time series at the hub height",
+                    units="m/s",
+                    shape=[self.N_time],
+                ),
+            ),
+            (
+                "wdt",
+                dict(
+                    desc="wd time series at the hub height",
+                    units="deg",
+                    shape=[self.N_time],
+                ),
+            ),
         ]
+
     def compute(self, **inputs):
         outputs = {}
-        hh = inputs['hh']
+        hh = inputs["hh"]
         weather = pd.read_csv(self.weather_fn, index_col=0, parse_dates=True)
         ds_interpolated = interpolate_WS_loglog(weather, hh=hh)
         ds_interpolated_aux = interpolate_WD_linear(weather, hh=hh)
-        ds_interpolated['WD'] = ds_interpolated_aux['WD']
-        
+        ds_interpolated["WD"] = ds_interpolated_aux["WD"]
+
         self.ds_interpolated = ds_interpolated
 
-        outputs['wst'] = ds_interpolated.WS.values.flatten()
-        outputs['wdt'] = ds_interpolated.WD.values.flatten()
-        out_keys = ['wst', 'wdt']
+        outputs["wst"] = ds_interpolated.WS.values.flatten()
+        outputs["wdt"] = ds_interpolated.WD.values.flatten()
+        out_keys = ["wst", "wdt"]
         return [outputs[key] for key in out_keys]
+
 
 class ABL_WD_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
         model = ABL_WD(**insta_inp)
-        super().__init__(inputs=model.inputs,
-                            outputs=model.outputs,
-                            function=model.compute,
-                            partial_options=[{'dependent': False, 'val': 0}],)
+        super().__init__(
+            inputs=model.inputs,
+            outputs=model.outputs,
+            function=model.compute,
+            partial_options=[{"dependent": False, "val": 0}],
+        )
+
 
 # -----------------------------------------------------------------------
 # Auxiliar functions for weather handling
@@ -85,6 +100,7 @@ class ABL_WD_comp(ComponentWrapper):
 
 cosd = lambda x: np.cos(np.radians(x))
 sind = lambda x: np.sin(np.radians(x))
+
 
 def interpolate_WD_linear(weather, hh):
     """
@@ -95,7 +111,7 @@ def interpolate_WD_linear(weather, hh):
     weather: pd.DataFrame
         WD time-series table for a location at multiple heights.
         The columns must be named WS_hh (for example  WD_10, WD_50, ...).
-    
+
     hh: float
         Elevation (of a wind turbine) to interpolate WD
 
@@ -105,30 +121,33 @@ def interpolate_WD_linear(weather, hh):
         Dataset that contains the interpolated time-series: WD and dWD_dz
 
     """
-    wd_vars = [var for var in weather.columns if 'WD_' in var]
-    heights = np.array([float(var.split('_')[-1]) for var in wd_vars])
-
+    wd_vars = [var for var in weather.columns if "WD_" in var]
+    heights = np.array([float(var.split("_")[-1]) for var in wd_vars])
 
     ds_all = xr.Dataset(
-        data_vars = {
-            'WD': (['time','height'], weather[wd_vars].values),
-            },
-        coords = {
-            'time': weather.index.values,
-            'height': heights,
-            }  
-        )
+        data_vars={
+            "WD": (["time", "height"], weather[wd_vars].values),
+        },
+        coords={
+            "time": weather.index.values,
+            "height": heights,
+        },
+    )
 
-    ds_all['WD_x'] = cosd(ds_all.WD)
-    ds_all['WD_y'] = sind(ds_all.WD)
-    
+    ds_all["WD_x"] = cosd(ds_all.WD)
+    ds_all["WD_y"] = sind(ds_all.WD)
+
     ds_interpolated = xr.Dataset()
-    ds_interpolated['WD_x'] = ds_all.WD_x.interp(height=hh, method='linear')
-    ds_interpolated['WD_y'] = ds_all.WD_y.interp(height=hh, method='linear')
-    
-    ds_interpolated['WD'] = np.mod( np.degrees(np.arctan2(ds_interpolated['WD_y'],ds_interpolated['WD_x']) ) + 360, 360)
-    
+    ds_interpolated["WD_x"] = ds_all.WD_x.interp(height=hh, method="linear")
+    ds_interpolated["WD_y"] = ds_all.WD_y.interp(height=hh, method="linear")
+
+    ds_interpolated["WD"] = np.mod(
+        np.degrees(np.arctan2(ds_interpolated["WD_y"], ds_interpolated["WD_x"])) + 360,
+        360,
+    )
+
     return ds_interpolated
+
 
 # -----------------------------------------------------------------
 # Auxiliar functions for extractions on a ERA5 database
@@ -136,7 +155,8 @@ def interpolate_WD_linear(weather, hh):
 
 # pvlib imports
 # from pvlib import pvsystem, tools, irradiance, atmosphere
-# from pvlib.location import Location        
+# from pvlib.location import Location
+
 
 def apply_interpolation_f(
     wrf_ds,
@@ -146,10 +166,10 @@ def apply_interpolation_f(
     vars_xy=["UST", "RMOL", "TAIR", "DIF_AVG", "DNI_AVG"],
     vars_nearest_xy=[],
     vars_nearest_xyz=[],
-    var_x_grid='west_east',
-    var_y_grid='south_north',
-    var_z_grid='height',
-    varWD='WDIR',
+    var_x_grid="west_east",
+    var_y_grid="south_north",
+    var_z_grid="height",
+    varWD="WDIR",
 ):
     """
     Function that applies interpolation to a wrf simulation.
@@ -212,83 +232,118 @@ def apply_interpolation_f(
 
     # power law profile in z
     for var in vars_xy_logz:
-        if var not in ['WSPD', 'WS', 'ws', 'wspd']:
-            interp[var] = (wrf_ds.get(var).isel({
-                var_x_grid: weights_ds.ind_x,
-                var_y_grid: weights_ds.ind_y,
-                var_z_grid: weights_ds.ind_z,
-            })
+        if var not in ["WSPD", "WS", "ws", "wspd"]:
+            interp[var] = (
+                wrf_ds.get(var).isel(
+                    {
+                        var_x_grid: weights_ds.ind_x,
+                        var_y_grid: weights_ds.ind_y,
+                        var_z_grid: weights_ds.ind_z,
+                    }
+                )
                 * weights_ds.weights_x
                 * weights_ds.weights_y
-                * weights_ds.weights_log_z).sum(['ix', 'iy', 'iz'])
+                * weights_ds.weights_log_z
+            ).sum(["ix", "iy", "iz"])
         else:
-            interp[var] = np.exp((np.log(wrf_ds.get(var) + 1e-12).isel({
-                var_x_grid: weights_ds.ind_x,
-                var_y_grid: weights_ds.ind_y,
-                var_z_grid: weights_ds.ind_z,
-            })
-                * weights_ds.weights_x
-                * weights_ds.weights_y
-                * weights_ds.weights_log_z).sum(['ix', 'iy', 'iz']))
+            interp[var] = np.exp(
+                (
+                    np.log(wrf_ds.get(var) + 1e-12).isel(
+                        {
+                            var_x_grid: weights_ds.ind_x,
+                            var_y_grid: weights_ds.ind_y,
+                            var_z_grid: weights_ds.ind_z,
+                        }
+                    )
+                    * weights_ds.weights_x
+                    * weights_ds.weights_y
+                    * weights_ds.weights_log_z
+                ).sum(["ix", "iy", "iz"])
+            )
 
     # linear profile in z
     for var in vars_xyz:
         if var != varWD:
-            interp[var] = (wrf_ds.get(var).isel({
-                var_x_grid: weights_ds.ind_x,
-                var_y_grid: weights_ds.ind_y,
-                var_z_grid: weights_ds.ind_z,
-            })
+            interp[var] = (
+                wrf_ds.get(var).isel(
+                    {
+                        var_x_grid: weights_ds.ind_x,
+                        var_y_grid: weights_ds.ind_y,
+                        var_z_grid: weights_ds.ind_z,
+                    }
+                )
                 * weights_ds.weights_x
                 * weights_ds.weights_y
-                * weights_ds.weights_z).sum(['ix', 'iy', 'iz'])
+                * weights_ds.weights_z
+            ).sum(["ix", "iy", "iz"])
         else:
-            # Apply interpolation in WD using vector linear interpolation 
-            interp[varWD+'_x'] = (cosd(wrf_ds.get(var).isel({
-                var_x_grid: weights_ds.ind_x,
-                var_y_grid: weights_ds.ind_y,
-                var_z_grid: weights_ds.ind_z,
-            }))
+            # Apply interpolation in WD using vector linear interpolation
+            interp[varWD + "_x"] = (
+                cosd(
+                    wrf_ds.get(var).isel(
+                        {
+                            var_x_grid: weights_ds.ind_x,
+                            var_y_grid: weights_ds.ind_y,
+                            var_z_grid: weights_ds.ind_z,
+                        }
+                    )
+                )
                 * weights_ds.weights_x
                 * weights_ds.weights_y
-                * weights_ds.weights_z).sum(['ix', 'iy', 'iz'])
+                * weights_ds.weights_z
+            ).sum(["ix", "iy", "iz"])
 
-            interp[varWD+'_y'] = (sind(wrf_ds.get(var).isel({
-                var_x_grid: weights_ds.ind_x,
-                var_y_grid: weights_ds.ind_y,
-                var_z_grid: weights_ds.ind_z,
-            }))
+            interp[varWD + "_y"] = (
+                sind(
+                    wrf_ds.get(var).isel(
+                        {
+                            var_x_grid: weights_ds.ind_x,
+                            var_y_grid: weights_ds.ind_y,
+                            var_z_grid: weights_ds.ind_z,
+                        }
+                    )
+                )
                 * weights_ds.weights_x
                 * weights_ds.weights_y
-                * weights_ds.weights_z).sum(['ix', 'iy', 'iz'])
+                * weights_ds.weights_z
+            ).sum(["ix", "iy", "iz"])
 
     # only horizontal interpolation
     for var in vars_xy:
-        interp[var] = (wrf_ds.get(var).isel({
-            var_x_grid: weights_ds.ind_x,
-            var_y_grid: weights_ds.ind_y,
-        })
+        interp[var] = (
+            wrf_ds.get(var).isel(
+                {
+                    var_x_grid: weights_ds.ind_x,
+                    var_y_grid: weights_ds.ind_y,
+                }
+            )
             * weights_ds.weights_x
-            * weights_ds.weights_y).sum(['ix', 'iy'])
+            * weights_ds.weights_y
+        ).sum(["ix", "iy"])
 
     # nearest horizontal point approximation
     for var in vars_nearest_xy:
-        interp[var] = wrf_ds.get(var).isel({
-            var_x_grid: weights_ds.ind_x_1,
-            var_y_grid: weights_ds.ind_y_1,
-        })
+        interp[var] = wrf_ds.get(var).isel(
+            {
+                var_x_grid: weights_ds.ind_x_1,
+                var_y_grid: weights_ds.ind_y_1,
+            }
+        )
 
     # nearest point approximation
     for var in vars_nearest_xyz:
-        interp[var] = wrf_ds.get(var).isel({
-            var_x_grid: weights_ds.ind_x_1,
-            var_y_grid: weights_ds.ind_y_1,
-            var_z_grid: weights_ds.ind_z_1,
-        })
+        interp[var] = wrf_ds.get(var).isel(
+            {
+                var_x_grid: weights_ds.ind_x_1,
+                var_y_grid: weights_ds.ind_y_1,
+                var_z_grid: weights_ds.ind_z_1,
+            }
+        )
 
-    if varWD in vars_xy_logz + vars_xyz + \
-            vars_xy + vars_nearest_xy + vars_nearest_xyz:
-        interp[varWD] = np.mod( np.degrees(np.arctan2(interp[varWD+'_y'],interp[varWD+'_x'])) +360, 360)
+    if varWD in vars_xy_logz + vars_xyz + vars_xy + vars_nearest_xy + vars_nearest_xyz:
+        interp[varWD] = np.mod(
+            np.degrees(np.arctan2(interp[varWD + "_y"], interp[varWD + "_x"])) + 360,
+            360,
+        )
 
     return interp
-

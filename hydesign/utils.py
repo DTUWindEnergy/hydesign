@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import openmdao.api as om
+
 from hydesign.openmdao_wrapper import ComponentWrapper
+
 
 def get_weights(grid, xtgt, maxorder):
     """Return finite-difference weights on an arbitrary grid.
@@ -38,10 +40,10 @@ def get_weights(grid, xtgt, maxorder):
     x = grid
     z = xtgt
     m = maxorder
-    
+
     #    nd: Number of data points - 1
-    nd = len(x) -1 
-    
+    nd = len(x) - 1
+
     c = np.zeros((nd + 1, m + 1))
     c1 = 1.0
     c4 = x[0] - z
@@ -66,11 +68,13 @@ def get_weights(grid, xtgt, maxorder):
 
 
 class hybridization_shifted:
-    def __init__(self,
-            N_limit,
-            life_y,
-            N_time,
-            life_h,):
+    def __init__(
+        self,
+        N_limit,
+        life_y,
+        N_time,
+        life_h,
+    ):
         """
         The hybridization_shifted model is used to shift the battery activity, in order to make them work starting from the chosen year (delta_life)
 
@@ -102,22 +106,46 @@ class hybridization_shifted:
         # SoH = inputs['SoH']
         delta_life = int(delta_life)
 
-        SoH_shifted = np.concatenate((np.zeros(delta_life * 365 * 24), SoH[0:life_y * 365 * 24], np.zeros((N_limit-delta_life) * 365 * 24)))
+        SoH_shifted = np.concatenate(
+            (
+                np.zeros(delta_life * 365 * 24),
+                SoH[0 : life_y * 365 * 24],
+                np.zeros((N_limit - delta_life) * 365 * 24),
+            )
+        )
         return SoH_shifted
+
 
 class hybridization_shifted_comp(ComponentWrapper):
     def __init__(self, N_limit, life_y, N_time, life_h):
         model = hybridization_shifted(N_limit, life_y, N_time, life_h)
         super().__init__(
             inputs=[
-                ('delta_life', {'desc': 'Years between the starting of operations of the existing plant and the new plant'}),
-                ('SoH', {'desc': 'Battery state of health at discretization levels', 'shape': [life_h]})
+                (
+                    "delta_life",
+                    {
+                        "desc": "Years between the starting of operations of the existing plant and the new plant"
+                    },
+                ),
+                (
+                    "SoH",
+                    {
+                        "desc": "Battery state of health at discretization levels",
+                        "shape": [life_h],
+                    },
+                ),
             ],
             outputs=[
-                ('SoH_shifted', {'desc': 'Battery state of health at discretization levels shifted of delta_life', 'shape': [life_h]})
+                (
+                    "SoH_shifted",
+                    {
+                        "desc": "Battery state of health at discretization levels shifted of delta_life",
+                        "shape": [life_h],
+                    },
+                )
             ],
             function=model.compute,
-            partial_options=[{'dependent': False, 'val': 0}],
+            partial_options=[{"dependent": False, "val": 0}],
         )
 
 

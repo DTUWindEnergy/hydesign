@@ -1,10 +1,20 @@
-from openmdao.core.explicitcomponent import ExplicitComponent
 import time
 
+from openmdao.core.explicitcomponent import ExplicitComponent
+
+
 class ComponentWrapper(ExplicitComponent):
-    def __init__(self, inputs, outputs, function, gradient_function=None,
-                 additional_inputs=None, additional_outputs=None, partial_options=None,
-                 **kwargs):
+    def __init__(
+        self,
+        inputs,
+        outputs,
+        function,
+        gradient_function=None,
+        additional_inputs=None,
+        additional_outputs=None,
+        partial_options=None,
+        **kwargs,
+    ):
         """
         Parameters
         ----------
@@ -47,18 +57,22 @@ class ComponentWrapper(ExplicitComponent):
         self.function = function
         self.gradient_function = gradient_function
         if additional_inputs is not None:
-            self.additional_inputs = [x + ({},) if len(x) == 1 else x for x in additional_inputs]
+            self.additional_inputs = [
+                x + ({},) if len(x) == 1 else x for x in additional_inputs
+            ]
             self.additional_input_keys = [i[0] for i in self.additional_inputs]
         else:
             self.additional_inputs = additional_inputs
             self.additional_input_keys = []
         if additional_outputs is not None:
-            self.additional_outputs = [x + ({},) if len(x) == 1 else x for x in additional_outputs]
+            self.additional_outputs = [
+                x + ({},) if len(x) == 1 else x for x in additional_outputs
+            ]
         else:
             self.additional_outputs = additional_outputs
         self.partial_options = partial_options
         self.kwargs = kwargs
-        
+
         self.input_keys = [i[0] for i in self.inputs]
         self.all_input_keys = self.input_keys + self.additional_input_keys
         self.output_keys = [o[0] for o in self.outputs]
@@ -67,8 +81,7 @@ class ComponentWrapper(ExplicitComponent):
         self.func_time_sum = 0
         self.n_grad_eval = 0
         self.grad_time_sum = 0
-        
-    
+
     def setup(self):
         for inp in self.inputs:
             self.add_input(inp[0], **inp[1])
@@ -81,14 +94,16 @@ class ComponentWrapper(ExplicitComponent):
             for a_out in self.additional_outputs:
                 self.add_output(a_out[0], **a_out[1])
         if self.gradient_function is None:
-            method = 'fd'
+            method = "fd"
         else:
-            method = 'exact'
+            method = "exact"
         if self.partial_options is None:
             for out in self.outputs:
-                self.declare_partials(out[0], [i[0] for i in self.inputs], method=method)
+                self.declare_partials(
+                    out[0], [i[0] for i in self.inputs], method=method
+                )
         elif len(self.partial_options) == 1:
-            self.declare_partials('*', '*', **self.partial_options[0])
+            self.declare_partials("*", "*", **self.partial_options[0])
         else:
             for out, po in zip(self.outputs, self.partial_options):
                 self.declare_partials(out[0], [i[0] for i in self.inputs], **po)
@@ -96,14 +111,19 @@ class ComponentWrapper(ExplicitComponent):
     @property
     def counter(self):
         counter = float(self.n_func_eval)
-        if self.grad_time_sum > 0 and self.func_time_sum > 0 and self.n_grad_eval > 0 and self.n_func_eval > 0:
-            ratio = ((self.grad_time_sum / self.n_grad_eval) /
-                     (self.func_time_sum / self.n_func_eval))
+        if (
+            self.grad_time_sum > 0
+            and self.func_time_sum > 0
+            and self.n_grad_eval > 0
+            and self.n_func_eval > 0
+        ):
+            ratio = (self.grad_time_sum / self.n_grad_eval) / (
+                self.func_time_sum / self.n_func_eval
+            )
             counter += self.n_grad_eval * max(ratio, 1)
         else:
             counter += self.n_grad_eval
         return int(counter)
-
 
     def compute(self, inputs, outputs):
         """Execute the wrapped function and write its results to ``outputs``.
@@ -117,7 +137,9 @@ class ComponentWrapper(ExplicitComponent):
         """
         t = time.time()
         if self.additional_outputs is not None:
-            res, additional_output = self.function(**{x: inputs[x] for x in self.all_input_keys})
+            res, additional_output = self.function(
+                **{x: inputs[x] for x in self.all_input_keys}
+            )
             for k, v in additional_output.items():
                 outputs[k] = v
         else:
@@ -130,14 +152,16 @@ class ComponentWrapper(ExplicitComponent):
         self.n_func_eval += 1
 
     def compute_partials(self, inputs, J):
-        if hasattr(self, 'skip_linearize'):
+        if hasattr(self, "skip_linearize"):
             if self.skip_linearize:
                 return
 
         t = time.time()
         if self.gradient_function is not None:
-            for k, d_out_d_k in zip(self.input_keys,
-                                  self.gradient_function(**{x: inputs[x] for x in self.all_input_keys})):
+            for k, d_out_d_k in zip(
+                self.input_keys,
+                self.gradient_function(**{x: inputs[x] for x in self.all_input_keys}),
+            ):
                 if d_out_d_k is not None:
                     if not isinstance(d_out_d_k, list):
                         d_out_d_k = [d_out_d_k]

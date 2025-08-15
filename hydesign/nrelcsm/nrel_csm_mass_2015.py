@@ -3,8 +3,8 @@ Copyright (c) NREL. All rights reserved.
 """
 
 from __future__ import print_function
-import numpy as np
 
+import numpy as np
 import openmdao.api as om
 
 from hydesign.nrelcsm.nrel_csm_cost_2015 import Turbine_CostsSE_2015
@@ -167,8 +167,13 @@ class PitchSystemMass(om.ExplicitComponent):
         mass_sys_offset = inputs["mass_sys_offset"]
 
         # calculate the hub mass
-        pitchBearingMass = pitch_bearing_mass_coeff * blade_mass * blade_number + pitch_bearing_mass_intercept
-        outputs["pitch_system_mass"] = pitchBearingMass * (1 + bearing_housing_fraction) + mass_sys_offset
+        pitchBearingMass = (
+            pitch_bearing_mass_coeff * blade_mass * blade_number
+            + pitch_bearing_mass_intercept
+        )
+        outputs["pitch_system_mass"] = (
+            pitchBearingMass * (1 + bearing_housing_fraction) + mass_sys_offset
+        )
 
 
 # --------------------------------------------------------------------
@@ -207,7 +212,9 @@ class SpinnerMass(om.ExplicitComponent):
         spinner_mass_intercept = inputs["spinner_mass_intercept"]
 
         # calculate the spinner mass
-        outputs["spinner_mass"] = spinner_mass_coeff * rotor_diameter + spinner_mass_intercept
+        outputs["spinner_mass"] = (
+            spinner_mass_coeff * rotor_diameter + spinner_mass_intercept
+        )
 
 
 # --------------------------------------------------------------------
@@ -256,7 +263,8 @@ class LowSpeedShaftMass(om.ExplicitComponent):
 
         # calculate the lss mass
         outputs["lss_mass"] = (
-            lss_mass_coeff * (blade_mass * machine_rating / 1000.0) ** lss_mass_exp + lss_mass_intercept
+            lss_mass_coeff * (blade_mass * machine_rating / 1000.0) ** lss_mass_exp
+            + lss_mass_intercept
         )
 
 
@@ -297,7 +305,9 @@ class BearingMass(om.ExplicitComponent):
         bearing_mass_exp = inputs["bearing_mass_exp"]
 
         # calculates the mass of a SINGLE bearing
-        outputs["main_bearing_mass"] = bearing_mass_coeff * rotor_diameter ** bearing_mass_exp
+        outputs["main_bearing_mass"] = (
+            bearing_mass_coeff * rotor_diameter**bearing_mass_exp
+        )
 
 
 # --------------------------------------------------------------------
@@ -382,7 +392,9 @@ class GearboxMass(om.ExplicitComponent):
         gearbox_mass_exp = inputs["gearbox_mass_exp"]
 
         # calculate the gearbox mass
-        outputs["gearbox_mass"] = gearbox_mass_coeff * (rotor_torque / 1000.0) ** gearbox_mass_exp
+        outputs["gearbox_mass"] = (
+            gearbox_mass_coeff * (rotor_torque / 1000.0) ** gearbox_mass_exp
+        )
 
 
 # --------------------------------------------------------------------
@@ -489,7 +501,9 @@ class GeneratorMass(om.ExplicitComponent):
         generator_mass_intercept = inputs["generator_mass_intercept"]
 
         # calculate the generator mass
-        outputs["generator_mass"] = generator_mass_coeff * machine_rating / 1000.0 + generator_mass_intercept
+        outputs["generator_mass"] = (
+            generator_mass_coeff * machine_rating / 1000.0 + generator_mass_intercept
+        )
 
 
 # --------------------------------------------------------------------
@@ -523,7 +537,7 @@ class BedplateMass(om.ExplicitComponent):
         bedplate_mass_exp = inputs["bedplate_mass_exp"]
 
         # calculate the bedplate mass
-        outputs["bedplate_mass"] = rotor_diameter ** bedplate_mass_exp
+        outputs["bedplate_mass"] = rotor_diameter**bedplate_mass_exp
 
 
 # --------------------------------------------------------------------
@@ -564,11 +578,12 @@ class YawSystemMass(om.ExplicitComponent):
 
         # calculate yaw system mass #TODO - 50% adder for non-bearing mass
         outputs["yaw_mass"] = 1.5 * (
-            yaw_mass_coeff * rotor_diameter ** yaw_mass_exp
+            yaw_mass_coeff * rotor_diameter**yaw_mass_exp
         )  # JMF do we really want to expose all these?
 
 
 # TODO: no variable speed mass; ignore for now
+
 
 # --------------------------------------------------------------------
 class HydraulicCoolingMass(om.ExplicitComponent):
@@ -646,6 +661,7 @@ class NacelleCoverMass(om.ExplicitComponent):
 
 
 # TODO: ignoring controls and electronics mass for now
+
 
 # --------------------------------------------------------------------
 class PlatformsMainframeMass(om.ExplicitComponent):
@@ -738,7 +754,10 @@ class TransformerMass(om.ExplicitComponent):
         transformer_mass_intercept = inputs["transformer_mass_intercept"]
 
         # calculate the transformer mass
-        outputs["transformer_mass"] = transformer_mass_coeff * machine_rating / 1000.0 + transformer_mass_intercept
+        outputs["transformer_mass"] = (
+            transformer_mass_coeff * machine_rating / 1000.0
+            + transformer_mass_intercept
+        )
 
 
 # --------------------------------------------------------------------
@@ -777,7 +796,7 @@ class TowerMass(om.ExplicitComponent):
         tower_mass_exp = inputs["tower_mass_exp"]
 
         # calculate the tower mass
-        outputs["tower_mass"] = tower_mass_coeff * hub_height ** tower_mass_exp
+        outputs["tower_mass"] = tower_mass_coeff * hub_height**tower_mass_exp
 
 
 # Turbine mass adder
@@ -907,7 +926,9 @@ class TurbineMassAdder(om.ExplicitComponent):
             + platforms_mass
             + transformer_mass
         )
-        outputs["turbine_mass"] = outputs["rotor_mass"] + outputs["nacelle_mass"] + tower_mass
+        outputs["turbine_mass"] = (
+            outputs["rotor_mass"] + outputs["nacelle_mass"] + tower_mass
+        )
 
 
 # --------------------------------------------------------------------
@@ -939,4 +960,6 @@ class nrel_csm_mass_2015(om.Group):
 class nrel_csm_2015(om.Group):
     def setup(self):
         self.add_subsystem("nrel_csm_mass", nrel_csm_mass_2015(), promotes=["*"])
-        self.add_subsystem("turbine_costs", Turbine_CostsSE_2015(verbosity=False), promotes=["*"])
+        self.add_subsystem(
+            "turbine_costs", Turbine_CostsSE_2015(verbosity=False), promotes=["*"]
+        )

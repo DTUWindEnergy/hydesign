@@ -3,21 +3,21 @@ import glob
 import os
 import time
 
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+
 # basic libraries
 import numpy as np
-from numpy import newaxis as na
-import pandas as pd
-import xarray as xr
 import openmdao.api as om
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
+import pandas as pd
 
 # pvlib imports
 import pvlib
-from pvlib import pvsystem, tools, irradiance, atmosphere
+import xarray as xr
+from numpy import newaxis as na
+from pvlib import atmosphere, irradiance, pvsystem, temperature, tools
 from pvlib.location import Location
 from pvlib.modelchain import ModelChain
-from pvlib import temperature
 from pvlib.temperature import TEMPERATURE_MODEL_PARAMETERS
 
 from hydesign.openmdao_wrapper import ComponentWrapper
@@ -29,11 +29,11 @@ class pvp_with_degradation:
     """
 
     def __init__(
-            self,
-            N_limit,
-            life_y,
-            life_h,
-            pv_deg=[0, 25 * 1 / 100],
+        self,
+        N_limit,
+        life_y,
+        life_h,
+        pv_deg=[0, 25 * 1 / 100],
     ):
         """Initialization of the PV degradation model
 
@@ -51,7 +51,6 @@ class pvp_with_degradation:
         # PV degradation curve
         self.pv_deg = pv_deg
 
-
     def compute(self, delta_life, solar_t_ext, **kwargs):
         N_limit = self.N_limit
         life_y = self.life_y
@@ -61,27 +60,50 @@ class pvp_with_degradation:
         # solar_t_ext = inputs['solar_t_ext']
 
         t_over_year = np.arange(self.life_h) / (365 * 24)
-        pv_deg_yr = [0, int(delta_life), int(delta_life) + 0.0001, int(delta_life) + 25, int(delta_life) + 25.0001,
-                     int(life_y) + int(+N_limit)]
+        pv_deg_yr = [
+            0,
+            int(delta_life),
+            int(delta_life) + 0.0001,
+            int(delta_life) + 25,
+            int(delta_life) + 25.0001,
+            int(life_y) + int(+N_limit),
+        ]
         degradation = np.interp(t_over_year, pv_deg_yr, pv_deg)
 
         solar_t_ext_deg = (1 - degradation) * solar_t_ext
 
         return solar_t_ext_deg
 
+
 class pvp_with_degradation_comp(ComponentWrapper):
     def __init__(self, N_limit, life_y, life_h, pv_deg=[0, 25 * 1 / 100]):
         model = pvp_with_degradation(N_limit, life_y, life_h, pv_deg)
         super().__init__(
             inputs=[
-                ('delta_life', {'desc': 'Years between the starting of operations of the existing plant and the new plant', 'val': 1}),
-                ('solar_t_ext', {'units': 'MW', 'desc': 'PVP power time series', 'shape': [life_h]})
+                (
+                    "delta_life",
+                    {
+                        "desc": "Years between the starting of operations of the existing plant and the new plant",
+                        "val": 1,
+                    },
+                ),
+                (
+                    "solar_t_ext",
+                    {"units": "MW", "desc": "PVP power time series", "shape": [life_h]},
+                ),
             ],
             outputs=[
-                ('solar_t_ext_deg', {'units': 'MW', 'desc': 'PVP power time series with degradation', 'shape': [life_h]})
+                (
+                    "solar_t_ext_deg",
+                    {
+                        "units": "MW",
+                        "desc": "PVP power time series with degradation",
+                        "shape": [life_h],
+                    },
+                )
             ],
             function=model.compute,
-            partial_options=[{'dependent': False, 'val': 0}],
+            partial_options=[{"dependent": False, "val": 0}],
         )
 
 
@@ -127,47 +149,44 @@ class existing_pvp:
     availability : losses due to availability (%)
     """
 
-    def __init__(self,
-                 weather_fn,
-                 N_time,
-                 latitude,
-                 longitude,
-                 altitude,
-                 inverter_eff_curve,
-
-                 pdc0,
-                 v_mp,
-                 i_mp,
-                 v_oc,
-                 i_sc,
-                 alpha_sc_spec,
-                 beta_voc_spec,
-                 gamma_pdc,
-                 cells_in_series,
-                 temp_ref,
-                 celltype,
-                 panel,
-                 tracking,
-
-                 pac0_inv,
-                 eta_max,
-                 eta_euro,
-
-                 modules_per_string,
-                 strings_per_inverter,
-                 number_of_inverters,
-
-                 soiling,
-                 shading,
-                 snow,
-                 mismatch,
-                 wiring,
-                 connections,
-                 lid,
-                 nameplate_rating,
-                 age,
-                 availability,
-                 ):
+    def __init__(
+        self,
+        weather_fn,
+        N_time,
+        latitude,
+        longitude,
+        altitude,
+        inverter_eff_curve,
+        pdc0,
+        v_mp,
+        i_mp,
+        v_oc,
+        i_sc,
+        alpha_sc_spec,
+        beta_voc_spec,
+        gamma_pdc,
+        cells_in_series,
+        temp_ref,
+        celltype,
+        panel,
+        tracking,
+        pac0_inv,
+        eta_max,
+        eta_euro,
+        modules_per_string,
+        strings_per_inverter,
+        number_of_inverters,
+        soiling,
+        shading,
+        snow,
+        mismatch,
+        wiring,
+        connections,
+        lid,
+        nameplate_rating,
+        age,
+        availability,
+    ):
         """Initialization of the PV power plant model
 
         Parameters
@@ -211,7 +230,7 @@ class existing_pvp:
         self.number_of_inverters = number_of_inverters
 
         self.soiling = soiling
-        self.shading =shading
+        self.shading = shading
         self.snow = snow
         self.mismatch = mismatch
         self.wiring = wiring
@@ -222,24 +241,25 @@ class existing_pvp:
         self.availability = availability
 
         pvloc = Location(
-            latitude=latitude,
-            longitude=longitude,
-            altitude=altitude,
-            name='Plant')
+            latitude=latitude, longitude=longitude, altitude=altitude, name="Plant"
+        )
 
-        weather = pd.read_csv(
-            weather_fn,
-            index_col=0,
-            parse_dates=True)
+        weather = pd.read_csv(weather_fn, index_col=0, parse_dates=True)
 
-        weather['temp_air'] = weather['temp_air_1'] - 273.15  # Celcium
-        weather['wind_speed'] = weather['WS_1']
+        weather["temp_air"] = weather["temp_air_1"] - 273.15  # Celcium
+        weather["wind_speed"] = weather["WS_1"]
 
         self.weather = weather
         self.pvloc = pvloc
 
-
-    def compute(self, surface_tilt, surface_azimuth, DC_AC_ratio, land_use_per_solar_MW, **kwargs):
+    def compute(
+        self,
+        surface_tilt,
+        surface_azimuth,
+        DC_AC_ratio,
+        land_use_per_solar_MW,
+        **kwargs,
+    ):
         # surface_tilt = inputs['surface_tilt']
         # surface_azimuth = inputs['surface_azimuth']
         # land_use_per_solar_MW = inputs['land_use_per_solar_MW'][0]
@@ -257,93 +277,93 @@ class existing_pvp:
 
         # Creation of a dcitionary with the module parameters to pass it to the function
         module_parameters = {
-            'pdc0': self.pdc0,
-            'v_mp': self.v_mp,
-            'i_mp': self.i_mp,
-            'v_oc': self.v_oc,
-            'i_sc': self.i_sc,
-            'alpha_sc': alpha_sc,
-            'beta_voc': beta_voc,
-            'gamma_pdc': self.gamma_pdc,
-            'cells_in_series': self.cells_in_series,
-            'temp_ref': self.temp_ref,
-            'celltype': self.celltype,
-            'panel': self.panel,
-            'tracking': self.tracking,
+            "pdc0": self.pdc0,
+            "v_mp": self.v_mp,
+            "i_mp": self.i_mp,
+            "v_oc": self.v_oc,
+            "i_sc": self.i_sc,
+            "alpha_sc": alpha_sc,
+            "beta_voc": beta_voc,
+            "gamma_pdc": self.gamma_pdc,
+            "cells_in_series": self.cells_in_series,
+            "temp_ref": self.temp_ref,
+            "celltype": self.celltype,
+            "panel": self.panel,
+            "tracking": self.tracking,
         }
 
         # Creation of a dictionary with the inverter parameters to pass it to the function
         inverter_parameters = {
-            'pac0_inv': self.pac0_inv,
-            'eta_max': self.eta_max,
-            'eta_euro': self.eta_euro,
+            "pac0_inv": self.pac0_inv,
+            "eta_max": self.eta_max,
+            "eta_euro": self.eta_euro,
         }
 
         # Creation of a dictionary with the losses parameters to pass it to the function
         losses_parameters = {
-            'soiling': self.soiling,
-            'shading': self.shading,
-            'snow': self.snow,
-            'mismatch': self.mismatch,
-            'wiring': self.wiring,
-            'connections': self.connections,
-            'lid': self.lid,
-            'nameplate_rating': self.nameplate_rating,
-            'age': self.age,
-            'availability': self.availability,
+            "soiling": self.soiling,
+            "shading": self.shading,
+            "snow": self.snow,
+            "mismatch": self.mismatch,
+            "wiring": self.wiring,
+            "connections": self.connections,
+            "lid": self.lid,
+            "nameplate_rating": self.nameplate_rating,
+            "age": self.age,
+            "availability": self.availability,
         }
 
         solar_t, solar_MW = get_solar_time_series_existing_pv(
-
             surface_tilt=surface_tilt,
             surface_azimuth=surface_azimuth,
             land_use_per_solar_MW=land_use_per_solar_MW,
             DC_AC_ratio=DC_AC_ratio,
-
             module_parameters=module_parameters,
             inverter_parameters=inverter_parameters,
             losses_parameters=losses_parameters,
             existing_inverter_efficiency_curve=self.inverter_eff_curve,
-
             modules_per_string=modules_per_string,
             strings_per_inverter=strings_per_inverter,
             number_of_inverters=number_of_inverters,
-
             pvloc=self.pvloc,
-            weather=self.weather)
+            weather=self.weather,
+        )
 
-        Apvp = solar_MW * land_use_per_solar_MW  # We need it in km**2 for the cost model
+        Apvp = (
+            solar_MW * land_use_per_solar_MW
+        )  # We need it in km**2 for the cost model
         # outputs['solar_MW'] = solar_MW
         # outputs['solar_t'] = solar_t
         # outputs['Apvp'] = Apvp
         return solar_t, solar_MW, Apvp
+
 
 class existing_pvp_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
         model = existing_pvp(**insta_inp)
         super().__init__(
             inputs=[
-                ('surface_tilt', {'val': 20.0}),
-                ('surface_azimuth', {'val': 180.0}),
-                ('DC_AC_ratio', {}),
-                ('land_use_per_solar_MW', {'val': 1.0})
+                ("surface_tilt", {"val": 20.0}),
+                ("surface_azimuth", {"val": 180.0}),
+                ("DC_AC_ratio", {}),
+                ("land_use_per_solar_MW", {"val": 1.0}),
             ],
             outputs=[
-                ('solar_t', {'units': 'MW', 'shape': [model.N_time]}),
-                ('solar_MW', {'units': 'MW'}),
-                ('Apvp', {'units': 'km**2'})
+                ("solar_t", {"units": "MW", "shape": [model.N_time]}),
+                ("solar_MW", {"units": "MW"}),
+                ("Apvp", {"units": "km**2"}),
             ],
             function=model.compute,
-            partial_options=[{'dependent': False, 'val': 0}],)
-        
+            partial_options=[{"dependent": False, "val": 0}],
+        )
 
 
-    
 class pvp_degradation_linear:
     """
-    PV degradation model providing the PV degradation time series throughout the lifetime of the plant, 
+    PV degradation model providing the PV degradation time series throughout the lifetime of the plant,
     considering a fixed linear degradation of the PV panels
     """
+
     def __init__(self, life_h):
         """Initialization of the PV degradation model
 
@@ -351,32 +371,40 @@ class pvp_degradation_linear:
         ----------
         life_h : lifetime of the plant
 
-        """ 
+        """
         super().__init__()
         self.life_h = life_h
-        
+
     # def setup(self):
     #     self.add_input('pv_deg_per_year', desc="PV degradation per year", val=0.5 / 100)
-    #     self.add_output('SoH_pv', desc="PV state of health time series", shape=[self.life_h])   
+    #     self.add_output('SoH_pv', desc="PV state of health time series", shape=[self.life_h])
 
     def compute(self, pv_deg_per_year, **kwargs):
         # pv_deg_per_year = inputs['pv_deg_per_year']
-        SoH_pv = get_linear_solar_degradation(pv_deg_per_year, self.life_h)   
+        SoH_pv = get_linear_solar_degradation(pv_deg_per_year, self.life_h)
         return SoH_pv
+
 
 class pvp_degradation_linear_comp(ComponentWrapper):
     def __init__(self, life_h):
         model = pvp_degradation_linear(life_h)
         super().__init__(
             inputs=[
-                ('pv_deg_per_year', {'desc': 'PV degradation per year', 'val': 0.5 / 100})
+                (
+                    "pv_deg_per_year",
+                    {"desc": "PV degradation per year", "val": 0.5 / 100},
+                )
             ],
             outputs=[
-                ('SoH_pv', {'desc': 'PV state of health time series', 'shape': [life_h]})
+                (
+                    "SoH_pv",
+                    {"desc": "PV state of health time series", "shape": [life_h]},
+                )
             ],
             function=model.compute,
-            partial_options=[{'dependent': False, 'val': 0}],
+            partial_options=[{"dependent": False, "val": 0}],
         )
+
 
 class shadow:
     """pv loss model due to shadows of wt"""
@@ -416,36 +444,52 @@ class shadow:
         solar_deg_shad_t = solar_deg_t
         return solar_deg_shad_t
 
+
 class shadow_comp(ComponentWrapper):
     def __init__(self, N_time):
         model = shadow(N_time)
         super().__init__(
             inputs=[
-                ('solar_deg_t', {'desc': 'PV power time series with degradation', 'units': 'W', 'shape': [N_time]})
+                (
+                    "solar_deg_t",
+                    {
+                        "desc": "PV power time series with degradation",
+                        "units": "W",
+                        "shape": [N_time],
+                    },
+                )
             ],
             outputs=[
-                ('solar_deg_shad_t', {'desc': 'PV power time series with degradation and shadow losses', 'units': 'W', 'shape': [N_time]})
+                (
+                    "solar_deg_shad_t",
+                    {
+                        "desc": "PV power time series with degradation and shadow losses",
+                        "units": "W",
+                        "shape": [N_time],
+                    },
+                )
             ],
             function=model.compute,
-            partial_options=[{'dependent': False, 'val': 0}],
+            partial_options=[{"dependent": False, "val": 0}],
         )
 
 
+# -----------------------------------------------------------------------
+# Auxiliar functions
+# -----------------------------------------------------------------------
 
-# -----------------------------------------------------------------------
-# Auxiliar functions 
-# -----------------------------------------------------------------------
 
 def get_solar_time_series(
-        surface_tilt,
-        surface_azimuth,
-        solar_MW,
-        land_use_per_solar_MW,
-        DC_AC_ratio,
-        tracking,
-        pvloc,
-        weather):
-    """ Computing the output power time series of the PV plant
+    surface_tilt,
+    surface_azimuth,
+    solar_MW,
+    land_use_per_solar_MW,
+    DC_AC_ratio,
+    tracking,
+    pvloc,
+    weather,
+):
+    """Computing the output power time series of the PV plant
 
     Parameters
     ----------
@@ -460,19 +504,19 @@ def get_solar_time_series(
     """
 
     # Sandia
-    sandia_modules = pvsystem.retrieve_sam('SandiaMod')
-    module_name = 'Canadian_Solar_CS5P_220M___2009_'
+    sandia_modules = pvsystem.retrieve_sam("SandiaMod")
+    module_name = "Canadian_Solar_CS5P_220M___2009_"
     module = sandia_modules[module_name]
-    module['aoi_model'] = irradiance.aoi
+    module["aoi_model"] = irradiance.aoi
 
     # 2. Inverter
     # -------------
-    inverters = pvsystem.retrieve_sam('cecinverter')
-    inverter = inverters['ABB__MICRO_0_25_I_OUTD_US_208__208V_']
+    inverters = pvsystem.retrieve_sam("cecinverter")
+    inverter = inverters["ABB__MICRO_0_25_I_OUTD_US_208__208V_"]
 
-    temp_model = TEMPERATURE_MODEL_PARAMETERS['sapm']['open_rack_glass_glass']
+    temp_model = TEMPERATURE_MODEL_PARAMETERS["sapm"]["open_rack_glass_glass"]
 
-    if tracking == 'single_axis':
+    if tracking == "single_axis":
 
         mount = pvsystem.SingleAxisTrackerMount(
             axis_tilt=float(surface_tilt),
@@ -486,7 +530,8 @@ def get_solar_time_series(
         array = pvsystem.Array(
             mount=mount,
             module_parameters=module,
-            temperature_model_parameters=temp_model)
+            temperature_model_parameters=temp_model,
+        )
         system = pvsystem.PVSystem(
             arrays=[array],
             inverter_parameters=inverter,
@@ -497,7 +542,8 @@ def get_solar_time_series(
             inverter_parameters=inverter,
             temperature_model_parameters=temp_model,
             surface_tilt=surface_tilt,
-            surface_azimuth=surface_azimuth)
+            surface_azimuth=surface_azimuth,
+        )
 
     mc = ModelChain(system, pvloc)
 
@@ -506,7 +552,7 @@ def get_solar_time_series(
 
     DC_AC_ratio_ref = inverter.Pdco / inverter.Paco
     Paco = inverter.Paco * DC_AC_ratio_ref / DC_AC_ratio
-    solar_t = (mc.results.ac / Paco)
+    solar_t = mc.results.ac / Paco
 
     solar_t[solar_t > 1] = 1
     solar_t[solar_t < 0] = 0
@@ -514,27 +560,23 @@ def get_solar_time_series(
 
 
 def get_solar_time_series_existing_pv(
-        surface_tilt,
-        surface_azimuth,
-        land_use_per_solar_MW,
-        DC_AC_ratio,
-
-        module_parameters,
-        inverter_parameters,
-        losses_parameters,
-        existing_inverter_efficiency_curve,
-
-        modules_per_string,
-        strings_per_inverter,
-        number_of_inverters,
-
-        pvloc,
-        weather,
-        gcr=0.2857142857142857,
-        plot=False
-        ):
-
-    """ Computing the output power time series of the existing PV plant
+    surface_tilt,
+    surface_azimuth,
+    land_use_per_solar_MW,
+    DC_AC_ratio,
+    module_parameters,
+    inverter_parameters,
+    losses_parameters,
+    existing_inverter_efficiency_curve,
+    modules_per_string,
+    strings_per_inverter,
+    number_of_inverters,
+    pvloc,
+    weather,
+    gcr=0.2857142857142857,
+    plot=False,
+):
+    """Computing the output power time series of the existing PV plant
 
     Parameters
     ----------
@@ -542,7 +584,7 @@ def get_solar_time_series_existing_pv(
 
     Returns
     -------
-    solar_t : PV power time series 
+    solar_t : PV power time series
     """
 
     times = weather.index
@@ -552,15 +594,17 @@ def get_solar_time_series_existing_pv(
 
     # Option to get tilt and azimuth for single-axis or fixed
     max_phi = 60
-    if module_parameters['tracking'] == 'single_axis':
+    if module_parameters["tracking"] == "single_axis":
         # Determine the rotation angle of a single-axis tracker when given particular solar zenith and azimuth angles.
-        sat = pvlib.tracking.singleaxis(apparent_zenith=solar_position['apparent_zenith'],
-                                        apparent_azimuth=solar_position['azimuth'],
-                                        max_angle=max_phi,
-                                        backtrack=True,
-                                        gcr=gcr)
-        surface_tilt_val = sat['surface_tilt'].fillna(0)
-        surface_azimuth_val = sat['surface_azimuth'].fillna(0)
+        sat = pvlib.tracking.singleaxis(
+            apparent_zenith=solar_position["apparent_zenith"],
+            apparent_azimuth=solar_position["azimuth"],
+            max_angle=max_phi,
+            backtrack=True,
+            gcr=gcr,
+        )
+        surface_tilt_val = sat["surface_tilt"].fillna(0)
+        surface_azimuth_val = sat["surface_azimuth"].fillna(0)
     else:
         surface_tilt_val = surface_tilt
         surface_azimuth_val = surface_azimuth
@@ -572,7 +616,7 @@ def get_solar_time_series_existing_pv(
     # albedo = 0.2
 
     # Option to get the transposed irradiance on the tilted panel for a bifacial or a monofacial
-    if module_parameters['panel'] == 'bifacial':
+    if module_parameters["panel"] == "bifacial":
         # total_irradiance_bif = pvfactors_timeseries(solar_position['azimuth'],
         #                                             solar_position['apparent_zenith'],
         #                                             surface_azimuth_val,
@@ -594,105 +638,127 @@ def get_solar_time_series_existing_pv(
         # bifaciality = 0.75
         # effective_irrad_bif = irrad['total_abs_front'] + (irrad['total_abs_back'] * bifaciality)
         # irrad = effective_irrad_bif
-        raise Warning('bifacial panel is not implemented')
+        raise Warning("bifacial panel is not implemented")
         irrad = None
 
     else:
         total_irradiance = irradiance.get_total_irradiance(
             surface_tilt=surface_tilt_val,
             surface_azimuth=surface_azimuth_val,
-            solar_zenith=solar_position['apparent_zenith'],
-            solar_azimuth=solar_position['azimuth'],
-            dni=weather['dni'],
-            ghi=weather['ghi'],
-            dhi=weather['dhi'],
+            solar_zenith=solar_position["apparent_zenith"],
+            solar_azimuth=solar_position["azimuth"],
+            dni=weather["dni"],
+            ghi=weather["ghi"],
+            dhi=weather["dhi"],
             dni_extra=irradiance.get_extra_radiation(times),
         )
-        irrad = total_irradiance['poa_global']
+        irrad = total_irradiance["poa_global"]
 
     # Temperature modelling
-    temp_cell = temperature.faiman(irrad, weather['temp_air'], weather['wind_speed'])
+    temp_cell = temperature.faiman(irrad, weather["temp_air"], weather["wind_speed"])
 
     # Calculatio of the CEC parameters of the module in reference consitions
-    I_L_ref, I_o_ref, R_s, R_sh_ref, a_ref, Adjust = pvlib.ivtools.sdm.fit_cec_sam(module_parameters['celltype'],
-                                                                                   v_mp=module_parameters['v_mp'],
-                                                                                   i_mp=module_parameters['i_mp'],
-                                                                                   v_oc=module_parameters['v_oc'],
-                                                                                   i_sc=module_parameters['i_sc'],
-                                                                                   alpha_sc=module_parameters['alpha_sc'],
-                                                                                   beta_voc=module_parameters['beta_voc'],
-                                                                                   gamma_pmp=module_parameters['gamma_pdc'] * 100,
-                                                                                   cells_in_series=module_parameters['cells_in_series'],
-                                                                                   temp_ref=module_parameters['temp_ref'])
+    I_L_ref, I_o_ref, R_s, R_sh_ref, a_ref, Adjust = pvlib.ivtools.sdm.fit_cec_sam(
+        module_parameters["celltype"],
+        v_mp=module_parameters["v_mp"],
+        i_mp=module_parameters["i_mp"],
+        v_oc=module_parameters["v_oc"],
+        i_sc=module_parameters["i_sc"],
+        alpha_sc=module_parameters["alpha_sc"],
+        beta_voc=module_parameters["beta_voc"],
+        gamma_pmp=module_parameters["gamma_pdc"] * 100,
+        cells_in_series=module_parameters["cells_in_series"],
+        temp_ref=module_parameters["temp_ref"],
+    )
 
     # Calculation of the Single Diode Model currents
-    cec_param = pvlib.pvsystem.calcparams_cec(irrad,  # It returns the CEC parameters
-                                              temp_cell,
-                                              module_parameters['alpha_sc'],
-                                              a_ref,
-                                              I_L_ref,
-                                              I_o_ref,
-                                              R_sh_ref,
-                                              R_s,
-                                              Adjust)
+    cec_param = pvlib.pvsystem.calcparams_cec(
+        irrad,  # It returns the CEC parameters
+        temp_cell,
+        module_parameters["alpha_sc"],
+        a_ref,
+        I_L_ref,
+        I_o_ref,
+        R_sh_ref,
+        R_s,
+        Adjust,
+    )
 
     # Maximum Power Point parameteres
-    mpp = pvlib.pvsystem.max_power_point(*cec_param, method='Newton')
+    mpp = pvlib.pvsystem.max_power_point(*cec_param, method="Newton")
 
     # Assembling of the system and scaling of power, current, voltage
-    system = pvlib.pvsystem.PVSystem(modules_per_string=modules_per_string, strings_per_inverter=strings_per_inverter)
+    system = pvlib.pvsystem.PVSystem(
+        modules_per_string=modules_per_string, strings_per_inverter=strings_per_inverter
+    )
 
     dc_scaled_values = system.scale_voltage_current_power(mpp)
 
-    dc_losses = pvlib.pvsystem.pvwatts_losses(soiling=losses_parameters['soiling'], shading=losses_parameters['shading'], snow=losses_parameters['snow'], mismatch=losses_parameters['mismatch'], wiring=losses_parameters['wiring'], connections=losses_parameters['connections'],
-                                              lid=losses_parameters['lid'], nameplate_rating=losses_parameters['nameplate_rating'], age=losses_parameters['age'], availability=losses_parameters['availability']) / 100  # [%]
+    dc_losses = (
+        pvlib.pvsystem.pvwatts_losses(
+            soiling=losses_parameters["soiling"],
+            shading=losses_parameters["shading"],
+            snow=losses_parameters["snow"],
+            mismatch=losses_parameters["mismatch"],
+            wiring=losses_parameters["wiring"],
+            connections=losses_parameters["connections"],
+            lid=losses_parameters["lid"],
+            nameplate_rating=losses_parameters["nameplate_rating"],
+            age=losses_parameters["age"],
+            availability=losses_parameters["availability"],
+        )
+        / 100
+    )  # [%]
 
     dc_scaled_no_inv = dc_scaled_values.p_mp * (1 - dc_losses)
 
-
     # Interpolation of the efficiency curve
     # existing_inverter_efficiency_curve.columns = ['Pdc0','eff']
-    efficiency_curve = np.interp(dc_scaled_no_inv, existing_inverter_efficiency_curve[:, 0], existing_inverter_efficiency_curve[:, 1])
-    ac_scaled_no_inv = pvlib.inverter.pvwatts(pdc=dc_scaled_no_inv,
-                                       pdc0=inverter_parameters['pac0_inv']/inverter_parameters['eta_max'],
-                                       eta_inv_nom=efficiency_curve,
-                                       eta_inv_ref=0.9637)
+    efficiency_curve = np.interp(
+        dc_scaled_no_inv,
+        existing_inverter_efficiency_curve[:, 0],
+        existing_inverter_efficiency_curve[:, 1],
+    )
+    ac_scaled_no_inv = pvlib.inverter.pvwatts(
+        pdc=dc_scaled_no_inv,
+        pdc0=inverter_parameters["pac0_inv"] / inverter_parameters["eta_max"],
+        eta_inv_nom=efficiency_curve,
+        eta_inv_ref=0.9637,
+    )
 
     dc_scaled = dc_scaled_no_inv * number_of_inverters
     ac_scaled = ac_scaled_no_inv * number_of_inverters
 
-    solar_MW = inverter_parameters['pac0_inv'] * number_of_inverters/ 1000000 # [MW]
-    solar_t = ac_scaled/1000000
-    
+    solar_MW = inverter_parameters["pac0_inv"] * number_of_inverters / 1000000  # [MW]
+    solar_t = ac_scaled / 1000000
+
     if plot:
-        plt.figure(figsize=[10,5])
-        plt.plot(dc_scaled/1000000, label='DC')
-        plt.plot(ac_scaled/1000000, label='AC')
-        plt.axhline(y=7.48, color='r', linestyle='--', label='Grid capacity')
+        plt.figure(figsize=[10, 5])
+        plt.plot(dc_scaled / 1000000, label="DC")
+        plt.plot(ac_scaled / 1000000, label="AC")
+        plt.axhline(y=7.48, color="r", linestyle="--", label="Grid capacity")
         plt.legend()
-        plt.title('DC and AC power along the year')
-        plt.xlabel('Time [Hours]')
-        plt.ylabel('Power [MW]')
+        plt.title("DC and AC power along the year")
+        plt.xlabel("Time [Hours]")
+        plt.ylabel("Power [MW]")
         plt.show()
-    
-        plt.figure(figsize=[10,5])
-        plt.plot(dc_scaled[24*180:24*187]/1000000, label='DC')
-        plt.plot(ac_scaled[24*180:24*187]/1000000, label='AC')
+
+        plt.figure(figsize=[10, 5])
+        plt.plot(dc_scaled[24 * 180 : 24 * 187] / 1000000, label="DC")
+        plt.plot(ac_scaled[24 * 180 : 24 * 187] / 1000000, label="AC")
         plt.legend()
-        plt.title('DC and AC power along one week')
-        plt.xlabel('Time [Hours]')
-        plt.ylabel('Power [MW]')
+        plt.title("DC and AC power along one week")
+        plt.xlabel("Time [Hours]")
+        plt.ylabel("Power [MW]")
         plt.gca().xaxis.set_major_locator(mdates.DayLocator())
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%d-%m"))
         plt.show()
-
-
 
     return solar_t, solar_MW
 
 
 def get_linear_solar_degradation(pv_deg_per_year, life_h):
-    """ 
+    """
     Computes the PV degradation
 
     Parameters
@@ -704,7 +770,7 @@ def get_linear_solar_degradation(pv_deg_per_year, life_h):
     -------
     SoH_pv : degradation of the PV plant throughout the lifetime
     """
-    t_over_year = np.arange(life_h)/(365*24)
+    t_over_year = np.arange(life_h) / (365 * 24)
     degradation = pv_deg_per_year * t_over_year
 
     y = 1 - degradation

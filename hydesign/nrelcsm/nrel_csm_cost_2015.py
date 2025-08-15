@@ -2,9 +2,8 @@
 Copyright (c) NREL. All rights reserved.
 """
 
-import openmdao.api as om
-
 import numpy as np
+import openmdao.api as om
 
 
 ###### Rotor
@@ -44,7 +43,9 @@ class BladeCost2015(om.ExplicitComponent):
         blade_mass_cost_coeff = inputs["blade_mass_cost_coeff"]
 
         # calculate component cost
-        if inputs["blade_cost_external"] < 1.0 or np.isnan(inputs["blade_cost_external"]):
+        if inputs["blade_cost_external"] < 1.0 or np.isnan(
+            inputs["blade_cost_external"]
+        ):
             outputs["blade_cost"] = blade_mass_cost_coeff * blade_mass
         else:
             outputs["blade_cost"] = inputs["blade_cost_external"]
@@ -235,9 +236,9 @@ class HubSystemCostAdder2015(om.ExplicitComponent):
         # Updated calculations below to account for assembly, transport, overhead and profit
         outputs["hub_system_mass_tcc"] = hub_mass + pitch_system_mass + spinner_mass
         partsCost = hub_cost + pitch_system_cost + spinner_cost
-        outputs["hub_system_cost"] = (1 + hub_transportMultiplier + hub_profitMultiplier) * (
-            (1 + hub_overheadCostMultiplier + hub_assemblyCostMultiplier) * partsCost
-        )
+        outputs["hub_system_cost"] = (
+            1 + hub_transportMultiplier + hub_profitMultiplier
+        ) * ((1 + hub_overheadCostMultiplier + hub_assemblyCostMultiplier) * partsCost)
 
 
 # -------------------------------------------------------------------------------
@@ -704,7 +705,9 @@ class ElecConnecCost2015(om.ExplicitComponent):
 
     def compute(self, inputs, outputs):
         machine_rating = inputs["machine_rating"]
-        elec_connec_machine_rating_cost_coeff = inputs["elec_connec_machine_rating_cost_coeff"]
+        elec_connec_machine_rating_cost_coeff = inputs[
+            "elec_connec_machine_rating_cost_coeff"
+        ]
 
         outputs["elec_cost"] = elec_connec_machine_rating_cost_coeff * machine_rating
 
@@ -790,7 +793,9 @@ class PlatformsMainframeCost2015(om.ExplicitComponent):
         if crane:
             craneCost = crane_cost
             craneMass = 3e3
-            NacellePlatformsCost = platforms_mass_cost_coeff * (platforms_mass - craneMass)
+            NacellePlatformsCost = platforms_mass_cost_coeff * (
+                platforms_mass - craneMass
+            )
         else:
             craneCost = 0.0
             NacellePlatformsCost = platforms_mass_cost_coeff * platforms_mass
@@ -799,7 +804,9 @@ class PlatformsMainframeCost2015(om.ExplicitComponent):
         # BaseHardwareCost = bedplate_cost * base_hardware_cost_coeff
 
         # aggregate all three mainframe costs
-        outputs["platforms_cost"] = NacellePlatformsCost + craneCost  # + BaseHardwareCost
+        outputs["platforms_cost"] = (
+            NacellePlatformsCost + craneCost
+        )  # + BaseHardwareCost
 
 
 # -------------------------------------------------------------------------------
@@ -825,7 +832,9 @@ class TransformerCost2015(om.ExplicitComponent):
 
     def setup(self):
         self.add_input("transformer_mass", 0.0, units="kg")
-        self.add_input("transformer_mass_cost_coeff", 18.8, units="USD/kg")  # mass-cost coeff with default from ppt
+        self.add_input(
+            "transformer_mass_cost_coeff", 18.8, units="USD/kg"
+        )  # mass-cost coeff with default from ppt
 
         self.add_output("transformer_cost", 0.0, units="USD")
 
@@ -1039,8 +1048,11 @@ class NacelleSystemCostAdder2015(om.ExplicitComponent):
             + platforms_cost
             + transformer_cost
         )
-        outputs["nacelle_cost"] = (1 + nacelle_transportMultiplier + nacelle_profitMultiplier) * (
-            (1 + nacelle_overheadCostMultiplier + nacelle_assemblyCostMultiplier) * partsCost
+        outputs["nacelle_cost"] = (
+            1 + nacelle_transportMultiplier + nacelle_profitMultiplier
+        ) * (
+            (1 + nacelle_overheadCostMultiplier + nacelle_assemblyCostMultiplier)
+            * partsCost
         )
 
 
@@ -1145,8 +1157,11 @@ class TowerCostAdder2015(om.ExplicitComponent):
         tower_transportMultiplier = inputs["tower_transportMultiplier"]
 
         partsCost = tower_parts_cost
-        outputs["tower_cost"] = (1 + tower_transportMultiplier + tower_profitMultiplier) * (
-            (1 + tower_overheadCostMultiplier + tower_assemblyCostMultiplier) * partsCost
+        outputs["tower_cost"] = (
+            1 + tower_transportMultiplier + tower_profitMultiplier
+        ) * (
+            (1 + tower_overheadCostMultiplier + tower_assemblyCostMultiplier)
+            * partsCost
         )
 
 
@@ -1236,8 +1251,11 @@ class TurbineCostAdder2015(om.ExplicitComponent):
         partsCost = rotor_cost + nacelle_cost + tower_cost
 
         outputs["turbine_mass_tcc"] = rotor_mass_tcc + nacelle_mass_tcc + tower_mass
-        outputs["turbine_cost"] = (1 + turbine_transportMultiplier + turbine_profitMultiplier) * (
-            (1 + turbine_overheadCostMultiplier + turbine_assemblyCostMultiplier) * partsCost
+        outputs["turbine_cost"] = (
+            1 + turbine_transportMultiplier + turbine_profitMultiplier
+        ) * (
+            (1 + turbine_overheadCostMultiplier + turbine_assemblyCostMultiplier)
+            * partsCost
         )
         outputs["turbine_cost_kW"] = outputs["turbine_cost"] / inputs["machine_rating"]
 
@@ -1393,7 +1411,9 @@ class Outputs2Screen(om.ExplicitComponent):
 
         if self.options["verbosity"] == True:
             print("################################################")
-            print("Computation of costs of the main turbine components from TurbineCostSE")
+            print(
+                "Computation of costs of the main turbine components from TurbineCostSE"
+            )
             print(
                 "Blade cost              %.3f k USD       mass %.3f kg"
                 % (inputs["blade_cost"] * 1.0e-003, inputs["blade_mass"])
@@ -1456,9 +1476,17 @@ class Outputs2Screen(om.ExplicitComponent):
                 "Nacelle cover cost      %.3f k USD       mass %.3f kg"
                 % (inputs["cover_cost"] * 1.0e-003, inputs["cover_mass"])
             )
-            print("Electr connection cost  %.3f k USD" % (inputs["elec_cost"] * 1.0e-003))
-            print("Controls cost           %.3f k USD" % (inputs["controls_cost"] * 1.0e-003))
-            print("Other main frame cost   %.3f k USD" % (inputs["platforms_cost"] * 1.0e-003))
+            print(
+                "Electr connection cost  %.3f k USD" % (inputs["elec_cost"] * 1.0e-003)
+            )
+            print(
+                "Controls cost           %.3f k USD"
+                % (inputs["controls_cost"] * 1.0e-003)
+            )
+            print(
+                "Other main frame cost   %.3f k USD"
+                % (inputs["platforms_cost"] * 1.0e-003)
+            )
             print(
                 "Transformer cost        %.3f k USD       mass %.3f kg"
                 % (inputs["transformer_cost"] * 1.0e-003, inputs["transformer_mass"])
@@ -1502,7 +1530,9 @@ class Turbine_CostsSE_2015(om.Group):
 
         self.set_input_defaults("blade_mass_cost_coeff", units="USD/kg", val=14.6)
         self.set_input_defaults("hub_mass_cost_coeff", units="USD/kg", val=3.9)
-        self.set_input_defaults("pitch_system_mass_cost_coeff", units="USD/kg", val=22.1)
+        self.set_input_defaults(
+            "pitch_system_mass_cost_coeff", units="USD/kg", val=22.1
+        )
         self.set_input_defaults("spinner_mass_cost_coeff", units="USD/kg", val=11.1)
         self.set_input_defaults("lss_mass_cost_coeff", units="USD/kg", val=11.9)
         self.set_input_defaults("bearing_mass_cost_coeff", units="USD/kg", val=4.5)
@@ -1516,10 +1546,14 @@ class Turbine_CostsSE_2015(om.Group):
         self.set_input_defaults("transformer_mass_cost_coeff", units="USD/kg", val=18.8)
         self.set_input_defaults("hvac_mass_cost_coeff", units="USD/kg", val=124.0)
         self.set_input_defaults("cover_mass_cost_coeff", units="USD/kg", val=5.7)
-        self.set_input_defaults("elec_connec_machine_rating_cost_coeff", units="USD/kW", val=41.85)
+        self.set_input_defaults(
+            "elec_connec_machine_rating_cost_coeff", units="USD/kW", val=41.85
+        )
         self.set_input_defaults("platforms_mass_cost_coeff", units="USD/kg", val=17.1)
         self.set_input_defaults("tower_mass_cost_coeff", units="USD/kg", val=2.9)
-        self.set_input_defaults("controls_machine_rating_cost_coeff", units="USD/kW", val=21.15)
+        self.set_input_defaults(
+            "controls_machine_rating_cost_coeff", units="USD/kW", val=21.15
+        )
         self.set_input_defaults("crane_cost", units="USD", val=12e3)
 
         self.set_input_defaults("hub_assemblyCostMultiplier", val=0.0)
@@ -1560,8 +1594,12 @@ class Turbine_CostsSE_2015(om.Group):
         self.add_subsystem("cover_c", NacelleCoverCost2015(), promotes=["*"])
         self.add_subsystem("platforms_c", PlatformsMainframeCost2015(), promotes=["*"])
         self.add_subsystem("transformer_c", TransformerCost2015(), promotes=["*"])
-        self.add_subsystem("nacelle_adder", NacelleSystemCostAdder2015(), promotes=["*"])
+        self.add_subsystem(
+            "nacelle_adder", NacelleSystemCostAdder2015(), promotes=["*"]
+        )
         self.add_subsystem("tower_c", TowerCost2015(), promotes=["*"])
         self.add_subsystem("tower_adder", TowerCostAdder2015(), promotes=["*"])
         self.add_subsystem("turbine_c", TurbineCostAdder2015(), promotes=["*"])
-        self.add_subsystem("outputs", Outputs2Screen(verbosity=self.verbosity), promotes=["*"])
+        self.add_subsystem(
+            "outputs", Outputs2Screen(verbosity=self.verbosity), promotes=["*"]
+        )

@@ -3,22 +3,26 @@
 # import glob
 # import os
 import time
-# import copy
 
 # basic libraries
 import numpy as np
+import openmdao.api as om
+
 # from numpy import newaxis as na
 import pandas as pd
-import openmdao.api as om
-# import yaml
+from docplex.mp.conflict_refiner import ConflictRefiner
 
 # import xarray as xr
 from docplex.mp.model import Model
-from docplex.mp.conflict_refiner import ConflictRefiner
-
 from ortools.linear_solver import pywraplp
 
 from hydesign.openmdao_wrapper import ComponentWrapper
+
+# import copy
+
+
+# import yaml
+
 
 class ems:
     """Energy management optimization model
@@ -32,7 +36,7 @@ class ems:
     wind_t : WPP power time series in DA [MW]
     wind_BM_t : WPP power time series in HA [MW]
     solar_t : PVP power time series [MW]
-    price_t : Electricity price time series 
+    price_t : Electricity price time series
     price_up_reg_t : Up regulation price time series
     price_dwn_reg_t : Down regulation price time series
     SO_imbalance_t : System operator power imbalance time series
@@ -57,26 +61,44 @@ class ems:
     b_t : Battery charge/discharge power time series
     b_E_SOC_t : Battery energy SOC time series
     penalty_t : Penalty for not reaching expected energy productin at peak hours
-    
+
     """
 
     def __init__(
-        self, 
-        N_time, 
-        life_h = 25*365*24, 
-        weeks_per_season_per_year = None,
-        ems_type='cplex'):
+        self,
+        N_time,
+        life_h=25 * 365 * 24,
+        weeks_per_season_per_year=None,
+        ems_type="cplex",
+    ):
 
         # super().__init__()
         self.weeks_per_season_per_year = weeks_per_season_per_year
         self.N_time = int(N_time)
         self.ems_type = ems_type
         self.life_h = int(life_h)
-        
 
-    def compute(self, wind_t, wind_BM_t, solar_t, price_t, price_up_reg_t, price_dwn_reg_t, SO_imbalance_t, b_P, b_E, G_MW, 
-                penalty_BM, bi_directional_status, battery_depth_of_discharge, battery_charge_efficiency, peak_hr_quantile, 
-                cost_of_battery_P_fluct_in_peak_price_ratio, n_full_power_hours_expected_per_day_at_peak_price, **kwargs):
+    def compute(
+        self,
+        wind_t,
+        wind_BM_t,
+        solar_t,
+        price_t,
+        price_up_reg_t,
+        price_dwn_reg_t,
+        SO_imbalance_t,
+        b_P,
+        b_E,
+        G_MW,
+        penalty_BM,
+        bi_directional_status,
+        battery_depth_of_discharge,
+        battery_charge_efficiency,
+        peak_hr_quantile,
+        cost_of_battery_P_fluct_in_peak_price_ratio,
+        n_full_power_hours_expected_per_day_at_peak_price,
+        **kwargs,
+    ):
         wind_t = wind_t
         solar_t = solar_t
         price_t = price_t
@@ -90,167 +112,476 @@ class ems:
         G_MW = G_MW
         penalty_BM = penalty_BM
         bi_directional_status = bi_directional_status
-    
-        if self.ems_type == 'ORtools':
+
+        if self.ems_type == "ORtools":
             ems_WSB = ems_ORtools
-        elif self.ems_type == 'cplex':
+        elif self.ems_type == "cplex":
             ems_WSB = ems_cplex
-        elif self.ems_type == 'pyomo':
+        elif self.ems_type == "pyomo":
             ems_WSB = ems_Wind_Solar_Battery_Pyomo
         else:
             raise Warning("This class should only be used for cplex or pyomo")
-    
+
         battery_depth_of_discharge = battery_depth_of_discharge
         battery_charge_efficiency = battery_charge_efficiency
         peak_hr_quantile = np.asarray(peak_hr_quantile).item()
-        cost_of_battery_P_fluct_in_peak_price_ratio = np.asarray(cost_of_battery_P_fluct_in_peak_price_ratio).item()
-        n_full_power_hours_expected_per_day_at_peak_price = np.asarray(n_full_power_hours_expected_per_day_at_peak_price).item()
+        cost_of_battery_P_fluct_in_peak_price_ratio = np.asarray(
+            cost_of_battery_P_fluct_in_peak_price_ratio
+        ).item()
+        n_full_power_hours_expected_per_day_at_peak_price = np.asarray(
+            n_full_power_hours_expected_per_day_at_peak_price
+        ).item()
 
         # Build a sintetic time to avoid problems with time series
         # indexing in ems
         WSPr_df = pd.DataFrame(
             index=pd.date_range(
-                start='01-01-1991 00:00',
-                periods=len(wind_t),
-                freq='1h'))
-
-        WSPr_df['wind_t'] = wind_t
-        WSPr_df['solar_t'] = solar_t
-        WSPr_df['price_t'] = price_t
-        WSPr_df['wind_BM_t'] = wind_BM_t
-        WSPr_df['price_up_reg_t'] = price_up_reg_t
-        WSPr_df['price_dwn_reg_t'] = price_dwn_reg_t
-        WSPr_df['SO_imbalance_t'] = SO_imbalance_t
-        WSPr_df['E_batt_MWh_t'] = b_E[0]
-        
-        #print(WSPr_df.head())
-
-        P_HPP_ts, P_HPP_BM_ts,P_curtailment_ts,P_curtailment_BM_ts, P_charge_discharge_ts, P_charge_discharge_BM_ts, P_up_reg_ts, P_dwn_reg_ts, P_up_reg_max_ts, P_dwn_reg_max_ts, price_penalty_BM_ts, E_SOC_ts, E_SOC_BM_ts, penalty_ts = ems_WSB(
-            wind_ts = WSPr_df.wind_t,
-            solar_ts = WSPr_df.solar_t,
-            price_ts = WSPr_df.price_t,
-            wind_BM_ts = WSPr_df.wind_BM_t,
-            price_up_reg_ts = WSPr_df.price_up_reg_t,
-            price_dwn_reg_ts = WSPr_df.price_dwn_reg_t,
-            SO_imbalance_ts = WSPr_df.SO_imbalance_t,
-            penalty_BM = penalty_BM[0],
-            bi_directional_status = bi_directional_status[0],
-            P_batt_MW = b_P[0],
-            E_batt_MWh_t = WSPr_df.E_batt_MWh_t,
-            hpp_grid_connection = G_MW[0],
-            battery_depth_of_discharge = battery_depth_of_discharge[0],
-            charge_efficiency = battery_charge_efficiency[0],
-            peak_hr_quantile = peak_hr_quantile,
-            cost_of_battery_P_fluct_in_peak_price_ratio = cost_of_battery_P_fluct_in_peak_price_ratio,
-            n_full_power_hours_expected_per_day_at_peak_price = n_full_power_hours_expected_per_day_at_peak_price,
+                start="01-01-1991 00:00", periods=len(wind_t), freq="1h"
+            )
         )
 
-        # Extend (by repeating them and stacking) all variable to full lifetime 
-        outputs = {}
-        outputs['wind_t_ext'] = expand_to_lifetime(
-            wind_t, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['wind_BM_t_ext'] = expand_to_lifetime(
-            wind_BM_t, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['solar_t_ext'] = expand_to_lifetime(
-            solar_t, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['price_t_ext'] = expand_to_lifetime(
-            price_t, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['price_up_reg_t_ext'] = expand_to_lifetime(
-            price_up_reg_t, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['price_dwn_reg_t_ext'] = expand_to_lifetime(
-            price_dwn_reg_t, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['SO_imbalance_t_ext'] = expand_to_lifetime(
-            SO_imbalance_t, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['hpp_t'] = expand_to_lifetime(
-            P_HPP_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['hpp_BM_t'] = expand_to_lifetime(
-            P_HPP_BM_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['hpp_curt_t'] = expand_to_lifetime(
-            P_curtailment_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['hpp_curt_BM_t'] = expand_to_lifetime(
-            P_curtailment_BM_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['price_penalty_BM_t'] = expand_to_lifetime(
-            price_penalty_BM_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['P_hpp_up_t'] = expand_to_lifetime(
-            P_up_reg_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['P_hpp_dwn_t'] = expand_to_lifetime(
-            P_dwn_reg_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['P_hpp_up_max_t'] = expand_to_lifetime(
-            P_up_reg_max_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['P_hpp_dwn_max_t'] = expand_to_lifetime(
-            P_dwn_reg_max_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['b_t'] = expand_to_lifetime(
-            P_charge_discharge_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['b_BM_t'] = expand_to_lifetime(
-            P_charge_discharge_BM_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['b_E_SOC_t'] = expand_to_lifetime(
-            E_SOC_ts[:-1], life_h = self.life_h + 1, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['b_E_SOC_BM_t'] = expand_to_lifetime(
-            E_SOC_BM_ts[:-1], life_h = self.life_h + 1, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['penalty_t'] = expand_to_lifetime(
-            penalty_ts, life_h = self.life_h, weeks_per_season_per_year = self.weeks_per_season_per_year)
-        outputs['total_curtailment'] = outputs['hpp_curt_BM_t'].sum()
+        WSPr_df["wind_t"] = wind_t
+        WSPr_df["solar_t"] = solar_t
+        WSPr_df["price_t"] = price_t
+        WSPr_df["wind_BM_t"] = wind_BM_t
+        WSPr_df["price_up_reg_t"] = price_up_reg_t
+        WSPr_df["price_dwn_reg_t"] = price_dwn_reg_t
+        WSPr_df["SO_imbalance_t"] = SO_imbalance_t
+        WSPr_df["E_batt_MWh_t"] = b_E[0]
 
-        out_keys = ['wind_t_ext', 'wind_BM_t_ext', 'solar_t_ext', 'price_t_ext', 'price_up_reg_t_ext', 'price_dwn_reg_t_ext',
-                    'SO_imbalance_t_ext', 'hpp_t', 'hpp_BM_t', 'hpp_curt_t', 'hpp_curt_BM_t', 'price_penalty_BM_t',
-                    'P_hpp_up_t', 'P_hpp_dwn_t', 'P_hpp_up_max_t', 'P_hpp_dwn_max_t', 'b_t', 'b_BM_t', 'b_E_SOC_t', 'b_E_SOC_BM_t', 'penalty_t', 'total_curtailment']
+        # print(WSPr_df.head())
+
+        (
+            P_HPP_ts,
+            P_HPP_BM_ts,
+            P_curtailment_ts,
+            P_curtailment_BM_ts,
+            P_charge_discharge_ts,
+            P_charge_discharge_BM_ts,
+            P_up_reg_ts,
+            P_dwn_reg_ts,
+            P_up_reg_max_ts,
+            P_dwn_reg_max_ts,
+            price_penalty_BM_ts,
+            E_SOC_ts,
+            E_SOC_BM_ts,
+            penalty_ts,
+        ) = ems_WSB(
+            wind_ts=WSPr_df.wind_t,
+            solar_ts=WSPr_df.solar_t,
+            price_ts=WSPr_df.price_t,
+            wind_BM_ts=WSPr_df.wind_BM_t,
+            price_up_reg_ts=WSPr_df.price_up_reg_t,
+            price_dwn_reg_ts=WSPr_df.price_dwn_reg_t,
+            SO_imbalance_ts=WSPr_df.SO_imbalance_t,
+            penalty_BM=penalty_BM[0],
+            bi_directional_status=bi_directional_status[0],
+            P_batt_MW=b_P[0],
+            E_batt_MWh_t=WSPr_df.E_batt_MWh_t,
+            hpp_grid_connection=G_MW[0],
+            battery_depth_of_discharge=battery_depth_of_discharge[0],
+            charge_efficiency=battery_charge_efficiency[0],
+            peak_hr_quantile=peak_hr_quantile,
+            cost_of_battery_P_fluct_in_peak_price_ratio=cost_of_battery_P_fluct_in_peak_price_ratio,
+            n_full_power_hours_expected_per_day_at_peak_price=n_full_power_hours_expected_per_day_at_peak_price,
+        )
+
+        # Extend (by repeating them and stacking) all variable to full lifetime
+        outputs = {}
+        outputs["wind_t_ext"] = expand_to_lifetime(
+            wind_t,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["wind_BM_t_ext"] = expand_to_lifetime(
+            wind_BM_t,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["solar_t_ext"] = expand_to_lifetime(
+            solar_t,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["price_t_ext"] = expand_to_lifetime(
+            price_t,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["price_up_reg_t_ext"] = expand_to_lifetime(
+            price_up_reg_t,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["price_dwn_reg_t_ext"] = expand_to_lifetime(
+            price_dwn_reg_t,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["SO_imbalance_t_ext"] = expand_to_lifetime(
+            SO_imbalance_t,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["hpp_t"] = expand_to_lifetime(
+            P_HPP_ts,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["hpp_BM_t"] = expand_to_lifetime(
+            P_HPP_BM_ts,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["hpp_curt_t"] = expand_to_lifetime(
+            P_curtailment_ts,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["hpp_curt_BM_t"] = expand_to_lifetime(
+            P_curtailment_BM_ts,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["price_penalty_BM_t"] = expand_to_lifetime(
+            price_penalty_BM_ts,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["P_hpp_up_t"] = expand_to_lifetime(
+            P_up_reg_ts,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["P_hpp_dwn_t"] = expand_to_lifetime(
+            P_dwn_reg_ts,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["P_hpp_up_max_t"] = expand_to_lifetime(
+            P_up_reg_max_ts,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["P_hpp_dwn_max_t"] = expand_to_lifetime(
+            P_dwn_reg_max_ts,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["b_t"] = expand_to_lifetime(
+            P_charge_discharge_ts,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["b_BM_t"] = expand_to_lifetime(
+            P_charge_discharge_BM_ts,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["b_E_SOC_t"] = expand_to_lifetime(
+            E_SOC_ts[:-1],
+            life_h=self.life_h + 1,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["b_E_SOC_BM_t"] = expand_to_lifetime(
+            E_SOC_BM_ts[:-1],
+            life_h=self.life_h + 1,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["penalty_t"] = expand_to_lifetime(
+            penalty_ts,
+            life_h=self.life_h,
+            weeks_per_season_per_year=self.weeks_per_season_per_year,
+        )
+        outputs["total_curtailment"] = outputs["hpp_curt_BM_t"].sum()
+
+        out_keys = [
+            "wind_t_ext",
+            "wind_BM_t_ext",
+            "solar_t_ext",
+            "price_t_ext",
+            "price_up_reg_t_ext",
+            "price_dwn_reg_t_ext",
+            "SO_imbalance_t_ext",
+            "hpp_t",
+            "hpp_BM_t",
+            "hpp_curt_t",
+            "hpp_curt_BM_t",
+            "price_penalty_BM_t",
+            "P_hpp_up_t",
+            "P_hpp_dwn_t",
+            "P_hpp_up_max_t",
+            "P_hpp_dwn_max_t",
+            "b_t",
+            "b_BM_t",
+            "b_E_SOC_t",
+            "b_E_SOC_BM_t",
+            "penalty_t",
+            "total_curtailment",
+        ]
         return [outputs[key] for key in out_keys]
+
 
 class ems_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
         model = ems(**insta_inp)
         super().__init__(
             inputs=[
-                ('wind_t', {'desc': 'WPP power time series in DA/ SM', 'shape': [model.N_time], 'units': 'MW'}),
-                ('wind_BM_t', {'desc': 'WPP power time series in HA/ BM', 'shape': [model.N_time], 'units': 'MW'}),
-                ('solar_t', {'desc': 'PVP power time series', 'shape': [model.N_time], 'units': 'MW'}),
-                ('price_t', {'desc': 'Electricity price time series', 'shape': [model.N_time]}),
-                ('price_up_reg_t', {'desc': 'Up regulation price time series', 'shape': [model.N_time]}),
-                ('price_dwn_reg_t', {'desc': 'Down regulation price time series', 'shape': [model.N_time]}),
-                ('SO_imbalance_t', {'desc': 'System operator power imbalance time series', 'shape': [model.N_time]}),
-                ('b_P', {'desc': 'Battery power capacity', 'units': 'MW'}),
-                ('b_E', {'desc': 'Battery energy storage capacity'}),
-                ('G_MW', {'desc': 'Grid capacity', 'units': 'MW'}),
-                ('penalty_BM', {'desc': 'Penalty for not meeting scheduled DA power'}),
-                ('bi_directional_status', {'desc': 'Status of bi-directional flow from grid'}),
-                ('battery_depth_of_discharge', {'desc': 'battery depth of discharge', 'units': 'MW'}),
-                ('battery_charge_efficiency', {'desc': 'battery charge efficiency'}),
-                ('peak_hr_quantile', {'desc': "Quantile of price time series to define peak price hours (above this quantile). Only used for peak production penalty and for cost of battery degradation."}),
-                ('cost_of_battery_P_fluct_in_peak_price_ratio', {'desc': "cost of battery power fluctuations computed as a peak price ratio."}),
-                ('n_full_power_hours_expected_per_day_at_peak_price', {'desc': "Penalty occurs if number of full power hours expected per day at peak price are not reached."}),
+                (
+                    "wind_t",
+                    {
+                        "desc": "WPP power time series in DA/ SM",
+                        "shape": [model.N_time],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "wind_BM_t",
+                    {
+                        "desc": "WPP power time series in HA/ BM",
+                        "shape": [model.N_time],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "solar_t",
+                    {
+                        "desc": "PVP power time series",
+                        "shape": [model.N_time],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "price_t",
+                    {"desc": "Electricity price time series", "shape": [model.N_time]},
+                ),
+                (
+                    "price_up_reg_t",
+                    {
+                        "desc": "Up regulation price time series",
+                        "shape": [model.N_time],
+                    },
+                ),
+                (
+                    "price_dwn_reg_t",
+                    {
+                        "desc": "Down regulation price time series",
+                        "shape": [model.N_time],
+                    },
+                ),
+                (
+                    "SO_imbalance_t",
+                    {
+                        "desc": "System operator power imbalance time series",
+                        "shape": [model.N_time],
+                    },
+                ),
+                ("b_P", {"desc": "Battery power capacity", "units": "MW"}),
+                ("b_E", {"desc": "Battery energy storage capacity"}),
+                ("G_MW", {"desc": "Grid capacity", "units": "MW"}),
+                ("penalty_BM", {"desc": "Penalty for not meeting scheduled DA power"}),
+                (
+                    "bi_directional_status",
+                    {"desc": "Status of bi-directional flow from grid"},
+                ),
+                (
+                    "battery_depth_of_discharge",
+                    {"desc": "battery depth of discharge", "units": "MW"},
+                ),
+                ("battery_charge_efficiency", {"desc": "battery charge efficiency"}),
+                (
+                    "peak_hr_quantile",
+                    {
+                        "desc": "Quantile of price time series to define peak price hours (above this quantile). Only used for peak production penalty and for cost of battery degradation."
+                    },
+                ),
+                (
+                    "cost_of_battery_P_fluct_in_peak_price_ratio",
+                    {
+                        "desc": "cost of battery power fluctuations computed as a peak price ratio."
+                    },
+                ),
+                (
+                    "n_full_power_hours_expected_per_day_at_peak_price",
+                    {
+                        "desc": "Penalty occurs if number of full power hours expected per day at peak price are not reached."
+                    },
+                ),
             ],
             outputs=[
-                ('wind_t_ext', {'desc': 'WPP power time series in DA/ SM', 'shape': [model.life_h], 'units': 'MW'}),
-                ('wind_BM_t_ext', {'desc': 'WPP power time series in HA/ BM', 'shape': [model.life_h], 'units': 'MW'}),
-                ('solar_t_ext', {'desc': 'PVP power time series', 'shape': [model.life_h], 'units': 'MW'}),
-                ('price_t_ext', {'desc': 'Electricity price time series', 'shape': [model.life_h]}),
-                ('price_up_reg_t_ext', {'desc': 'Up regulation price time series', 'shape': [model.life_h]}),
-                ('price_dwn_reg_t_ext', {'desc': 'Down regulation price time series', 'shape': [model.life_h]}),
-                ('SO_imbalance_t_ext', {'desc': 'System operator power imbalance time series', 'shape': [model.life_h], 'units': 'MW'}),
-                ('hpp_t', {'desc': 'HPP power time series in DA/ SM', 'shape': [model.life_h], 'units': 'MW'}),
-                ('hpp_BM_t', {'desc': 'HPP power time series in HA/ BM', 'shape': [model.life_h], 'units': 'MW'}),
-                ('hpp_curt_t', {'desc': 'HPP curtailed power time series in DA/ SM', 'shape': [model.life_h], 'units': 'MW'}),
-                ('hpp_curt_BM_t', {'desc': 'HPP curtailed power time series in HA/ BM', 'shape': [model.life_h], 'units': 'MW'}),
-                ('price_penalty_BM_t', {'desc': "penalty price time series for the curtailed DA power", 'shape': [model.life_h], 'units': 'MW'}),
-                ('P_hpp_up_t', {'desc': "Up regulation power time series", 'shape': [model.life_h], 'units': 'MW'}),
-                ('P_hpp_dwn_t', {'desc': "Down regulation power time series", 'shape': [model.life_h], 'units': 'MW'}),
-                ('P_hpp_up_max_t', {'desc': "Maximum up regulation power time series", 'shape': [model.life_h], 'units': 'MW'}),
-                ('P_hpp_dwn_max_t', {'desc': "Maximum down regulation power time series", 'shape': [model.life_h], 'units': 'MW'}),
-                ('b_t', {'desc': "Battery charge/discharge power time series in DA/ SM", 'shape': [model.life_h], 'units': 'MW'}),
-                ('b_BM_t', {'desc': "Battery charge/discharge power time series in HA/ BM", 'shape': [model.life_h], 'units': 'MW'}),
-                ('b_E_SOC_t', {'desc': "Battery energy SOC time series", 'shape': [model.life_h + 1]}),
-                ('b_E_SOC_BM_t', {'desc': "Battery energy SOC time series", 'shape': [model.life_h + 1]}),
-                ('penalty_t', {'desc': "penalty for not reaching expected energy production at peak hours", 'shape': [model.life_h]}),
-                ('total_curtailment', {'desc': "total curtailment in the lifetime", 'units': 'GW*h'}),
+                (
+                    "wind_t_ext",
+                    {
+                        "desc": "WPP power time series in DA/ SM",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "wind_BM_t_ext",
+                    {
+                        "desc": "WPP power time series in HA/ BM",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "solar_t_ext",
+                    {
+                        "desc": "PVP power time series",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "price_t_ext",
+                    {"desc": "Electricity price time series", "shape": [model.life_h]},
+                ),
+                (
+                    "price_up_reg_t_ext",
+                    {
+                        "desc": "Up regulation price time series",
+                        "shape": [model.life_h],
+                    },
+                ),
+                (
+                    "price_dwn_reg_t_ext",
+                    {
+                        "desc": "Down regulation price time series",
+                        "shape": [model.life_h],
+                    },
+                ),
+                (
+                    "SO_imbalance_t_ext",
+                    {
+                        "desc": "System operator power imbalance time series",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "hpp_t",
+                    {
+                        "desc": "HPP power time series in DA/ SM",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "hpp_BM_t",
+                    {
+                        "desc": "HPP power time series in HA/ BM",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "hpp_curt_t",
+                    {
+                        "desc": "HPP curtailed power time series in DA/ SM",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "hpp_curt_BM_t",
+                    {
+                        "desc": "HPP curtailed power time series in HA/ BM",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "price_penalty_BM_t",
+                    {
+                        "desc": "penalty price time series for the curtailed DA power",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "P_hpp_up_t",
+                    {
+                        "desc": "Up regulation power time series",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "P_hpp_dwn_t",
+                    {
+                        "desc": "Down regulation power time series",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "P_hpp_up_max_t",
+                    {
+                        "desc": "Maximum up regulation power time series",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "P_hpp_dwn_max_t",
+                    {
+                        "desc": "Maximum down regulation power time series",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "b_t",
+                    {
+                        "desc": "Battery charge/discharge power time series in DA/ SM",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "b_BM_t",
+                    {
+                        "desc": "Battery charge/discharge power time series in HA/ BM",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "b_E_SOC_t",
+                    {
+                        "desc": "Battery energy SOC time series",
+                        "shape": [model.life_h + 1],
+                    },
+                ),
+                (
+                    "b_E_SOC_BM_t",
+                    {
+                        "desc": "Battery energy SOC time series",
+                        "shape": [model.life_h + 1],
+                    },
+                ),
+                (
+                    "penalty_t",
+                    {
+                        "desc": "penalty for not reaching expected energy production at peak hours",
+                        "shape": [model.life_h],
+                    },
+                ),
+                (
+                    "total_curtailment",
+                    {"desc": "total curtailment in the lifetime", "units": "GW*h"},
+                ),
             ],
-            function = model.compute,
-            partial_options=[{'dependent': False, 'val': 0}],)
-        
+            function=model.compute,
+            partial_options=[{"dependent": False, "val": 0}],
+        )
+
 
 class ems_long_term_operation:
     """Long term operation EMS. Predicts the operation of the plant throughout the entire lifetime, taking into account the battery
     and PV degradations.
-    
+
     Parameters
     ----------
     ii_time : indices on the liftime timeseries. Hydesign operates in each range at constant battery health.
@@ -273,22 +604,22 @@ class ems_long_term_operation:
 
     Returns
     -------
-    hpp_t_with_deg : HPP power time series 
+    hpp_t_with_deg : HPP power time series
     hpp_curt_t_with_deg : HPP curtailed power time series
     b_t_with_deg : Battery charge/discharge power time series
-    b_E_SOC_t_with_deg : Battery energy SOC time series 
+    b_E_SOC_t_with_deg : Battery energy SOC time series
     penalty_t_with_deg : penalty for not reaching expected energy production at peak hours
     total_curtailment : total curtailment in the lifetime
     """
 
     def __init__(
-        self, 
+        self,
         N_time,
-        num_batteries = 1,
-        life_h = 25*365*24, 
-        ems_type='No_degradation', # LT_deg_with_BM or No_degradation
+        num_batteries=1,
+        life_h=25 * 365 * 24,
+        ems_type="No_degradation",  # LT_deg_with_BM or No_degradation
         load_min_penalty_factor=1e6,
-        ):
+    ):
 
         # super().__init__()
         self.N_time = N_time
@@ -296,13 +627,32 @@ class ems_long_term_operation:
         self.ems_type = ems_type
         self.load_min_penalty_factor = load_min_penalty_factor
 
+    def compute(
+        self,
+        SoH,
+        wind_t_ext_deg,
+        b_P,
+        b_E,
+        battery_depth_of_discharge,
+        battery_charge_efficiency,
+        penalty_BM,
+        hpp_curt_BM_t,
+        b_t,
+        b_BM_t,
+        b_E_SOC_t,
+        P_up_reg_t,
+        P_dwn_reg_t,
+        P_up_max_t,
+        P_dwn_max_t,
+        hpp_t,
+        price_up_reg_t,
+        price_dwn_reg_t,
+        **kwargs,
+    ):
 
-    def compute(self, SoH, wind_t_ext_deg, b_P, b_E, battery_depth_of_discharge, battery_charge_efficiency, penalty_BM, hpp_curt_BM_t, b_t,
-                 b_BM_t, b_E_SOC_t,P_up_reg_t, P_dwn_reg_t, P_up_max_t, P_dwn_max_t, hpp_t, price_up_reg_t, price_dwn_reg_t, **kwargs):
-        
         SoH = SoH
         wind_t_ext_deg = wind_t_ext_deg
-        #solar_t_ext_deg = solar_t_ext_deg
+        # solar_t_ext_deg = solar_t_ext_deg
 
         # wind_t_ext = wind_t_ext
         # solar_t_ext = solar_t_ext
@@ -329,124 +679,270 @@ class ems_long_term_operation:
 
         b_t = b_SM_t + b_BM_t
 
-
-        if self.ems_type == 'LT_deg_with_BM':
+        if self.ems_type == "LT_deg_with_BM":
             ems_longterm = ems_operation_wind_batt_deg
-        elif self.ems_type == 'No_degradation':
+        elif self.ems_type == "No_degradation":
             ems_longterm = ems_operation_no_degradation
         else:
             raise Warning("This class should only be used for BM_penalty")
 
-
-        # Build a sintetic time to avoid problems with time sereis 
+        # Build a sintetic time to avoid problems with time sereis
         # indexing in ems
         WSPr_df = pd.DataFrame(
             index=pd.date_range(
-                start='01-01-1991 00:00',
-                periods=len(wind_t_ext_deg),
-                freq='1h'))
+                start="01-01-1991 00:00", periods=len(wind_t_ext_deg), freq="1h"
+            )
+        )
 
-        WSPr_df['wind_t_ext_deg'] = wind_t_ext_deg
-        #WSPr_df['solar_t_ext_deg'] = solar_t_ext_deg
-        
-        WSPr_df['SoH'] = SoH
-        WSPr_df['hpp_curt_t'] = hpp_curt_t
-        WSPr_df['b_t'] = b_t
-        WSPr_df['b_E_SOC_t'] = b_E_SOC_t[:-1]
-        WSPr_df['P_up_reg_t'] = P_up_reg_t
-        WSPr_df['P_dwn_reg_t'] = P_dwn_reg_t
-        WSPr_df['P_up_max_t'] = P_up_max_t
-        WSPr_df['P_dwn_max_t'] = P_dwn_max_t
-        WSPr_df['price_dwn_t'] = price_dwn_t
-        WSPr_df['price_up_t'] = price_up_t
-        WSPr_df['hpp_t'] = hpp_t
-        WSPr_df['E_batt_MWh_t'] = b_E[0]
+        WSPr_df["wind_t_ext_deg"] = wind_t_ext_deg
+        # WSPr_df['solar_t_ext_deg'] = solar_t_ext_deg
 
-        args = dict(wind_t_deg = WSPr_df.wind_t_ext_deg,
-                #solar_t_deg = WSPr_df.solar_t_ext_deg,
-                batt_degradation = WSPr_df.SoH,
-                # wind_t = wind_t_ext,
-                # solar_t = solar_t_ext,
-                hpp_curt_t = WSPr_df.hpp_curt_t,
-                b_t = WSPr_df.b_t,
-                b_E_SOC_t = WSPr_df.b_E_SOC_t,
-                b_P = float(b_P),
-                b_E = WSPr_df.E_batt_MWh_t,
-                battery_depth_of_discharge = float(battery_depth_of_discharge),
-                battery_charge_efficiency = float(battery_charge_efficiency),
-                P_up_reg_t = WSPr_df.P_up_reg_t,
-                P_dwn_reg_t = WSPr_df.P_dwn_reg_t,
-                P_up_max_t = WSPr_df.P_up_max_t,
-                P_dwn_max_t = WSPr_df.P_dwn_max_t,
-                price_up_t = WSPr_df.price_up_t,
-                price_dwn_t = WSPr_df.price_dwn_t,
-                hpp_t = WSPr_df.hpp_t,
-                # peak_hr_quantile = peak_hr_quantile,
-                penalty_BM = float(penalty_BM),
-                # n_full_power_hours_expected_per_day_at_peak_price = n_full_power_hours_expected_per_day_at_peak_price
-                )
+        WSPr_df["SoH"] = SoH
+        WSPr_df["hpp_curt_t"] = hpp_curt_t
+        WSPr_df["b_t"] = b_t
+        WSPr_df["b_E_SOC_t"] = b_E_SOC_t[:-1]
+        WSPr_df["P_up_reg_t"] = P_up_reg_t
+        WSPr_df["P_dwn_reg_t"] = P_dwn_reg_t
+        WSPr_df["P_up_max_t"] = P_up_max_t
+        WSPr_df["P_dwn_max_t"] = P_dwn_max_t
+        WSPr_df["price_dwn_t"] = price_dwn_t
+        WSPr_df["price_up_t"] = price_up_t
+        WSPr_df["hpp_t"] = hpp_t
+        WSPr_df["E_batt_MWh_t"] = b_E[0]
 
-        Hpp_deg, P_curt_deg, b_t_deg, b_E_SOC_t_deg, Hpp_up_deg, Hpp_dwn_deg, penalty_t_with_deg = ems_longterm(**args)
+        args = dict(
+            wind_t_deg=WSPr_df.wind_t_ext_deg,
+            # solar_t_deg = WSPr_df.solar_t_ext_deg,
+            batt_degradation=WSPr_df.SoH,
+            # wind_t = wind_t_ext,
+            # solar_t = solar_t_ext,
+            hpp_curt_t=WSPr_df.hpp_curt_t,
+            b_t=WSPr_df.b_t,
+            b_E_SOC_t=WSPr_df.b_E_SOC_t,
+            b_P=float(b_P),
+            b_E=WSPr_df.E_batt_MWh_t,
+            battery_depth_of_discharge=float(battery_depth_of_discharge),
+            battery_charge_efficiency=float(battery_charge_efficiency),
+            P_up_reg_t=WSPr_df.P_up_reg_t,
+            P_dwn_reg_t=WSPr_df.P_dwn_reg_t,
+            P_up_max_t=WSPr_df.P_up_max_t,
+            P_dwn_max_t=WSPr_df.P_dwn_max_t,
+            price_up_t=WSPr_df.price_up_t,
+            price_dwn_t=WSPr_df.price_dwn_t,
+            hpp_t=WSPr_df.hpp_t,
+            # peak_hr_quantile = peak_hr_quantile,
+            penalty_BM=float(penalty_BM),
+            # n_full_power_hours_expected_per_day_at_peak_price = n_full_power_hours_expected_per_day_at_peak_price
+        )
+
+        (
+            Hpp_deg,
+            P_curt_deg,
+            b_t_deg,
+            b_E_SOC_t_deg,
+            Hpp_up_deg,
+            Hpp_dwn_deg,
+            penalty_t_with_deg,
+        ) = ems_longterm(**args)
         outputs = {}
-        outputs['hpp_t_with_deg'] = Hpp_deg
-        outputs['hpp_curt_t_with_deg'] = P_curt_deg
-        outputs['b_t_with_deg'] = b_t_deg
-        outputs['b_E_SOC_t_with_deg'] = b_E_SOC_t_deg 
-        outputs['P_up_reg_t_with_deg'] = Hpp_up_deg
-        outputs['P_dwn_reg_t_with_deg'] = Hpp_dwn_deg
-        outputs['penalty_t_with_deg'] = penalty_t_with_deg
-        outputs['total_curtailment_deg'] = P_curt_deg.sum()
-        return (outputs['hpp_t_with_deg'], outputs['hpp_curt_t_with_deg'], outputs['b_t_with_deg'], outputs['b_E_SOC_t_with_deg'],
-                outputs['penalty_t_with_deg'], outputs['P_up_reg_t_with_deg'], outputs['P_dwn_reg_t_with_deg'], outputs['total_curtailment_deg'])
+        outputs["hpp_t_with_deg"] = Hpp_deg
+        outputs["hpp_curt_t_with_deg"] = P_curt_deg
+        outputs["b_t_with_deg"] = b_t_deg
+        outputs["b_E_SOC_t_with_deg"] = b_E_SOC_t_deg
+        outputs["P_up_reg_t_with_deg"] = Hpp_up_deg
+        outputs["P_dwn_reg_t_with_deg"] = Hpp_dwn_deg
+        outputs["penalty_t_with_deg"] = penalty_t_with_deg
+        outputs["total_curtailment_deg"] = P_curt_deg.sum()
+        return (
+            outputs["hpp_t_with_deg"],
+            outputs["hpp_curt_t_with_deg"],
+            outputs["b_t_with_deg"],
+            outputs["b_E_SOC_t_with_deg"],
+            outputs["penalty_t_with_deg"],
+            outputs["P_up_reg_t_with_deg"],
+            outputs["P_dwn_reg_t_with_deg"],
+            outputs["total_curtailment_deg"],
+        )
+
 
 class ems_long_term_operation_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
         model = ems_long_term_operation(**insta_inp)
         super().__init__(
             inputs=[
-                ('SoH', {'desc': 'Battery state of health at discretization levels', 'shape': [model.life_h]}),
-                ('wind_t_ext_deg', {'desc': 'HA Wind time series with degradation', 'shape': [model.life_h], 'units': 'MW'}),
-                ('b_P', {'desc': 'Battery power capacity', 'units': 'MW'}), 
-                ('b_E', {'desc': 'Battery energy storage capacity'}),
-                ('battery_depth_of_discharge', {'desc': 'battery depth of discharge', 'units': 'MW'}),
-                ('battery_charge_efficiency', {'desc': 'battery charge efficiency'}),
-                ('penalty_BM', {'desc': 'penalty for battery management'}),
-                ('hpp_curt_BM_t', {'desc': 'High price period curtailment', 'shape': [model.life_h], 'units': 'MW'}),
-                ('b_t', {'desc': 'Battery state of charge', 'units': 'MW', 'shape': [model.life_h]}),
-                ('b_BM_t', {'desc': 'Battery state of health', 'units': 'MW', 'shape': [model.life_h]}),
-                ('b_E_SOC_t', {'desc': 'Battery state of charge', 'shape': [model.life_h + 1]}),
-                ('P_up_reg_t', {'desc': 'Upward regulation power', 'units': 'MW', 'shape': [model.life_h]}),
-                ('P_dwn_reg_t', {'desc': 'Downward regulation power', 'units': 'MW', 'shape': [model.life_h]}),
-                ('P_up_max_t', {'desc': 'Maximum upward power', 'units': 'MW', 'shape': [model.life_h]}),
-                ('P_dwn_max_t', {'desc': 'Maximum downward power', 'units': 'MW', 'shape': [model.life_h]}),
-                ('hpp_t', {'desc': 'High price period', 'units': 'MW', 'shape': [model.life_h]}),
-                ('price_up_reg_t', {'desc': 'Upward price', 'shape': [model.life_h]}),
-                ('price_dwn_reg_t', {'desc': 'Downward price','shape': [model.life_h]}),
+                (
+                    "SoH",
+                    {
+                        "desc": "Battery state of health at discretization levels",
+                        "shape": [model.life_h],
+                    },
+                ),
+                (
+                    "wind_t_ext_deg",
+                    {
+                        "desc": "HA Wind time series with degradation",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                ("b_P", {"desc": "Battery power capacity", "units": "MW"}),
+                ("b_E", {"desc": "Battery energy storage capacity"}),
+                (
+                    "battery_depth_of_discharge",
+                    {"desc": "battery depth of discharge", "units": "MW"},
+                ),
+                ("battery_charge_efficiency", {"desc": "battery charge efficiency"}),
+                ("penalty_BM", {"desc": "penalty for battery management"}),
+                (
+                    "hpp_curt_BM_t",
+                    {
+                        "desc": "High price period curtailment",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "b_t",
+                    {
+                        "desc": "Battery state of charge",
+                        "units": "MW",
+                        "shape": [model.life_h],
+                    },
+                ),
+                (
+                    "b_BM_t",
+                    {
+                        "desc": "Battery state of health",
+                        "units": "MW",
+                        "shape": [model.life_h],
+                    },
+                ),
+                (
+                    "b_E_SOC_t",
+                    {"desc": "Battery state of charge", "shape": [model.life_h + 1]},
+                ),
+                (
+                    "P_up_reg_t",
+                    {
+                        "desc": "Upward regulation power",
+                        "units": "MW",
+                        "shape": [model.life_h],
+                    },
+                ),
+                (
+                    "P_dwn_reg_t",
+                    {
+                        "desc": "Downward regulation power",
+                        "units": "MW",
+                        "shape": [model.life_h],
+                    },
+                ),
+                (
+                    "P_up_max_t",
+                    {
+                        "desc": "Maximum upward power",
+                        "units": "MW",
+                        "shape": [model.life_h],
+                    },
+                ),
+                (
+                    "P_dwn_max_t",
+                    {
+                        "desc": "Maximum downward power",
+                        "units": "MW",
+                        "shape": [model.life_h],
+                    },
+                ),
+                (
+                    "hpp_t",
+                    {
+                        "desc": "High price period",
+                        "units": "MW",
+                        "shape": [model.life_h],
+                    },
+                ),
+                ("price_up_reg_t", {"desc": "Upward price", "shape": [model.life_h]}),
+                (
+                    "price_dwn_reg_t",
+                    {"desc": "Downward price", "shape": [model.life_h]},
+                ),
             ],
             outputs=[
-                ('hpp_t_with_deg', {'desc': 'HPP power time series with degradation', 'shape': [model.life_h], 'units': 'MW'}),
-                ('hpp_curt_t_with_deg', {'desc': 'HPP curtailment time series with degradation', 'shape': [model.life_h], 'units': 'MW'}),
-                ('b_t_with_deg', {'desc': 'Battery power time series with degradation', 'shape': [model.life_h], 'units': 'MW'}),
-                ('b_E_SOC_t_with_deg', {'desc': 'Battery state of charge time series with degradation', 'shape': [model.life_h + 1]}),
-                ('penalty_t_with_deg', {'desc': 'Penalty time series with degradation', 'shape': [model.life_h]}),
-                ('P_up_reg_t_with_deg', {'desc': 'Upward regulation power time series with degradation', 'shape': [model.life_h], 'units': 'MW'}),
-                ('P_dwn_reg_t_with_deg', {'desc': 'Downward regulation power time series with degradation', 'shape': [model.life_h], 'units': 'MW'}),
-                ('total_curtailment_deg', {'desc': 'Total curtailment with degradation', 'units': 'GW*h'}),
+                (
+                    "hpp_t_with_deg",
+                    {
+                        "desc": "HPP power time series with degradation",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "hpp_curt_t_with_deg",
+                    {
+                        "desc": "HPP curtailment time series with degradation",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "b_t_with_deg",
+                    {
+                        "desc": "Battery power time series with degradation",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "b_E_SOC_t_with_deg",
+                    {
+                        "desc": "Battery state of charge time series with degradation",
+                        "shape": [model.life_h + 1],
+                    },
+                ),
+                (
+                    "penalty_t_with_deg",
+                    {
+                        "desc": "Penalty time series with degradation",
+                        "shape": [model.life_h],
+                    },
+                ),
+                (
+                    "P_up_reg_t_with_deg",
+                    {
+                        "desc": "Upward regulation power time series with degradation",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "P_dwn_reg_t_with_deg",
+                    {
+                        "desc": "Downward regulation power time series with degradation",
+                        "shape": [model.life_h],
+                        "units": "MW",
+                    },
+                ),
+                (
+                    "total_curtailment_deg",
+                    {"desc": "Total curtailment with degradation", "units": "GW*h"},
+                ),
             ],
-            function = model.compute,
-            partial_options=[{'dependent': False, 'val': 0}],
+            function=model.compute,
+            partial_options=[{"dependent": False, "val": 0}],
         )
+
 
 # -----------------------------------------------------------------------
 # Auxiliar functions for ems modelling
 # -----------------------------------------------------------------------
 
-def expand_to_lifetime(x, life_h = 25*365*24, weeks_per_season_per_year=None):
+
+def expand_to_lifetime(x, life_h=25 * 365 * 24, weeks_per_season_per_year=None):
     """
     Expands (by repeating) a given variable to match an expected lifetime length.
-    
+
     If weeks_per_season_per_year is an int then it will first build a year out of the selected weeks
-    
+
     Parameters
     ----------
     x: input variable
@@ -456,26 +952,28 @@ def expand_to_lifetime(x, life_h = 25*365*24, weeks_per_season_per_year=None):
     Returns
     -------
     x_ext: extended variable
-    """    
+    """
     if weeks_per_season_per_year == None:
-        
+
         # Extend the data to match the expected lifetime
         len_x = len(x)
-        N_repeats = int(np.ceil(life_h/len_x))
-    
+        N_repeats = int(np.ceil(life_h / len_x))
+
     else:
         x_ext = np.array([])
-    
+
         # extend selected weeks into a year: 4 season of 13 weeks + one extra day.
-        for x_batch in split_in_batch(x,weeks_per_season_per_year*7*24):
-            x_ext = np.append( x_ext, np.tile(x_batch,20)[:24*7*13] )
-        x_ext = np.append( x_ext, x_batch[-24:] )    
-        
+        for x_batch in split_in_batch(x, weeks_per_season_per_year * 7 * 24):
+            x_ext = np.append(x_ext, np.tile(x_batch, 20)[: 24 * 7 * 13])
+        x_ext = np.append(x_ext, x_batch[-24:])
+
         # extend the constructed year to match the expected lifetime
-        x = x_ext    
-        N_repeats = int(np.ceil(life_h/365*24))
-    
-    return np.tile(x,N_repeats)[:life_h]
+        x = x_ext
+        N_repeats = int(np.ceil(life_h / 365 * 24))
+
+    return np.tile(x, N_repeats)[:life_h]
+
+
 def ems_ORtools(
     wind_ts,
     solar_ts,
@@ -491,24 +989,24 @@ def ems_ORtools(
     hpp_grid_connection,
     battery_depth_of_discharge,
     charge_efficiency,
-    peak_hr_quantile = 0.9,
-    cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
-    n_full_power_hours_expected_per_day_at_peak_price = 3,    
-    batch_size = 1*24,
+    peak_hr_quantile=0.9,
+    cost_of_battery_P_fluct_in_peak_price_ratio=0.5,  # [0, 0.8]. For higher values might cause errors
+    n_full_power_hours_expected_per_day_at_peak_price=3,
+    batch_size=1 * 24,
 ):
-    
+
     # split in batches, ussually a week
     batches_all = split_in_batch(list(range(len(wind_ts))), batch_size)
     # Make sure the last batch is not smaller than the others
     # instead append it to the previous last one
     batches = batches_all[:-1]
-    batches[-1] = batches_all[-2]+batches_all[-1]
-    
+    batches[-1] = batches_all[-2] + batches_all[-1]
+
     # allocate vars
     P_HPP_ts = np.zeros(len(wind_ts))
     P_curtailment_ts = np.zeros(len(wind_ts))
     P_charge_discharge_ts = np.zeros(len(wind_ts))
-    E_SOC_ts = np.zeros(len(wind_ts)+1)
+    E_SOC_ts = np.zeros(len(wind_ts) + 1)
     penalty_ts = np.zeros(len(wind_ts))
     P_HPP_BM_ts = np.zeros(len(wind_ts))
     P_curtailment_BM_ts = np.zeros(len(wind_ts))
@@ -518,7 +1016,7 @@ def ems_ORtools(
     P_dwn_reg_ts = np.zeros(len(wind_ts))
     P_up_reg_max_ts = np.zeros(len(wind_ts))
     P_dwn_reg_max_ts = np.zeros(len(wind_ts))
-    
+
     for ib, batch in enumerate(batches):
         wind_ts_sel = wind_ts.iloc[batch]
         solar_ts_sel = solar_ts.iloc[batch]
@@ -528,30 +1026,42 @@ def ems_ORtools(
         price_up_reg_ts_sel = price_up_reg_ts.iloc[batch]
         price_dwn_reg_ts_sel = price_dwn_reg_ts.iloc[batch]
         E_batt_MWh_t_sel = E_batt_MWh_t.iloc[batch]
-        
-        #print(f'batch {ib+1} out of {len(batches)}')
-        P_HPP_ts_batch, P_HPP_BM_ts_batch,P_curtailment_ts_batch,P_curtailment_BM_ts_batch, P_charge_discharge_ts_batch, P_charge_discharge_BM_ts_batch,\
-            P_up_reg_ts_batch, P_dwn_reg_ts_batch, P_up_reg_max_ts_batch, P_dwn_reg_max_ts_batch, P_penalty_BM_ts_batch, E_SOC_ts_batch, penalty_batch = ems_ORtools_parts(
-            wind_ts = wind_ts_sel,
-            solar_ts = solar_ts_sel,
-            price_ts = price_ts_sel,
-            wind_BM_ts = wind_BM_ts_sel,
-            price_up_reg_ts = price_up_reg_ts_sel,
-            price_dwn_reg_ts = price_dwn_reg_ts_sel,
-            SO_imbalance_ts = SO_imbalance_ts_sel,
-            penalty_BM =penalty_BM,
-            bi_directional_status = bi_directional_status,
-            P_batt_MW = P_batt_MW,
-            E_batt_MWh_t = E_batt_MWh_t_sel,
-            hpp_grid_connection = hpp_grid_connection,
-            battery_depth_of_discharge = battery_depth_of_discharge,
-            charge_efficiency = charge_efficiency,
-            peak_hr_quantile = peak_hr_quantile,
-            cost_of_battery_P_fluct_in_peak_price_ratio = cost_of_battery_P_fluct_in_peak_price_ratio,
-            n_full_power_hours_expected_per_day_at_peak_price = n_full_power_hours_expected_per_day_at_peak_price,
+
+        # print(f'batch {ib+1} out of {len(batches)}')
+        (
+            P_HPP_ts_batch,
+            P_HPP_BM_ts_batch,
+            P_curtailment_ts_batch,
+            P_curtailment_BM_ts_batch,
+            P_charge_discharge_ts_batch,
+            P_charge_discharge_BM_ts_batch,
+            P_up_reg_ts_batch,
+            P_dwn_reg_ts_batch,
+            P_up_reg_max_ts_batch,
+            P_dwn_reg_max_ts_batch,
+            P_penalty_BM_ts_batch,
+            E_SOC_ts_batch,
+            penalty_batch,
+        ) = ems_ORtools_parts(
+            wind_ts=wind_ts_sel,
+            solar_ts=solar_ts_sel,
+            price_ts=price_ts_sel,
+            wind_BM_ts=wind_BM_ts_sel,
+            price_up_reg_ts=price_up_reg_ts_sel,
+            price_dwn_reg_ts=price_dwn_reg_ts_sel,
+            SO_imbalance_ts=SO_imbalance_ts_sel,
+            penalty_BM=penalty_BM,
+            bi_directional_status=bi_directional_status,
+            P_batt_MW=P_batt_MW,
+            E_batt_MWh_t=E_batt_MWh_t_sel,
+            hpp_grid_connection=hpp_grid_connection,
+            battery_depth_of_discharge=battery_depth_of_discharge,
+            charge_efficiency=charge_efficiency,
+            peak_hr_quantile=peak_hr_quantile,
+            cost_of_battery_P_fluct_in_peak_price_ratio=cost_of_battery_P_fluct_in_peak_price_ratio,
+            n_full_power_hours_expected_per_day_at_peak_price=n_full_power_hours_expected_per_day_at_peak_price,
         )
-        
-        
+
         P_HPP_ts[batch] = P_HPP_ts_batch
         P_curtailment_ts[batch] = P_curtailment_ts_batch
         P_charge_discharge_ts[batch] = P_charge_discharge_ts_batch
@@ -566,9 +1076,24 @@ def ems_ORtools(
         E_SOC_ts[batch] = E_SOC_ts_batch[:-1]
         penalty_ts[batch] = penalty_batch
 
-    E_SOC_ts[-1] = E_SOC_ts[0] 
-    
-    return P_HPP_ts, P_HPP_BM_ts, P_curtailment_ts, P_curtailment_BM_ts, P_charge_discharge_ts, P_charge_discharge_BM_ts, P_up_reg_ts, P_dwn_reg_ts, P_up_reg_max_ts, P_dwn_reg_max_ts, P_penalty_BM_ts, E_SOC_ts, penalty_ts
+    E_SOC_ts[-1] = E_SOC_ts[0]
+
+    return (
+        P_HPP_ts,
+        P_HPP_BM_ts,
+        P_curtailment_ts,
+        P_curtailment_BM_ts,
+        P_charge_discharge_ts,
+        P_charge_discharge_BM_ts,
+        P_up_reg_ts,
+        P_dwn_reg_ts,
+        P_up_reg_max_ts,
+        P_dwn_reg_max_ts,
+        P_penalty_BM_ts,
+        E_SOC_ts,
+        penalty_ts,
+    )
+
 
 def ems_ORtools_parts(
     wind_ts,
@@ -585,11 +1110,11 @@ def ems_ORtools_parts(
     hpp_grid_connection,
     battery_depth_of_discharge,
     charge_efficiency,
-    peak_hr_quantile = 0.9,
-    cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
-    n_full_power_hours_expected_per_day_at_peak_price = 3,    
+    peak_hr_quantile=0.9,
+    cost_of_battery_P_fluct_in_peak_price_ratio=0.5,  # [0, 0.8]. For higher values might cause errors
+    n_full_power_hours_expected_per_day_at_peak_price=3,
 ):
-    """EMS solver implemented in OR tools 
+    """EMS solver implemented in OR tools
 
     Parameters
     ----------
@@ -598,7 +1123,7 @@ def ems_ORtools_parts(
     solar_ts : PVP power time series
     price_ts : price time series for Spot Market
     price_up_reg_ts : price time series for up regulation, mostly greater than or equal to SM price
-    price_dwn_reg_ts : price time series for down regulation, mostly less than or equal to SM price 
+    price_dwn_reg_ts : price time series for down regulation, mostly less than or equal to SM price
     SO_imbalance_ts : System operator power imbalance time series, to identify the need of up or down regulation at system level
     penalty_BM: whenever the scheduled DA power is not met, and that deficit power is taken from some other unit paid at price_reg_up and is generally higher than price_reg_up
     P_batt_MW : battery power
@@ -620,125 +1145,215 @@ def ems_ORtools_parts(
     ...P_penalty_BM_t: power time series for the scheduled DA power not met in HA
     P_charge_discharge_ts : Battery charge - discharge power time series in SM
     P_charge_discharge_BM_ts : Battery charge - discharge power time series in BM
-    P_up_reg_ts: Up regulation power time series 
+    P_up_reg_ts: Up regulation power time series
     P_dw_reg_ts: Down regulation power time series
-    ...P_up_HPP_max_t: Maximum Up regulation power time series 
+    ...P_up_HPP_max_t: Maximum Up regulation power time series
     ...P_dw_HPP_max_t: Maximum Down regulation power time series
     E_SOC_ts: Battery energy SOC time series
-    penalty_ts :  
+    penalty_ts :
     ...z_t: state of battery operation, 0 if charging and 1 if discharging
     """
 
-    # Penalties 
-    N_t = len(price_ts.index) 
-    N_days = N_t/24
-    e_peak_day_expected = n_full_power_hours_expected_per_day_at_peak_price*hpp_grid_connection 
-    price_peak = np.quantile(price_ts.values, peak_hr_quantile) # the price where x% percent of the prices are less than this, x is the value 'peak_hr_quantile'
-    
+    # Penalties
+    N_t = len(price_ts.index)
+    N_days = N_t / 24
+    e_peak_day_expected = (
+        n_full_power_hours_expected_per_day_at_peak_price * hpp_grid_connection
+    )
+    price_peak = np.quantile(
+        price_ts.values, peak_hr_quantile
+    )  # the price where x% percent of the prices are less than this, x is the value 'peak_hr_quantile'
+
     price_ts_to_max = price_peak - price_ts
-    price_ts_to_max.loc[price_ts_to_max<0] = 0 # removing any prices that are higher than the peak price 'price_peak'
-    price_ts_to_max.iloc[:-1] = 0.5*price_ts_to_max.iloc[:-1].values + 0.5*price_ts_to_max.iloc[1:].values
-        
+    price_ts_to_max.loc[price_ts_to_max < 0] = (
+        0  # removing any prices that are higher than the peak price 'price_peak'
+    )
+    price_ts_to_max.iloc[:-1] = (
+        0.5 * price_ts_to_max.iloc[:-1].values + 0.5 * price_ts_to_max.iloc[1:].values
+    )
+
     dt = 1
 
     # Create the solver
-    solver = pywraplp.Solver.CreateSolver('SCIP')
+    solver = pywraplp.Solver.CreateSolver("SCIP")
 
     # Variables definition
-    P_HPP_t = [solver.NumVar(0, hpp_grid_connection, f'P_HPP_{t}') 
-                     for t in range(N_t)] # HPP power output in SM
-    P_HPP_BM_t = [solver.NumVar(0, hpp_grid_connection, f'P_HPP_BM_{t}') 
-                     for t in range(N_t)] # HPP power output in BM
-    P_curtailment_t = [solver.NumVar(0, solver.infinity(), f'P_curtailment_{t}') 
-                     for t in range(N_t)] # Curtailment in SM
-    P_curtailment_BM_t = [solver.NumVar(0, solver.infinity(), f'P_curtailment_BM_{t}') 
-                     for t in range(N_t)] # Curtailment in BM
-    P_penalty_BM_t = [solver.NumVar(0, solver.infinity(), f'P_penalty_BM_{t}') 
-                     for t in range(N_t)] # Penalty power in BM
-    
-    P_charge_SM_t = [solver.NumVar(0, P_batt_MW, f'P_charge_SM_{t}') 
-                     for t in range(N_t)] # Battery charge P - SM
-    P_discharge_SM_t = [solver.NumVar(0, P_batt_MW, f'P_discharge_SM_{t}') 
-                     for t in range(N_t)] # Battery discharge P - SM
-    P_charge_BM_t = [solver.NumVar(0, P_batt_MW, f'P_charge_BM_{t}') 
-                     for t in range(N_t)] # Battery charge P - BM
-    P_discharge_BM_t = [solver.NumVar(0, P_batt_MW, f'P_discharge_BM_{t}') 
-                     for t in range(N_t)] # Battery discharge P - BM
-    E_SOC_t = [solver.NumVar(0, np.max(E_batt_MWh_t), f'E_SOC_{t}') 
-                                  for t in range(N_t+1)] # Battery energy level
-    z_t = [solver.BoolVar( f'Battery_state_{t}') 
-                     for t in range(N_t)] # 0 if charging, 1 if discharging
+    P_HPP_t = [
+        solver.NumVar(0, hpp_grid_connection, f"P_HPP_{t}") for t in range(N_t)
+    ]  # HPP power output in SM
+    P_HPP_BM_t = [
+        solver.NumVar(0, hpp_grid_connection, f"P_HPP_BM_{t}") for t in range(N_t)
+    ]  # HPP power output in BM
+    P_curtailment_t = [
+        solver.NumVar(0, solver.infinity(), f"P_curtailment_{t}") for t in range(N_t)
+    ]  # Curtailment in SM
+    P_curtailment_BM_t = [
+        solver.NumVar(0, solver.infinity(), f"P_curtailment_BM_{t}") for t in range(N_t)
+    ]  # Curtailment in BM
+    P_penalty_BM_t = [
+        solver.NumVar(0, solver.infinity(), f"P_penalty_BM_{t}") for t in range(N_t)
+    ]  # Penalty power in BM
 
-    P_up_reg_t = [solver.NumVar(0, solver.infinity(), f'P_up_reg_{t}') 
-                     for t in range(N_t)] # Up regulation power
-    P_dwn_reg_t = [solver.NumVar(0, solver.infinity(), f'P_dwn_reg_{t}') 
-                     for t in range(N_t)] # Down regulation power
-    P_up_reg_max_t = [solver.NumVar(0, solver.infinity(), f'P_up_reg_max_{t}') 
-                     for t in range(N_t)] # Maximum Up regulation power
-    P_dwn_reg_max_t = [solver.NumVar(0, solver.infinity(), f'P_dwn_reg_{t}') 
-                     for t in range(N_t)] # Maximum Down regulation power
-    
-    penalty = solver.NumVar(-solver.infinity(), solver.infinity(), 'penalty')
-    delta_P_batt = [solver.NumVar(-2*P_batt_MW, 2*P_batt_MW, f'delta_P_batt_{t}') 
-                     for t in range(N_t-1)] # battery fluctuations
+    P_charge_SM_t = [
+        solver.NumVar(0, P_batt_MW, f"P_charge_SM_{t}") for t in range(N_t)
+    ]  # Battery charge P - SM
+    P_discharge_SM_t = [
+        solver.NumVar(0, P_batt_MW, f"P_discharge_SM_{t}") for t in range(N_t)
+    ]  # Battery discharge P - SM
+    P_charge_BM_t = [
+        solver.NumVar(0, P_batt_MW, f"P_charge_BM_{t}") for t in range(N_t)
+    ]  # Battery charge P - BM
+    P_discharge_BM_t = [
+        solver.NumVar(0, P_batt_MW, f"P_discharge_BM_{t}") for t in range(N_t)
+    ]  # Battery discharge P - BM
+    E_SOC_t = [
+        solver.NumVar(0, np.max(E_batt_MWh_t), f"E_SOC_{t}") for t in range(N_t + 1)
+    ]  # Battery energy level
+    z_t = [
+        solver.BoolVar(f"Battery_state_{t}") for t in range(N_t)
+    ]  # 0 if charging, 1 if discharging
 
-    
+    P_up_reg_t = [
+        solver.NumVar(0, solver.infinity(), f"P_up_reg_{t}") for t in range(N_t)
+    ]  # Up regulation power
+    P_dwn_reg_t = [
+        solver.NumVar(0, solver.infinity(), f"P_dwn_reg_{t}") for t in range(N_t)
+    ]  # Down regulation power
+    P_up_reg_max_t = [
+        solver.NumVar(0, solver.infinity(), f"P_up_reg_max_{t}") for t in range(N_t)
+    ]  # Maximum Up regulation power
+    P_dwn_reg_max_t = [
+        solver.NumVar(0, solver.infinity(), f"P_dwn_reg_{t}") for t in range(N_t)
+    ]  # Maximum Down regulation power
+
+    penalty = solver.NumVar(-solver.infinity(), solver.infinity(), "penalty")
+    delta_P_batt = [
+        solver.NumVar(-2 * P_batt_MW, 2 * P_batt_MW, f"delta_P_batt_{t}")
+        for t in range(N_t - 1)
+    ]  # battery fluctuations
+
     # Objective function: Maximize Revenue
-    revenue = solver.Sum(price_ts.iloc[t] * P_HPP_t[t] + price_up_reg_ts.iloc[t]*P_up_reg_t[t] - price_dwn_reg_ts.iloc[t]*P_dwn_reg_t[t]
-            for t in range(N_t)) - penalty - solver.Sum(delta_P_batt[t]*cost_of_battery_P_fluct_in_peak_price_ratio*price_ts_to_max.iloc[t]
-           for t in range(N_t-1))
-        # Add cost for rapid charge-discharge for limiting the battery life use
-        
- 
-    # penalty for not meeting the scheduled DA power
-    solver.Add(penalty == solver.Sum(penalty_BM * P_penalty_BM_t[t] for t in range(N_t)))
+    revenue = (
+        solver.Sum(
+            price_ts.iloc[t] * P_HPP_t[t]
+            + price_up_reg_ts.iloc[t] * P_up_reg_t[t]
+            - price_dwn_reg_ts.iloc[t] * P_dwn_reg_t[t]
+            for t in range(N_t)
+        )
+        - penalty
+        - solver.Sum(
+            delta_P_batt[t]
+            * cost_of_battery_P_fluct_in_peak_price_ratio
+            * price_ts_to_max.iloc[t]
+            for t in range(N_t - 1)
+        )
+    )
+    # Add cost for rapid charge-discharge for limiting the battery life use
 
-             
+    # penalty for not meeting the scheduled DA power
+    solver.Add(
+        penalty == solver.Sum(penalty_BM * P_penalty_BM_t[t] for t in range(N_t))
+    )
+
     # Intitial and end SOC
     solver.Add(E_SOC_t[0] == 0.5 * E_batt_MWh_t.iloc[0])
-    
+
     # SOC at the end of the year has to be equal to SOC at the beginning of the year
     solver.Add(E_SOC_t[-1] == 0.5 * E_batt_MWh_t.iloc[0])
-    
+
     for t in range(N_t):
-        
-        solver.Add(P_HPP_t[t] == wind_ts.iloc[t] + P_discharge_SM_t[t] - P_charge_SM_t[t] - P_curtailment_t[t])
-        solver.Add(P_HPP_BM_t[t] == wind_BM_ts.iloc[t] + P_discharge_BM_t[t] - P_charge_BM_t[t] + P_discharge_SM_t[t] - P_charge_SM_t[t] - P_curtailment_BM_t[t] - P_up_reg_t[t] + P_dwn_reg_t[t] + P_penalty_BM_t[t])
-        
+
+        solver.Add(
+            P_HPP_t[t]
+            == wind_ts.iloc[t]
+            + P_discharge_SM_t[t]
+            - P_charge_SM_t[t]
+            - P_curtailment_t[t]
+        )
+        solver.Add(
+            P_HPP_BM_t[t]
+            == wind_BM_ts.iloc[t]
+            + P_discharge_BM_t[t]
+            - P_charge_BM_t[t]
+            + P_discharge_SM_t[t]
+            - P_charge_SM_t[t]
+            - P_curtailment_BM_t[t]
+            - P_up_reg_t[t]
+            + P_dwn_reg_t[t]
+            + P_penalty_BM_t[t]
+        )
+
         # the basic assumption for the approach used to solve BM problem
         solver.Add(P_HPP_BM_t[t] == P_HPP_t[t])
         # to limit the up regulation beyond grid connection limit
-        solver.Add(P_HPP_BM_t[t] + P_up_reg_t[t] - P_dwn_reg_t[t] <= hpp_grid_connection) 
-        # to prevent bi-directional flow from grid during down regulation and charge battery, 
+        solver.Add(
+            P_HPP_BM_t[t] + P_up_reg_t[t] - P_dwn_reg_t[t] <= hpp_grid_connection
+        )
+        # to prevent bi-directional flow from grid during down regulation and charge battery,
         # remove this constraint if HPP owner can charge battery by taking power from grid to make profit
         if bi_directional_status == 0:
-            solver.Add(P_HPP_BM_t[t] + P_up_reg_t[t] - P_dwn_reg_t[t] >= 0) 
-        
-        solver.Add(E_SOC_t[t+1] == E_SOC_t[t] + (P_charge_SM_t[t] + P_charge_BM_t[t])*dt*charge_efficiency - (P_discharge_SM_t[t] + P_discharge_BM_t[t])*dt/charge_efficiency)
-        solver.Add(E_SOC_t[t] >= (1 - battery_depth_of_discharge) * E_batt_MWh_t.iloc[t])
+            solver.Add(P_HPP_BM_t[t] + P_up_reg_t[t] - P_dwn_reg_t[t] >= 0)
+
+        solver.Add(
+            E_SOC_t[t + 1]
+            == E_SOC_t[t]
+            + (P_charge_SM_t[t] + P_charge_BM_t[t]) * dt * charge_efficiency
+            - (P_discharge_SM_t[t] + P_discharge_BM_t[t]) * dt / charge_efficiency
+        )
+        solver.Add(
+            E_SOC_t[t] >= (1 - battery_depth_of_discharge) * E_batt_MWh_t.iloc[t]
+        )
         solver.Add(E_SOC_t[t] <= E_batt_MWh_t.iloc[t])
 
-        solver.Add(P_charge_BM_t[t] + P_charge_SM_t[t] <= P_batt_MW * (1-z_t[t]))
+        solver.Add(P_charge_BM_t[t] + P_charge_SM_t[t] <= P_batt_MW * (1 - z_t[t]))
         solver.Add(P_discharge_BM_t[t] + P_discharge_SM_t[t] <= P_batt_MW * z_t[t])
-        
+
         # SO_imb vector negative valulene implies deficit of power, i.e. UP regulation needed
         # SO_imb vector positive value implies excess of power, i.e. DOWN regulation needed
-        if SO_imbalance_ts.iloc[t] >=0:
+        if SO_imbalance_ts.iloc[t] >= 0:
             solver.Add(P_dwn_reg_max_t[t] == SO_imbalance_ts.iloc[t])
             solver.Add(P_up_reg_max_t[t] == 0)
         else:
             solver.Add(P_dwn_reg_max_t[t] == 0)
-            solver.Add(P_up_reg_max_t[t] == -1 *SO_imbalance_ts.iloc[t])
+            solver.Add(P_up_reg_max_t[t] == -1 * SO_imbalance_ts.iloc[t])
 
-        # solver.Add(P_up_reg_max_t[t] == solver.min(0, SO_imbalance_ts[t])* -1) 
+        # solver.Add(P_up_reg_max_t[t] == solver.min(0, SO_imbalance_ts[t])* -1)
         # solver.Add(P_dwn_reg_max_t[t] == solver.max(0, SO_imbalance_ts[t]))
         solver.Add(P_up_reg_t[t] <= P_up_reg_max_t[t])
-        solver.Add(P_dwn_reg_t[t] <= P_dwn_reg_max_t[t]) 
-        # large fluctuations in the battery charge/ discharge are allowed when the price is high, for the higher prices price_ts_to_max[t] = 0 
+        solver.Add(P_dwn_reg_t[t] <= P_dwn_reg_max_t[t])
+        # large fluctuations in the battery charge/ discharge are allowed when the price is high, for the higher prices price_ts_to_max[t] = 0
         # auxillary function definition to calculate absolute value of delta_P_batt for penalty on battery fluctuations
-        if t < N_t-1:
-            solver.Add(delta_P_batt[t] >= (P_discharge_SM_t[t+1] + P_discharge_BM_t[t+1] - P_charge_SM_t[t+1] - P_charge_BM_t[t+1]) - (P_discharge_SM_t[t] + P_discharge_BM_t[t] - P_charge_SM_t[t] - P_charge_BM_t[t]))  
-            solver.Add(delta_P_batt[t] >= (P_discharge_SM_t[t] + P_discharge_BM_t[t] - P_charge_SM_t[t] - P_charge_BM_t[t]) - (P_discharge_SM_t[t+1] + P_discharge_BM_t[t+1] - P_charge_SM_t[t+1] - P_charge_BM_t[t+1])) 
+        if t < N_t - 1:
+            solver.Add(
+                delta_P_batt[t]
+                >= (
+                    P_discharge_SM_t[t + 1]
+                    + P_discharge_BM_t[t + 1]
+                    - P_charge_SM_t[t + 1]
+                    - P_charge_BM_t[t + 1]
+                )
+                - (
+                    P_discharge_SM_t[t]
+                    + P_discharge_BM_t[t]
+                    - P_charge_SM_t[t]
+                    - P_charge_BM_t[t]
+                )
+            )
+            solver.Add(
+                delta_P_batt[t]
+                >= (
+                    P_discharge_SM_t[t]
+                    + P_discharge_BM_t[t]
+                    - P_charge_SM_t[t]
+                    - P_charge_BM_t[t]
+                )
+                - (
+                    P_discharge_SM_t[t + 1]
+                    + P_discharge_BM_t[t + 1]
+                    - P_charge_SM_t[t + 1]
+                    - P_charge_BM_t[t + 1]
+                )
+            )
 
     # Solving the problem
     solver.Maximize(revenue)
@@ -747,47 +1362,64 @@ def ems_ORtools_parts(
     status = solver.Solve()
 
     status_description = {
-    pywraplp.Solver.OPTIMAL: "OPTIMAL",
-    pywraplp.Solver.FEASIBLE: "FEASIBLE",
-    pywraplp.Solver.INFEASIBLE: "INFEASIBLE",
-    pywraplp.Solver.UNBOUNDED: "UNBOUNDED",
-    pywraplp.Solver.ABNORMAL: "ABNORMAL",
-    pywraplp.Solver.MODEL_INVALID: "MODEL_INVALID",
-    pywraplp.Solver.NOT_SOLVED: "NOT_SOLVED",
+        pywraplp.Solver.OPTIMAL: "OPTIMAL",
+        pywraplp.Solver.FEASIBLE: "FEASIBLE",
+        pywraplp.Solver.INFEASIBLE: "INFEASIBLE",
+        pywraplp.Solver.UNBOUNDED: "UNBOUNDED",
+        pywraplp.Solver.ABNORMAL: "ABNORMAL",
+        pywraplp.Solver.MODEL_INVALID: "MODEL_INVALID",
+        pywraplp.Solver.NOT_SOLVED: "NOT_SOLVED",
     }
 
     if status == pywraplp.Solver.OPTIMAL:
-        
+
         P_HPP_ts = [P_HPP_t[t].solution_value() for t in range(N_t)]
         P_HPP_BM_ts = [P_HPP_BM_t[t].solution_value() for t in range(N_t)]
         P_curtailment_ts = [P_curtailment_t[t].solution_value() for t in range(N_t)]
-        P_curtailment_BM_ts = [P_curtailment_BM_t[t].solution_value() for t in range(N_t)]
+        P_curtailment_BM_ts = [
+            P_curtailment_BM_t[t].solution_value() for t in range(N_t)
+        ]
         P_penalty_BM_ts = [P_penalty_BM_t[t].solution_value() for t in range(N_t)]
 
         P_charge_BM_ts = [P_charge_BM_t[t].solution_value() for t in range(N_t)]
         P_discharge_BM_ts = [P_discharge_BM_t[t].solution_value() for t in range(N_t)]
         P_charge_SM_ts = [P_charge_SM_t[t].solution_value() for t in range(N_t)]
         P_discharge_SM_ts = [P_discharge_SM_t[t].solution_value() for t in range(N_t)]
-        
-        E_SOC_ts = [E_SOC_t[t].solution_value() for t in range(N_t+1)]
+
+        E_SOC_ts = [E_SOC_t[t].solution_value() for t in range(N_t + 1)]
         z_ts = [z_t[t].solution_value() for t in range(N_t)]
-        
+
         P_up_reg_ts = [P_up_reg_t[t].solution_value() for t in range(N_t)]
         P_dwn_reg_ts = [P_dwn_reg_t[t].solution_value() for t in range(N_t)]
         P_up_reg_max_ts = [P_up_reg_max_t[t].solution_value() for t in range(N_t)]
         P_dwn_reg_max_ts = [P_dwn_reg_max_t[t].solution_value() for t in range(N_t)]
-        
-        P_charge_discharge_ts = np.array(P_discharge_SM_ts) - np.array(P_charge_SM_ts)
-        P_charge_discharge_BM_ts = np.array(P_discharge_BM_ts) - np.array(P_charge_BM_ts)
 
-        
-        #make a time series like P_HPP with a constant penalty 
+        P_charge_discharge_ts = np.array(P_discharge_SM_ts) - np.array(P_charge_SM_ts)
+        P_charge_discharge_BM_ts = np.array(P_discharge_BM_ts) - np.array(
+            P_charge_BM_ts
+        )
+
+        # make a time series like P_HPP with a constant penalty
         penalty_2 = penalty.solution_value()
-        penalty_ts = np.ones(N_t) * (penalty_2/N_t)
-        
+        penalty_ts = np.ones(N_t) * (penalty_2 / N_t)
+
         print(f"Solver status: {status_description.get(status, 'Unknown Status')}")
 
-        return P_HPP_ts, P_HPP_BM_ts, P_curtailment_ts, P_curtailment_BM_ts, P_charge_discharge_ts, P_charge_discharge_BM_ts, P_up_reg_ts, P_dwn_reg_ts, P_up_reg_max_ts, P_dwn_reg_max_ts, P_penalty_BM_ts, E_SOC_ts, penalty_ts
+        return (
+            P_HPP_ts,
+            P_HPP_BM_ts,
+            P_curtailment_ts,
+            P_curtailment_BM_ts,
+            P_charge_discharge_ts,
+            P_charge_discharge_BM_ts,
+            P_up_reg_ts,
+            P_dwn_reg_ts,
+            P_up_reg_max_ts,
+            P_dwn_reg_max_ts,
+            P_penalty_BM_ts,
+            E_SOC_ts,
+            penalty_ts,
+        )
     else:
         print(f"Solver status: {status_description.get(status, 'Unknown Status')}")
 
@@ -807,12 +1439,12 @@ def ems_cplex(
     hpp_grid_connection,
     battery_depth_of_discharge,
     charge_efficiency,
-    peak_hr_quantile = 0.9,
-    cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
-    n_full_power_hours_expected_per_day_at_peak_price = 3,    
-    batch_size = 43,
+    peak_hr_quantile=0.9,
+    cost_of_battery_P_fluct_in_peak_price_ratio=0.5,  # [0, 0.8]. For higher values might cause errors
+    n_full_power_hours_expected_per_day_at_peak_price=3,
+    batch_size=43,
 ):
-    
+
     # split in batches, ussually a week
     batches_all = split_in_batch(list(range(len(wind_ts))), batch_size)
     # Make sure the last batch is not smaller than the others
@@ -820,13 +1452,13 @@ def ems_cplex(
     # batches = batches_all[:-1]
     # batches[-1] = batches_all[-2]+batches_all[-1]
     batches = batches_all
-    
+
     # allocate vars
     P_HPP_ts = np.zeros(len(wind_ts))
     P_curtailment_ts = np.zeros(len(wind_ts))
     P_charge_discharge_ts = np.zeros(len(wind_ts))
-    E_SOC_ts = np.zeros(len(wind_ts)+1)
-    E_SOC_BM_ts = np.zeros(len(wind_ts)+1)
+    E_SOC_ts = np.zeros(len(wind_ts) + 1)
+    E_SOC_BM_ts = np.zeros(len(wind_ts) + 1)
     penalty_ts = np.zeros(len(wind_ts))
     P_HPP_BM_ts = np.zeros(len(wind_ts))
     P_curtailment_BM_ts = np.zeros(len(wind_ts))
@@ -836,7 +1468,7 @@ def ems_cplex(
     P_dwn_reg_ts = np.zeros(len(wind_ts))
     P_up_reg_max_ts = np.zeros(len(wind_ts))
     P_dwn_reg_max_ts = np.zeros(len(wind_ts))
-    
+
     for ib, batch in enumerate(batches):
         wind_ts_sel = wind_ts.iloc[batch]
         solar_ts_sel = solar_ts.iloc[batch]
@@ -847,29 +1479,43 @@ def ems_cplex(
         price_dwn_reg_ts_sel = price_dwn_reg_ts.iloc[batch]
         E_batt_MWh_t_sel = E_batt_MWh_t.iloc[batch]
         start = time.time()
-        #print(f'batch {ib+1} out of {len(batches)}')
-        P_HPP_ts_batch, P_HPP_BM_ts_batch,P_curtailment_ts_batch,P_curtailment_BM_ts_batch, P_charge_discharge_ts_batch, P_charge_discharge_BM_ts_batch,\
-            P_up_reg_ts_batch, P_dwn_reg_ts_batch, P_up_reg_max_ts_batch, P_dwn_reg_max_ts_batch, price_penalty_BM_ts_batch, E_SOC_ts_batch, E_SOC_BM_ts_batch, penalty_batch = ems_cplex_parts(
-            wind_ts = wind_ts_sel,
-            solar_ts = solar_ts_sel,
-            price_ts = price_ts_sel,
-            wind_BM_ts = wind_BM_ts_sel,
-            price_up_reg_ts = price_up_reg_ts_sel,
-            price_dwn_reg_ts = price_dwn_reg_ts_sel,
-            SO_imbalance_ts = SO_imbalance_ts_sel,
-            penalty_BM =penalty_BM,
-            bi_directional_status = bi_directional_status,
-            P_batt_MW = P_batt_MW,
-            E_batt_MWh_t = E_batt_MWh_t_sel,
-            hpp_grid_connection = hpp_grid_connection,
-            battery_depth_of_discharge = battery_depth_of_discharge,
-            charge_efficiency = charge_efficiency,
-            peak_hr_quantile = peak_hr_quantile,
-            cost_of_battery_P_fluct_in_peak_price_ratio = cost_of_battery_P_fluct_in_peak_price_ratio,
-            n_full_power_hours_expected_per_day_at_peak_price = n_full_power_hours_expected_per_day_at_peak_price,
+        # print(f'batch {ib+1} out of {len(batches)}')
+        (
+            P_HPP_ts_batch,
+            P_HPP_BM_ts_batch,
+            P_curtailment_ts_batch,
+            P_curtailment_BM_ts_batch,
+            P_charge_discharge_ts_batch,
+            P_charge_discharge_BM_ts_batch,
+            P_up_reg_ts_batch,
+            P_dwn_reg_ts_batch,
+            P_up_reg_max_ts_batch,
+            P_dwn_reg_max_ts_batch,
+            price_penalty_BM_ts_batch,
+            E_SOC_ts_batch,
+            E_SOC_BM_ts_batch,
+            penalty_batch,
+        ) = ems_cplex_parts(
+            wind_ts=wind_ts_sel,
+            solar_ts=solar_ts_sel,
+            price_ts=price_ts_sel,
+            wind_BM_ts=wind_BM_ts_sel,
+            price_up_reg_ts=price_up_reg_ts_sel,
+            price_dwn_reg_ts=price_dwn_reg_ts_sel,
+            SO_imbalance_ts=SO_imbalance_ts_sel,
+            penalty_BM=penalty_BM,
+            bi_directional_status=bi_directional_status,
+            P_batt_MW=P_batt_MW,
+            E_batt_MWh_t=E_batt_MWh_t_sel,
+            hpp_grid_connection=hpp_grid_connection,
+            battery_depth_of_discharge=battery_depth_of_discharge,
+            charge_efficiency=charge_efficiency,
+            peak_hr_quantile=peak_hr_quantile,
+            cost_of_battery_P_fluct_in_peak_price_ratio=cost_of_battery_P_fluct_in_peak_price_ratio,
+            n_full_power_hours_expected_per_day_at_peak_price=n_full_power_hours_expected_per_day_at_peak_price,
         )
-        end=time.time()
-                
+        end = time.time()
+
         P_HPP_ts[batch] = P_HPP_ts_batch
         P_curtailment_ts[batch] = P_curtailment_ts_batch
         P_charge_discharge_ts[batch] = P_charge_discharge_ts_batch
@@ -884,12 +1530,26 @@ def ems_cplex(
         E_SOC_ts[batch] = E_SOC_ts_batch[:-1]
         E_SOC_BM_ts[batch] = E_SOC_BM_ts_batch[:-1]
         penalty_ts[batch] = penalty_batch
-        
 
-    E_SOC_ts[-1] = E_SOC_ts[0] 
+    E_SOC_ts[-1] = E_SOC_ts[0]
     # print('Evaluation 1 done')
-    
-    return P_HPP_ts, P_HPP_BM_ts, P_curtailment_ts, P_curtailment_BM_ts, P_charge_discharge_ts, P_charge_discharge_BM_ts, P_up_reg_ts, P_dwn_reg_ts, P_up_reg_max_ts, P_dwn_reg_max_ts, price_penalty_BM_ts, E_SOC_ts, E_SOC_BM_ts, penalty_ts
+
+    return (
+        P_HPP_ts,
+        P_HPP_BM_ts,
+        P_curtailment_ts,
+        P_curtailment_BM_ts,
+        P_charge_discharge_ts,
+        P_charge_discharge_BM_ts,
+        P_up_reg_ts,
+        P_dwn_reg_ts,
+        P_up_reg_max_ts,
+        P_dwn_reg_max_ts,
+        price_penalty_BM_ts,
+        E_SOC_ts,
+        E_SOC_BM_ts,
+        penalty_ts,
+    )
 
 
 def ems_cplex_parts(
@@ -907,9 +1567,9 @@ def ems_cplex_parts(
     hpp_grid_connection,
     battery_depth_of_discharge,
     charge_efficiency,
-    peak_hr_quantile = 0.9,
-    cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
-    n_full_power_hours_expected_per_day_at_peak_price = 3,
+    peak_hr_quantile=0.9,
+    cost_of_battery_P_fluct_in_peak_price_ratio=0.5,  # [0, 0.8]. For higher values might cause errors
+    n_full_power_hours_expected_per_day_at_peak_price=3,
 ):
     """EMS solver implemented in cplex
 
@@ -920,7 +1580,7 @@ def ems_cplex_parts(
     solar_ts : PVP power time series
     price_ts : price time series for Spot Market
     price_up_reg_ts : price time series for up regulation, mostly greater than or equal to SM price
-    price_dwn_reg_ts : price time series for down regulation, mostly less than or equal to SM price 
+    price_dwn_reg_ts : price time series for down regulation, mostly less than or equal to SM price
     SO_imbalance_ts : System operator power imbalance time series, to identify the need of up or down regulation at system level
     penalty_BM: whenever the scheduled DA power is not met, and that deficit power is taken from some other unit paid at price_reg_up and is generally higher than price_reg_up
     P_batt_MW : battery power
@@ -942,35 +1602,43 @@ def ems_cplex_parts(
     ...P_penalty_BM_t: power time series for the scheduled DA power not met in HA
     P_charge_discharge_ts : Battery charge - discharge power time series in SM
     P_charge_discharge_BM_ts : Battery charge - discharge power time series in BM
-    P_up_reg_ts: Up regulation power time series 
+    P_up_reg_ts: Up regulation power time series
     P_dw_reg_ts: Down regulation power time series
-    ...P_up_HPP_max_t: Maximum Up regulation power time series 
+    ...P_up_HPP_max_t: Maximum Up regulation power time series
     ...P_dw_HPP_max_t: Maximum Down regulation power time series
     E_SOC_ts: Battery energy SOC time series
-    penalty_ts :  
+    penalty_ts :
     ...z_t: state of battery operation, 0 if charging and 1 if discharging
     """
-    
-    # Penalties 
-    N_t = len(price_ts.index) 
-    N_days = N_t/24
-    e_peak_day_expected = n_full_power_hours_expected_per_day_at_peak_price*hpp_grid_connection 
-    price_peak = np.quantile(price_ts.values, peak_hr_quantile) # the price where x% percent of the prices are less than this, x is the value 'peak_hr_quantile'
-    
+
+    # Penalties
+    N_t = len(price_ts.index)
+    N_days = N_t / 24
+    e_peak_day_expected = (
+        n_full_power_hours_expected_per_day_at_peak_price * hpp_grid_connection
+    )
+    price_peak = np.quantile(
+        price_ts.values, peak_hr_quantile
+    )  # the price where x% percent of the prices are less than this, x is the value 'peak_hr_quantile'
+
     price_ts_to_max = price_peak - price_ts
-    price_ts_to_max.loc[price_ts_to_max<0] = 0 # removing any prices that are higher than the peak price 'price_peak'
-    price_ts_to_max.iloc[:-1] = 0.5*price_ts_to_max.iloc[:-1].values + 0.5*price_ts_to_max.iloc[1:].values
-        
-    mdl = Model(name='EMS')
+    price_ts_to_max.loc[price_ts_to_max < 0] = (
+        0  # removing any prices that are higher than the peak price 'price_peak'
+    )
+    price_ts_to_max.iloc[:-1] = (
+        0.5 * price_ts_to_max.iloc[:-1].values + 0.5 * price_ts_to_max.iloc[1:].values
+    )
+
+    mdl = Model(name="EMS")
     mdl.context.cplex_parameters.threads = 1
     # CPLEX parameter pg 87 Emphasize feasibility over optimality
-    mdl.context.cplex_parameters.emphasis.mip = 4 
+    mdl.context.cplex_parameters.emphasis.mip = 4
     mdl.context.cplex_parameters.timelimit = 1e-1
-    mdl.context.cplex_parameters.mip.tolerances.mipgap=1e-4
-    #mdl.context.cplex_parameters.mip.limits.strongit = 3
-    #mdl.context.cplex_parameters.mip.strategy.search = 1 #  branch and cut strategy; disable dynamic
-    
-    #cpx = mdl.get_cplex()
+    mdl.context.cplex_parameters.mip.tolerances.mipgap = 1e-4
+    # mdl.context.cplex_parameters.mip.limits.strongit = 3
+    # mdl.context.cplex_parameters.mip.strategy.search = 1 #  branch and cut strategy; disable dynamic
+
+    # cpx = mdl.get_cplex()
     # cpx.parameters.mip.tolerances.integrality.set(0)
     # cpx.parameters.simplex.tolerances.markowitz.set(0.999)
     # cpx.parameters.simplex.tolerances.optimality.set(1e-6)#1e-9)
@@ -978,40 +1646,47 @@ def ems_cplex_parts(
     # cpx.parameters.mip.pool.intensity.set(2)
     # cpx.parameters.mip.pool.absgap.set(1e75)
     # cpx.parameters.mip.pool.relgap.set(1e75)
-    # cpx.parameters.mip.limits.populate.set(50)    
-    
-    
+    # cpx.parameters.mip.limits.populate.set(50)
+
     time = price_ts.index
     # time set with an additional time slot for the last soc
-    SOCtime = time.append(pd.Index([time[-1] + pd.Timedelta('1hour')]))
+    SOCtime = time.append(pd.Index([time[-1] + pd.Timedelta("1hour")]))
 
     # Variables definition
-    P_HPP_t = mdl.continuous_var_dict(time, lb=0, ub= hpp_grid_connection, name='HPP power output in SM')    
-    P_HPP_BM_t = mdl.continuous_var_dict(time, lb=0, ub= hpp_grid_connection, name='HPP power output in BM')
-    P_curtailment_t = mdl.continuous_var_dict(time, lb=0, name='Curtailment in SM')
-    P_curtailment_BM_t = mdl.continuous_var_dict(time, lb=0, name='Curtailment in BM')
+    P_HPP_t = mdl.continuous_var_dict(
+        time, lb=0, ub=hpp_grid_connection, name="HPP power output in SM"
+    )
+    P_HPP_BM_t = mdl.continuous_var_dict(
+        time, lb=0, ub=hpp_grid_connection, name="HPP power output in BM"
+    )
+    P_curtailment_t = mdl.continuous_var_dict(time, lb=0, name="Curtailment in SM")
+    P_curtailment_BM_t = mdl.continuous_var_dict(time, lb=0, name="Curtailment in BM")
     # P_penalty_BM_t = mdl.continuous_var_dict(time, lb=0, name='Penalty power in BM')
 
-    P_charge_SM_t = mdl.continuous_var_dict(time, lb=0, name='Battery charge P - SM')
-    P_discharge_SM_t = mdl.continuous_var_dict(time, lb=0, name='Battery discharge P - SM')
-    P_charge_BM_t = mdl.continuous_var_dict(time, lb=0, name='Battery charge P - BM')
-    P_discharge_BM_t = mdl.continuous_var_dict(time, lb=0, name='Battery discharge P - BM')
-    
-    E_SOC_t = mdl.continuous_var_dict(SOCtime, name='Battery energy level - SM')
-    E_SOC_BM_t = mdl.continuous_var_dict(SOCtime, name='Battery energy level - BM')
-    
-    P_up_reg_t = mdl.continuous_var_dict(time, lb=0, name='Up regulation power')
-    P_dwn_reg_t = mdl.continuous_var_dict(time, lb=0, name='Down regulation power')
-        
-    z_t = mdl.binary_var_dict(time) # 0 if charging, 1 if discharging
-    z_BM_t = mdl.binary_var_dict(time) # 0 if charging, 1 if discharging
+    P_charge_SM_t = mdl.continuous_var_dict(time, lb=0, name="Battery charge P - SM")
+    P_discharge_SM_t = mdl.continuous_var_dict(
+        time, lb=0, name="Battery discharge P - SM"
+    )
+    P_charge_BM_t = mdl.continuous_var_dict(time, lb=0, name="Battery charge P - BM")
+    P_discharge_BM_t = mdl.continuous_var_dict(
+        time, lb=0, name="Battery discharge P - BM"
+    )
 
-    price_penalty_t = mdl.continuous_var_dict(time, lb=0, name='penalty price')
+    E_SOC_t = mdl.continuous_var_dict(SOCtime, name="Battery energy level - SM")
+    E_SOC_BM_t = mdl.continuous_var_dict(SOCtime, name="Battery energy level - BM")
+
+    P_up_reg_t = mdl.continuous_var_dict(time, lb=0, name="Up regulation power")
+    P_dwn_reg_t = mdl.continuous_var_dict(time, lb=0, name="Down regulation power")
+
+    z_t = mdl.binary_var_dict(time)  # 0 if charging, 1 if discharging
+    z_BM_t = mdl.binary_var_dict(time)  # 0 if charging, 1 if discharging
+
+    price_penalty_t = mdl.continuous_var_dict(time, lb=0, name="penalty price")
     # delta_P_batt = mdl.continuous_var_dict(time, name='battery fluctuations')
-    
+
     # # Piecewise function for "absolute value" function, using this only for penalty on battery fluctuations
-    fabs = mdl.piecewise(-1, [(0,0)], 1)
-    
+    fabs = mdl.piecewise(-1, [(0, 0)], 1)
+
     # SO_imb vector negative valulene implies deficit of power, i.e. UP regulation needed
     # SO_imb vector positive value implies excess of power, i.e. DOWN regulation needed
     P_up_reg_max_t = np.minimum(0, SO_imbalance_ts) * -1
@@ -1020,77 +1695,124 @@ def ems_cplex_parts(
     mdl.maximize(
         # revenues and OPEX
         mdl.sum(
-            price_ts[t] * P_HPP_t[t] + price_up_reg_ts[t]*P_up_reg_t[t] - price_dwn_reg_ts[t]*P_dwn_reg_t[t] - P_curtailment_t[t]*price_penalty_t[t]
-            for t in time) \
-        # Add cost for rapid charge-discharge for limiting the battery life use seperately for SM and BM
+            price_ts[t] * P_HPP_t[t]
+            + price_up_reg_ts[t] * P_up_reg_t[t]
+            - price_dwn_reg_ts[t] * P_dwn_reg_t[t]
+            - P_curtailment_t[t] * price_penalty_t[t]
+            for t in time
+        )  # Add cost for rapid charge-discharge for limiting the battery life use seperately for SM and BM
         - mdl.sum(
-           fabs((P_discharge_SM_t[t + pd.Timedelta('1hour')]-P_charge_SM_t[t + pd.Timedelta('1hour')]) - (P_discharge_SM_t[t]-P_charge_SM_t[t]))*cost_of_battery_P_fluct_in_peak_price_ratio*price_ts_to_max[t]\
-                + fabs((P_discharge_BM_t[t + pd.Timedelta('1hour')]-P_charge_BM_t[t + pd.Timedelta('1hour')]) - (P_discharge_BM_t[t]-P_charge_BM_t[t]))*cost_of_battery_P_fluct_in_peak_price_ratio*price_ts_to_max[t]
-           for t in time[:-1]) 
-    ) 
-           
+            fabs(
+                (
+                    P_discharge_SM_t[t + pd.Timedelta("1hour")]
+                    - P_charge_SM_t[t + pd.Timedelta("1hour")]
+                )
+                - (P_discharge_SM_t[t] - P_charge_SM_t[t])
+            )
+            * cost_of_battery_P_fluct_in_peak_price_ratio
+            * price_ts_to_max[t]
+            + fabs(
+                (
+                    P_discharge_BM_t[t + pd.Timedelta("1hour")]
+                    - P_charge_BM_t[t + pd.Timedelta("1hour")]
+                )
+                - (P_discharge_BM_t[t] - P_charge_BM_t[t])
+            )
+            * cost_of_battery_P_fluct_in_peak_price_ratio
+            * price_ts_to_max[t]
+            for t in time[:-1]
+        )
+    )
+
     # Intitial and end SOC
-    mdl.add_constraint( E_SOC_t[SOCtime[0]] == 0.5 * E_batt_MWh_t[time[0]] )
-    mdl.add_constraint( E_SOC_BM_t[SOCtime[0]] == 0.5 * E_batt_MWh_t[time[0]] )
-    
+    mdl.add_constraint(E_SOC_t[SOCtime[0]] == 0.5 * E_batt_MWh_t[time[0]])
+    mdl.add_constraint(E_SOC_BM_t[SOCtime[0]] == 0.5 * E_batt_MWh_t[time[0]])
+
     # SOC at the end of the year has to be equal to SOC at the beginning of the year
-    mdl.add_constraint( E_SOC_t[SOCtime[-1]] == 0.5 * E_batt_MWh_t[time[0]] )
-    mdl.add_constraint( E_SOC_BM_t[SOCtime[-1]] == 0.5 * E_batt_MWh_t[time[0]] )
-    
+    mdl.add_constraint(E_SOC_t[SOCtime[-1]] == 0.5 * E_batt_MWh_t[time[0]])
+    mdl.add_constraint(E_SOC_BM_t[SOCtime[-1]] == 0.5 * E_batt_MWh_t[time[0]])
+
     for t in time:
         # Time index for successive time step
-        tt = t + pd.Timedelta('1hour')
+        tt = t + pd.Timedelta("1hour")
         # Delta_t of 1 hour
         dt = 1
-        #-----------------------------------------------------------------------------------------------------------------------------
+        # -----------------------------------------------------------------------------------------------------------------------------
         # mdl.add_constraint(P_HPP_t[t] == wind_ts[t] + P_discharge_SM_t[t] - P_charge_SM_t[t] - P_curtailment_t[t])
         # mdl.add_constraint(P_HPP_BM_t[t] == wind_BM_ts[t] + P_discharge_BM_t[t] - P_charge_BM_t[t] + P_discharge_SM_t[t] - P_charge_SM_t[t] - P_curtailment_BM_t[t] - P_up_reg_t[t] + P_dwn_reg_t[t])
-        
+
         # # the basic assumption for the approach used to solve BM problem
         # mdl.add_constraint(P_HPP_BM_t[t] == P_HPP_t[t])
         # # to limit the up regulation beyond grid connection limit
-        # mdl.add_constraint(P_HPP_BM_t[t] + P_up_reg_t[t] - P_dwn_reg_t[t] <= hpp_grid_connection) 
-        # # to prevent bi-directional flow from grid during down regulation and charge battery, 
+        # mdl.add_constraint(P_HPP_BM_t[t] + P_up_reg_t[t] - P_dwn_reg_t[t] <= hpp_grid_connection)
+        # # to prevent bi-directional flow from grid during down regulation and charge battery,
         # # remove this constraint if HPP owner can charge battery by taking power from grid to make profit
         # if bi_directional_status == 0:
-        #     mdl.add_constraint(P_HPP_BM_t[t] + P_up_reg_t[t] - P_dwn_reg_t[t] >= 0) 
-        
+        #     mdl.add_constraint(P_HPP_BM_t[t] + P_up_reg_t[t] - P_dwn_reg_t[t] >= 0)
+
         # mdl.add_constraint(E_SOC_t[tt] == E_SOC_t[t] + (P_charge_SM_t[t] + P_charge_BM_t[t])*dt*charge_efficiency - (P_discharge_SM_t[t] + P_discharge_BM_t[t])*dt/charge_efficiency)
         # mdl.add_constraint(E_SOC_t[tt] >= (1 - battery_depth_of_discharge) * E_batt_MWh_t[t])
         # mdl.add_constraint(E_SOC_t[tt] <= E_batt_MWh_t[t])
 
         # mdl.add_constraint(P_charge_BM_t[t] + P_charge_SM_t[t] <= P_batt_MW * (1-z_t[t]))
         # mdl.add_constraint(P_discharge_BM_t[t] + P_discharge_SM_t[t] <= P_batt_MW * z_t[t])
-        #------------------------------Constraints with battery operation seperately in SM and BM------------------------------------------------
-        mdl.add_constraint(P_HPP_t[t] == wind_ts[t] + P_discharge_SM_t[t] - P_charge_SM_t[t] - P_curtailment_t[t])
-        mdl.add_constraint(P_HPP_BM_t[t] == wind_BM_ts[t] + P_discharge_BM_t[t] - P_charge_BM_t[t] - P_curtailment_BM_t[t] - P_up_reg_t[t] + P_dwn_reg_t[t])
-        
+        # ------------------------------Constraints with battery operation seperately in SM and BM------------------------------------------------
+        mdl.add_constraint(
+            P_HPP_t[t]
+            == wind_ts[t] + P_discharge_SM_t[t] - P_charge_SM_t[t] - P_curtailment_t[t]
+        )
+        mdl.add_constraint(
+            P_HPP_BM_t[t]
+            == wind_BM_ts[t]
+            + P_discharge_BM_t[t]
+            - P_charge_BM_t[t]
+            - P_curtailment_BM_t[t]
+            - P_up_reg_t[t]
+            + P_dwn_reg_t[t]
+        )
+
         # the basic assumption for the approach used to solve BM problem
         mdl.add_constraint(P_HPP_BM_t[t] == P_HPP_t[t])
         # to limit the up regulation beyond grid connection limit
-        mdl.add_constraint(P_HPP_BM_t[t] + P_up_reg_t[t] - P_dwn_reg_t[t] <= hpp_grid_connection) 
-        # to prevent bi-directional flow from grid during down regulation and charge battery, 
+        mdl.add_constraint(
+            P_HPP_BM_t[t] + P_up_reg_t[t] - P_dwn_reg_t[t] <= hpp_grid_connection
+        )
+        # to prevent bi-directional flow from grid during down regulation and charge battery,
         # remove this constraint if HPP owner can charge battery by taking power from grid to make profit
         if bi_directional_status == 0:
-            mdl.add_constraint(P_HPP_BM_t[t] + P_up_reg_t[t] - P_dwn_reg_t[t] >= 0) 
-        
-        mdl.add_constraint(E_SOC_t[tt] == E_SOC_t[t] + P_charge_SM_t[t]*dt*charge_efficiency - P_discharge_SM_t[t] *dt/charge_efficiency)
-        mdl.add_constraint(E_SOC_t[tt] >= (1 - battery_depth_of_discharge) * E_batt_MWh_t[t])
+            mdl.add_constraint(P_HPP_BM_t[t] + P_up_reg_t[t] - P_dwn_reg_t[t] >= 0)
+
+        mdl.add_constraint(
+            E_SOC_t[tt]
+            == E_SOC_t[t]
+            + P_charge_SM_t[t] * dt * charge_efficiency
+            - P_discharge_SM_t[t] * dt / charge_efficiency
+        )
+        mdl.add_constraint(
+            E_SOC_t[tt] >= (1 - battery_depth_of_discharge) * E_batt_MWh_t[t]
+        )
         mdl.add_constraint(E_SOC_t[tt] <= E_batt_MWh_t[t])
 
-        mdl.add_constraint(E_SOC_BM_t[tt] == E_SOC_BM_t[t] + P_charge_BM_t[t]*dt*charge_efficiency - P_discharge_BM_t[t] *dt/charge_efficiency)
-        mdl.add_constraint(E_SOC_BM_t[tt] >= (1 - battery_depth_of_discharge) * E_batt_MWh_t[t])
+        mdl.add_constraint(
+            E_SOC_BM_t[tt]
+            == E_SOC_BM_t[t]
+            + P_charge_BM_t[t] * dt * charge_efficiency
+            - P_discharge_BM_t[t] * dt / charge_efficiency
+        )
+        mdl.add_constraint(
+            E_SOC_BM_t[tt] >= (1 - battery_depth_of_discharge) * E_batt_MWh_t[t]
+        )
         mdl.add_constraint(E_SOC_BM_t[tt] <= E_batt_MWh_t[t])
 
-        mdl.add_constraint(P_charge_SM_t[t] <= P_batt_MW * (1-z_t[t]))
+        mdl.add_constraint(P_charge_SM_t[t] <= P_batt_MW * (1 - z_t[t]))
         mdl.add_constraint(P_discharge_SM_t[t] <= P_batt_MW * z_t[t])
-        mdl.add_constraint(P_charge_BM_t[t] <= P_batt_MW * (1-z_BM_t[t]))
+        mdl.add_constraint(P_charge_BM_t[t] <= P_batt_MW * (1 - z_BM_t[t]))
         mdl.add_constraint(P_discharge_BM_t[t] <= P_batt_MW * z_BM_t[t])
 
         # constraints on maximum up and down regulation
         mdl.add_constraint(P_up_reg_t[t] <= P_up_reg_max_t[t])
-        mdl.add_constraint(P_dwn_reg_t[t] <= P_dwn_reg_max_t[t]) 
-        if price_up_reg_ts[t] == price_ts[t]: 
+        mdl.add_constraint(P_dwn_reg_t[t] <= P_dwn_reg_max_t[t])
+        if price_up_reg_ts[t] == price_ts[t]:
             mdl.add_constraint(P_up_reg_t[t] == 0)
 
         if P_up_reg_max_t[t] > 0:
@@ -1099,61 +1821,100 @@ def ems_cplex_parts(
             mdl.add_constraint(price_penalty_t[t] == 0)
 
     # Solving the problem
-    sol = mdl.solve(
-        log_output=False)
-        # log_output=True)
+    sol = mdl.solve(log_output=False)
+    # log_output=True)
     # print("Objective Value for SM + BM:", sol.objective_value)
     # print("Status for SM + BM:", sol.solve_status)
 
-    P_HPP_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_t), orient='index').loc[:,0]
-    P_HPP_BM_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(P_HPP_BM_t), orient='index').loc[:,0]
-    P_curtailment_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(P_curtailment_t), orient='index').loc[:,0]
-    P_curtailment_BM_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(P_curtailment_BM_t), orient='index').loc[:,0]
-    price_penalty_BM_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(price_penalty_t), orient='index').loc[:,0]
+    P_HPP_ts_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(P_HPP_t), orient="index"
+    ).loc[:, 0]
+    P_HPP_BM_ts_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(P_HPP_BM_t), orient="index"
+    ).loc[:, 0]
+    P_curtailment_ts_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(P_curtailment_t), orient="index"
+    ).loc[:, 0]
+    P_curtailment_BM_ts_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(P_curtailment_BM_t), orient="index"
+    ).loc[:, 0]
+    price_penalty_BM_ts_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(price_penalty_t), orient="index"
+    ).loc[:, 0]
 
-    P_charge_BM_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(P_charge_BM_t), orient='index').loc[:,0]
-    P_discharge_BM_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(P_discharge_BM_t), orient='index').loc[:,0]
-    P_charge_SM_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(P_charge_SM_t), orient='index').loc[:,0]
-    P_discharge_SM_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(P_discharge_SM_t), orient='index').loc[:,0]
-    
-    E_SOC_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(E_SOC_t), orient='index').loc[:,0]
-    E_SOC_BM_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(E_SOC_BM_t), orient='index').loc[:,0]
+    P_charge_BM_ts_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(P_charge_BM_t), orient="index"
+    ).loc[:, 0]
+    P_discharge_BM_ts_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(P_discharge_BM_t), orient="index"
+    ).loc[:, 0]
+    P_charge_SM_ts_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(P_charge_SM_t), orient="index"
+    ).loc[:, 0]
+    P_discharge_SM_ts_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(P_discharge_SM_t), orient="index"
+    ).loc[:, 0]
+
+    E_SOC_ts_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(E_SOC_t), orient="index"
+    ).loc[:, 0]
+    E_SOC_BM_ts_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(E_SOC_BM_t), orient="index"
+    ).loc[:, 0]
     # z_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(z_t), orient='index').loc[:,0]
-    
-    P_up_reg_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(P_up_reg_t), orient='index').loc[:,0]
-    P_dwn_reg_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(P_dwn_reg_t), orient='index').loc[:,0]
 
+    P_up_reg_ts_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(P_up_reg_t), orient="index"
+    ).loc[:, 0]
+    P_dwn_reg_ts_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(P_dwn_reg_t), orient="index"
+    ).loc[:, 0]
 
-    #Cplex sometimes returns missing values :O
-    P_HPP_ts = P_HPP_ts_df.reindex(time,fill_value=0).values
-    P_HPP_BM_ts = P_HPP_BM_ts_df.reindex(time,fill_value=0).values
-    P_curtailment_ts = P_curtailment_ts_df.reindex(time,fill_value=0).values
-    P_curtailment_BM_ts = P_curtailment_BM_ts_df.reindex(time,fill_value=0).values
-    price_penalty_BM_ts = price_penalty_BM_ts_df.reindex(time,fill_value=0).values
+    # Cplex sometimes returns missing values :O
+    P_HPP_ts = P_HPP_ts_df.reindex(time, fill_value=0).values
+    P_HPP_BM_ts = P_HPP_BM_ts_df.reindex(time, fill_value=0).values
+    P_curtailment_ts = P_curtailment_ts_df.reindex(time, fill_value=0).values
+    P_curtailment_BM_ts = P_curtailment_BM_ts_df.reindex(time, fill_value=0).values
+    price_penalty_BM_ts = price_penalty_BM_ts_df.reindex(time, fill_value=0).values
 
-    P_charge_BM_ts = P_charge_BM_ts_df.reindex(time,fill_value=0).values
-    P_discharge_BM_ts = P_discharge_BM_ts_df.reindex(time,fill_value=0).values
-    P_charge_SM_ts = P_charge_SM_ts_df.reindex(time,fill_value=0).values
-    P_discharge_SM_ts = P_discharge_SM_ts_df.reindex(time,fill_value=0).values
-    
-    E_SOC_ts = E_SOC_ts_df.reindex(SOCtime,fill_value=0).values
-    E_SOC_BM_ts = E_SOC_BM_ts_df.reindex(SOCtime,fill_value=0).values
+    P_charge_BM_ts = P_charge_BM_ts_df.reindex(time, fill_value=0).values
+    P_discharge_BM_ts = P_discharge_BM_ts_df.reindex(time, fill_value=0).values
+    P_charge_SM_ts = P_charge_SM_ts_df.reindex(time, fill_value=0).values
+    P_discharge_SM_ts = P_discharge_SM_ts_df.reindex(time, fill_value=0).values
+
+    E_SOC_ts = E_SOC_ts_df.reindex(SOCtime, fill_value=0).values
+    E_SOC_BM_ts = E_SOC_BM_ts_df.reindex(SOCtime, fill_value=0).values
     # z_ts = z_ts_df.reindex(time,fill_value=0).values
-    
-    P_up_reg_ts = P_up_reg_ts_df.reindex(time,fill_value=0).values
-    P_dwn_reg_ts = P_dwn_reg_ts_df.reindex(time,fill_value=0).values
-    
+
+    P_up_reg_ts = P_up_reg_ts_df.reindex(time, fill_value=0).values
+    P_dwn_reg_ts = P_dwn_reg_ts_df.reindex(time, fill_value=0).values
+
     P_charge_discharge_ts = P_discharge_SM_ts - P_charge_SM_ts
     P_charge_discharge_BM_ts = P_discharge_BM_ts - P_charge_BM_ts
-    
-    #make a time series like P_HPP with a constant penalty 
+
+    # make a time series like P_HPP with a constant penalty
     # penalty_2 = sol.get_value(penalty)
     # penalty_ts = np.ones(N_t) * (penalty_2/N_t)
     penalty_ts = np.zeros(N_t)
     # print(mdl.solve_details.mip_relative_gap)
     mdl.end()
-    
-    return P_HPP_ts, P_HPP_BM_ts, P_curtailment_ts, P_curtailment_BM_ts, P_charge_discharge_ts, P_charge_discharge_BM_ts, P_up_reg_ts, P_dwn_reg_ts, P_up_reg_max_t, P_dwn_reg_max_t, price_penalty_BM_ts, E_SOC_ts, E_SOC_BM_ts, penalty_ts
+
+    return (
+        P_HPP_ts,
+        P_HPP_BM_ts,
+        P_curtailment_ts,
+        P_curtailment_BM_ts,
+        P_charge_discharge_ts,
+        P_charge_discharge_BM_ts,
+        P_up_reg_ts,
+        P_dwn_reg_ts,
+        P_up_reg_max_t,
+        P_dwn_reg_max_t,
+        price_penalty_BM_ts,
+        E_SOC_ts,
+        E_SOC_BM_ts,
+        penalty_ts,
+    )
 
 
 def ems_Wind_Solar_Battery_Pyomo_parts(
@@ -1165,9 +1926,9 @@ def ems_Wind_Solar_Battery_Pyomo_parts(
     hpp_grid_connection,
     battery_depth_of_discharge,
     charge_efficiency,
-    peak_hr_quantile = 0.9,
-    cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
-    n_full_power_hours_expected_per_day_at_peak_price = 3,
+    peak_hr_quantile=0.9,
+    cost_of_battery_P_fluct_in_peak_price_ratio=0.5,  # [0, 0.8]. For higher values might cause errors
+    n_full_power_hours_expected_per_day_at_peak_price=3,
 ):
     """EMS solver implemented in Pyomo (Parts)
 
@@ -1189,33 +1950,35 @@ def ems_Wind_Solar_Battery_Pyomo_parts(
     -------
     P_HPP_ts: HPP power time series
     P_curtailment_ts: HPP curtailed power time series
-    P_charge_discharge_ts: Battery charge/discharge power time series 
-    E_SOC_ts: Battery energy SOC time series 
+    P_charge_discharge_ts: Battery charge/discharge power time series
+    E_SOC_ts: Battery energy SOC time series
     penalty_ts: penalty time series for not reaching expected energy production at peak hours
     """
-    
+
     import pyomo.environ as pyo
 
     # extract parameters into the variable space
-    #globals().update(self.__dict__)
-
-    # Penalties 
-    N_t = len(price_ts.index) 
-    N_days = N_t/24
-    e_peak_day_expected = n_full_power_hours_expected_per_day_at_peak_price*hpp_grid_connection 
-    e_peak_period_expected = e_peak_day_expected*N_days
+    # globals().update(self.__dict__)
+    # Penalties
+    N_t = len(price_ts.index)
+    N_days = N_t / 24
+    e_peak_day_expected = (
+        n_full_power_hours_expected_per_day_at_peak_price * hpp_grid_connection
+    )
+    e_peak_period_expected = e_peak_day_expected * N_days
     price_peak = np.quantile(price_ts.values, peak_hr_quantile)
-    peak_hours_index = np.where(price_ts>=price_peak)[0]
+    peak_hours_index = np.where(price_ts >= price_peak)[0]
 
     price_ts_to_max = price_peak - price_ts
-    price_ts_to_max.loc[price_ts_to_max<0] = 0
-    price_ts_to_max.iloc[:-1] = 0.5*price_ts_to_max.iloc[:-1].values + 0.5*price_ts_to_max.iloc[1:].values
+    price_ts_to_max.loc[price_ts_to_max < 0] = 0
+    price_ts_to_max.iloc[:-1] = (
+        0.5 * price_ts_to_max.iloc[:-1].values + 0.5 * price_ts_to_max.iloc[1:].values
+    )
 
     time = price_ts.index
 
     # time set with an additional time slot for the last soc
-    SOCtime = time.append(pd.Index([time[-1] + pd.Timedelta('1hour')]))
-
+    SOCtime = time.append(pd.Index([time[-1] + pd.Timedelta("1hour")]))
 
     model = pyo.ConcreteModel()
 
@@ -1224,20 +1987,23 @@ def ems_Wind_Solar_Battery_Pyomo_parts(
     model.IDX2 = range(1)
     model.IDX3 = [t for t in range(len(time)) if t in peak_hours_index]
     model.IDX4 = range(len(SOCtime))
-    model.IDX5 = range(len(time)-1)
+    model.IDX5 = range(len(time) - 1)
 
-    model.P_HPP_t = pyo.Var(model.IDX1, domain=pyo.NonNegativeReals, bounds=(0,hpp_grid_connection))
+    model.P_HPP_t = pyo.Var(
+        model.IDX1, domain=pyo.NonNegativeReals, bounds=(0, hpp_grid_connection)
+    )
     model.P_curtailment_t = pyo.Var(model.IDX1, domain=pyo.NonNegativeReals)
 
     # Power charge/discharge from battery with Lower/Upper bounds
     model.P_charge_discharge_t = pyo.Var(
-        model.IDX1, 
-        domain=pyo.Reals, 
-        bounds=(-2*P_batt_MW, 2*P_batt_MW) # excess bounds
+        model.IDX1,
+        domain=pyo.Reals,
+        bounds=(-2 * P_batt_MW, 2 * P_batt_MW),  # excess bounds
     )
     # Battery energy level
-    model.E_SOC_t = pyo.Var(model.IDX4, domain=pyo.NonNegativeReals, bounds=(0,1e12)) #bounds=(0,E_batt_MWh))
-
+    model.E_SOC_t = pyo.Var(
+        model.IDX4, domain=pyo.NonNegativeReals, bounds=(0, 1e12)
+    )  # bounds=(0,E_batt_MWh))
 
     ## Constraints ##
     model.curtailment_constraint = pyo.ConstraintList()
@@ -1249,145 +2015,153 @@ def ems_Wind_Solar_Battery_Pyomo_parts(
     model.penalty_constraint = pyo.ConstraintList()
 
     model.SOC_initial_condition = pyo.Constraint(
-        expr = model.E_SOC_t[0] == 0.5 * E_batt_MWh_t[0])
+        expr=model.E_SOC_t[0] == 0.5 * E_batt_MWh_t[0]
+    )
 
     # SOC at the end of the year has to be equal to SOC at the beginning of the year
     model.SOC_final = pyo.Constraint(
-        expr = model.E_SOC_t[len(time) - 1] == 0.5 * E_batt_MWh_t[len(time) - 1])
+        expr=model.E_SOC_t[len(time) - 1] == 0.5 * E_batt_MWh_t[len(time) - 1]
+    )
 
     # x-values of the piece-wise function
     f_piecewise_x_vals = [-P_batt_MW, 0, P_batt_MW]
     # y-values of the piece-wise function
-    f_piecewise_y_vals =  [-P_batt_MW/charge_efficiency, 0, P_batt_MW*charge_efficiency]
+    f_piecewise_y_vals = [
+        -P_batt_MW / charge_efficiency,
+        0,
+        P_batt_MW * charge_efficiency,
+    ]
 
     model.P_charge_discharge_with_eff_t = pyo.Var(
-        model.IDX1, 
-        domain=pyo.Reals, 
-        bounds=(-P_batt_MW/charge_efficiency, P_batt_MW*charge_efficiency)
+        model.IDX1,
+        domain=pyo.Reals,
+        bounds=(-P_batt_MW / charge_efficiency, P_batt_MW * charge_efficiency),
     )
     model.battery_eff_constraint = pyo.Piecewise(
-            model.IDX1,
-            model.P_charge_discharge_with_eff_t, 
-            model.P_charge_discharge_t, 
-            pw_pts=f_piecewise_x_vals, 
-            f_rule=f_piecewise_y_vals, 
-            pw_constr_type='EQ', 
-            #pw_repn='SOS2',
-            #pw_repn='CC',
-            #pw_repn='DCC',   
-            pw_repn='DLOG',
-            force_pw=False,
-            warn_domain_coverage=False,
-            unbounded_domain_var=True
-            )
-
+        model.IDX1,
+        model.P_charge_discharge_with_eff_t,
+        model.P_charge_discharge_t,
+        pw_pts=f_piecewise_x_vals,
+        f_rule=f_piecewise_y_vals,
+        pw_constr_type="EQ",
+        # pw_repn='SOS2',
+        # pw_repn='CC',
+        # pw_repn='DCC',
+        pw_repn="DLOG",
+        force_pw=False,
+        warn_domain_coverage=False,
+        unbounded_domain_var=True,
+    )
 
     model.penalty = pyo.Var(model.IDX2, domain=pyo.Reals, bounds=(-1e12, 1e12))
     model.e_penalty = pyo.Var(model.IDX2, domain=pyo.Reals, bounds=(-1e12, 1e12))
 
-
     model.penalty_constraint.add(
-       model.e_penalty[0] == ( e_peak_period_expected - sum(
-           model.P_HPP_t[t] for t in model.IDX3) ) 
-       )
+        model.e_penalty[0]
+        == (e_peak_period_expected - sum(model.P_HPP_t[t] for t in model.IDX3))
+    )
 
     model.penalty_constraint_pw = pyo.Piecewise(
-            model.IDX2,
-            model.penalty, 
-            model.e_penalty, 
-            pw_pts=[-1e12,0,1e12], 
-            f_rule=[0,0,price_peak*1e12], 
-            pw_constr_type='EQ', 
-            #pw_repn='SOS2',
-            #pw_repn='CC',
-            #pw_repn='DCC',   
-            pw_repn='DLOG',
-            force_pw=False,
-            warn_domain_coverage=False,
-            #unbounded_domain_var=True
-            )
-
+        model.IDX2,
+        model.penalty,
+        model.e_penalty,
+        pw_pts=[-1e12, 0, 1e12],
+        f_rule=[0, 0, price_peak * 1e12],
+        pw_constr_type="EQ",
+        # pw_repn='SOS2',
+        # pw_repn='CC',
+        # pw_repn='DCC',
+        pw_repn="DLOG",
+        force_pw=False,
+        warn_domain_coverage=False,
+        # unbounded_domain_var=True
+    )
 
     # Delta_t of 1 hour
     dt = 1
 
-    for t in range(0,len(time)):
+    for t in range(0, len(time)):
 
         # Constraining battery energy level to maximum battery level
-        model.battery_energy_constraint.add(
-            model.E_SOC_t[t] <= E_batt_MWh_t[t])
+        model.battery_energy_constraint.add(model.E_SOC_t[t] <= E_batt_MWh_t[t])
         # Constraining battery energy level to minimum battery level
         model.battery_energy_min_constraint.add(
-            model.E_SOC_t[t] >= \
-                (1 - battery_depth_of_discharge) * E_batt_MWh_t[t])
+            model.E_SOC_t[t] >= (1 - battery_depth_of_discharge) * E_batt_MWh_t[t]
+        )
         # print(battery_depth_of_discharge)
 
-        #Power constraint
+        # Power constraint
         model.power_constraint.add(
-           model.P_HPP_t[t] == wind_ts[t] +\
-               solar_ts[t]  -\
-               model.P_curtailment_t[t] + model.P_charge_discharge_with_eff_t[t])
-        
+            model.P_HPP_t[t]
+            == wind_ts[t]
+            + solar_ts[t]
+            - model.P_curtailment_t[t]
+            + model.P_charge_discharge_with_eff_t[t]
+        )
+
     # Battery dynamics with efficiency charge =! discharge
-    for t in range(1,len(time)):
+    for t in range(1, len(time)):
 
         model.battery_dynamics_constraint.add(
-            model.E_SOC_t[t] == model.E_SOC_t[t-1] -\
-                model.P_charge_discharge_with_eff_t[t] * dt)
+            model.E_SOC_t[t]
+            == model.E_SOC_t[t - 1] - model.P_charge_discharge_with_eff_t[t] * dt
+        )
 
     # Battery delta for battery operation constraints
-    model.P_battery_delta = pyo.Var(
-        model.IDX5, 
-        domain=pyo.Reals, 
-        bounds=(-1e12, 1e12)
-    )
+    model.P_battery_delta = pyo.Var(model.IDX5, domain=pyo.Reals, bounds=(-1e12, 1e12))
 
     model.P_battery_delta_abs_pw = pyo.Var(
-        model.IDX5, 
-        domain=pyo.Reals, 
-        bounds=(0, 1e12)
+        model.IDX5, domain=pyo.Reals, bounds=(0, 1e12)
     )
-    
+
     for t in model.IDX5:
         model.power_constraint.add(
-               model.P_battery_delta[t] == model.P_charge_discharge_with_eff_t[t+1] - \
-                                           model.P_charge_discharge_with_eff_t[t] )
+            model.P_battery_delta[t]
+            == model.P_charge_discharge_with_eff_t[t + 1]
+            - model.P_charge_discharge_with_eff_t[t]
+        )
 
     model.P_battery_delta_abs_pw_constr = pyo.Piecewise(
         model.IDX5,
-        model.P_battery_delta_abs_pw, 
-        model.P_battery_delta, 
-        pw_pts=[-1e12,0,1e12], 
-        f_rule=[1e12,0,1e12], 
-        pw_constr_type='EQ', 
-        #pw_repn='SOS2',
-        #pw_repn='CC',
-        #pw_repn='DCC',   
-        pw_repn='DLOG',
+        model.P_battery_delta_abs_pw,
+        model.P_battery_delta,
+        pw_pts=[-1e12, 0, 1e12],
+        f_rule=[1e12, 0, 1e12],
+        pw_constr_type="EQ",
+        # pw_repn='SOS2',
+        # pw_repn='CC',
+        # pw_repn='DCC',
+        pw_repn="DLOG",
         force_pw=False,
         warn_domain_coverage=False,
-        #unbounded_domain_var=True
-        )
+        # unbounded_domain_var=True
+    )
 
     # Objective Function ##
-    model.OBJ = pyo.Objective( expr = 
+    model.OBJ = pyo.Objective(
+        expr=
         # revenues and OPEX
-        sum(price_ts[t] * model.P_HPP_t[t] for t in model.IDX1) - model.penalty[0]+\
-        - sum(model.P_battery_delta_abs_pw[t]*cost_of_battery_P_fluct_in_peak_price_ratio*price_ts_to_max[t]
-          for t in model.IDX5),
-        sense=pyo.maximize 
-        )
+        sum(price_ts[t] * model.P_HPP_t[t] for t in model.IDX1)
+        - model.penalty[0]
+        + -sum(
+            model.P_battery_delta_abs_pw[t]
+            * cost_of_battery_P_fluct_in_peak_price_ratio
+            * price_ts_to_max[t]
+            for t in model.IDX5
+        ),
+        sense=pyo.maximize,
+    )
 
-    opt = pyo.SolverFactory('glpk')
-    #opt.options['tmlim'] = 60
+    opt = pyo.SolverFactory("glpk")
+    # opt.options['tmlim'] = 60
     results = opt.solve(model, tee=True)
     results.write()
-    #print('model.penalty[0]()',model.penalty[0]() )
-    #print('\n\n')
+    # print('model.penalty[0]()',model.penalty[0]() )
+    # print('\n\n')
 
     ## Return calculated results ##
     P_curtailment_ts = []
-    P_HPP_ts = []    
+    P_HPP_ts = []
     P_charge_discharge_ts = []
     E_SOC_ts = []
 
@@ -1396,14 +2170,20 @@ def ems_Wind_Solar_Battery_Pyomo_parts(
         P_HPP_ts.append(model.P_HPP_t[count]())
         P_charge_discharge_ts.append(model.P_charge_discharge_with_eff_t[count]())
         E_SOC_ts.append(model.E_SOC_t[count]())
-    
+
     if model.penalty[0]() == None:
-        penalty_ts = np.zeros(N_t) 
+        penalty_ts = np.zeros(N_t)
     else:
-        penalty_ts = np.ones(N_t) * (model.penalty[0]()/N_t)
+        penalty_ts = np.ones(N_t) * (model.penalty[0]() / N_t)
 
+    return (
+        np.array(P_HPP_ts),
+        np.array(P_curtailment_ts),
+        np.array(P_charge_discharge_ts),
+        np.array(E_SOC_ts),
+        np.array(penalty_ts),
+    )
 
-    return np.array(P_HPP_ts), np.array(P_curtailment_ts), np.array(P_charge_discharge_ts), np.array(E_SOC_ts), np.array(penalty_ts)
 
 def split_in_batch(array, N):
     batch = []
@@ -1413,9 +2193,10 @@ def split_in_batch(array, N):
             end = len(array)
         else:
             end = (counter + 1) * N
-        batch += [array[counter * N:end]]
+        batch += [array[counter * N : end]]
         counter += 1
     return batch
+
 
 def ems_Wind_Solar_Battery_Pyomo(
     wind_ts,
@@ -1426,12 +2207,11 @@ def ems_Wind_Solar_Battery_Pyomo(
     hpp_grid_connection,
     battery_depth_of_discharge,
     charge_efficiency,
-    peak_hr_quantile = 0.9,
-    cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
-    n_full_power_hours_expected_per_day_at_peak_price = 3,
-    batch_size = 7*24,
+    peak_hr_quantile=0.9,
+    cost_of_battery_P_fluct_in_peak_price_ratio=0.5,  # [0, 0.8]. For higher values might cause errors
+    n_full_power_hours_expected_per_day_at_peak_price=3,
+    batch_size=7 * 24,
 ):
-
     """EMS solver implemented in Pyomo
 
     Parameters
@@ -1452,91 +2232,69 @@ def ems_Wind_Solar_Battery_Pyomo(
     -------
     P_HPP_ts: HPP power time series
     P_curtailment_ts: HPP curtailed power time series
-    P_charge_discharge_ts: Battery charge/discharge power time series 
-    E_SOC_ts: Battery energy SOC time series 
+    P_charge_discharge_ts: Battery charge/discharge power time series
+    E_SOC_ts: Battery energy SOC time series
     penalty_ts: penalty time series for not reaching expected energy production at peak hours
     """
-    
+
     # split in batches, ussually a week
     batches_all = split_in_batch(list(range(len(wind_ts))), batch_size)
     # Make sure the last batch is not smaller than the others
     # instead append it to the previous last one
     batches = batches_all[:-1]
-    batches[-1] = batches_all[-2]+batches_all[-1]
-    
+    batches[-1] = batches_all[-2] + batches_all[-1]
+
     # allocate vars
-    P_HPP_ts = np.array([]) 
+    P_HPP_ts = np.array([])
     P_curtailment_ts = np.array([])
-    P_charge_discharge_ts = np.array([]) 
+    P_charge_discharge_ts = np.array([])
     E_SOC_ts = np.array([])
     penalty_ts = np.array([])
-    
-    #print('\n\nEMS solved with pyomo\n')
+
+    # print('\n\nEMS solved with pyomo\n')
     for ib, batch in enumerate(batches):
         wind_ts_sel = wind_ts.iloc[batch]
         solar_ts_sel = solar_ts.iloc[batch]
         price_ts_sel = price_ts.iloc[batch]
         E_batt_MWh_t_sel = E_batt_MWh_t.iloc[batch]
-        
-        #print(f'batch {ib+1} out of {len(batches)}')
-        P_HPP_ts_batch, P_curtailment_ts_batch, P_charge_discharge_ts_batch,\
-        E_SOC_ts_batch, penalty_batch = ems_Wind_Solar_Battery_Pyomo_parts(
-            wind_ts = wind_ts_sel,
-            solar_ts = solar_ts_sel,
-            price_ts = price_ts_sel,
-            P_batt_MW = P_batt_MW,
-            E_batt_MWh_t = E_batt_MWh_t_sel,
-            hpp_grid_connection = hpp_grid_connection,
-            battery_depth_of_discharge = battery_depth_of_discharge,
-            charge_efficiency = charge_efficiency,
-            peak_hr_quantile = peak_hr_quantile,
-            cost_of_battery_P_fluct_in_peak_price_ratio = cost_of_battery_P_fluct_in_peak_price_ratio,
-            n_full_power_hours_expected_per_day_at_peak_price = n_full_power_hours_expected_per_day_at_peak_price,
+
+        # print(f'batch {ib+1} out of {len(batches)}')
+        (
+            P_HPP_ts_batch,
+            P_curtailment_ts_batch,
+            P_charge_discharge_ts_batch,
+            E_SOC_ts_batch,
+            penalty_batch,
+        ) = ems_Wind_Solar_Battery_Pyomo_parts(
+            wind_ts=wind_ts_sel,
+            solar_ts=solar_ts_sel,
+            price_ts=price_ts_sel,
+            P_batt_MW=P_batt_MW,
+            E_batt_MWh_t=E_batt_MWh_t_sel,
+            hpp_grid_connection=hpp_grid_connection,
+            battery_depth_of_discharge=battery_depth_of_discharge,
+            charge_efficiency=charge_efficiency,
+            peak_hr_quantile=peak_hr_quantile,
+            cost_of_battery_P_fluct_in_peak_price_ratio=cost_of_battery_P_fluct_in_peak_price_ratio,
+            n_full_power_hours_expected_per_day_at_peak_price=n_full_power_hours_expected_per_day_at_peak_price,
         )
-        
+
         P_HPP_ts = np.append(P_HPP_ts, P_HPP_ts_batch)
-        P_curtailment_ts = np.append(
-            P_curtailment_ts, P_curtailment_ts_batch)
+        P_curtailment_ts = np.append(P_curtailment_ts, P_curtailment_ts_batch)
         P_charge_discharge_ts = np.append(
-            P_charge_discharge_ts,P_charge_discharge_ts_batch)
+            P_charge_discharge_ts, P_charge_discharge_ts_batch
+        )
         E_SOC_ts = np.append(E_SOC_ts, E_SOC_ts_batch)
         penalty_ts = np.append(penalty_ts, penalty_batch)
-        
+
     E_SOC_ts = np.append(E_SOC_ts, E_SOC_ts[0])
-    
+
     return P_HPP_ts, P_curtailment_ts, P_charge_discharge_ts, E_SOC_ts, penalty_ts
+
+
 def ems_operation_no_degradation(
     wind_t_deg,
-    #solar_t_deg,
-    batt_degradation,
-    hpp_curt_t,
-    b_t,
-    b_E_SOC_t,
-    b_P,
-    b_E,
-    battery_depth_of_discharge,
-    battery_charge_efficiency,
-    P_up_reg_t,
-    P_dwn_reg_t,
-    P_up_max_t,
-    P_dwn_max_t,
-    price_up_t,
-    price_dwn_t,
-    hpp_t,
-    penalty_BM, 
-):
-    Hpp_deg = hpp_t
-    P_curt_deg = hpp_curt_t
-    b_t_deg = b_t
-    b_E_SOC_t_deg = pd.concat([b_E_SOC_t, pd.Series(b_E_SOC_t.iloc[-1] - b_t.iloc[-1], index=[b_E_SOC_t.index[-1] + pd.Timedelta(hours=1)])])
-    Hpp_up_deg = P_up_reg_t
-    Hpp_dwn_deg = P_dwn_reg_t
-    penalty_deg= pd.DataFrame(np.zeros_like(hpp_t.values), index=hpp_t.index)
-    return Hpp_deg, P_curt_deg, b_t_deg, b_E_SOC_t_deg, Hpp_up_deg, Hpp_dwn_deg, penalty_deg
-
-def ems_operation_wind_batt_deg(
-    wind_t_deg,
-    #solar_t_deg,
+    # solar_t_deg,
     batt_degradation,
     hpp_curt_t,
     b_t,
@@ -1553,31 +2311,76 @@ def ems_operation_wind_batt_deg(
     price_dwn_t,
     hpp_t,
     penalty_BM,
-    batch_size = 365*24,
 ):
-    
+    Hpp_deg = hpp_t
+    P_curt_deg = hpp_curt_t
+    b_t_deg = b_t
+    b_E_SOC_t_deg = pd.concat(
+        [
+            b_E_SOC_t,
+            pd.Series(
+                b_E_SOC_t.iloc[-1] - b_t.iloc[-1],
+                index=[b_E_SOC_t.index[-1] + pd.Timedelta(hours=1)],
+            ),
+        ]
+    )
+    Hpp_up_deg = P_up_reg_t
+    Hpp_dwn_deg = P_dwn_reg_t
+    penalty_deg = pd.DataFrame(np.zeros_like(hpp_t.values), index=hpp_t.index)
+    return (
+        Hpp_deg,
+        P_curt_deg,
+        b_t_deg,
+        b_E_SOC_t_deg,
+        Hpp_up_deg,
+        Hpp_dwn_deg,
+        penalty_deg,
+    )
+
+
+def ems_operation_wind_batt_deg(
+    wind_t_deg,
+    # solar_t_deg,
+    batt_degradation,
+    hpp_curt_t,
+    b_t,
+    b_E_SOC_t,
+    b_P,
+    b_E,
+    battery_depth_of_discharge,
+    battery_charge_efficiency,
+    P_up_reg_t,
+    P_dwn_reg_t,
+    P_up_max_t,
+    P_dwn_max_t,
+    price_up_t,
+    price_dwn_t,
+    hpp_t,
+    penalty_BM,
+    batch_size=365 * 24,
+):
 
     # split in batches, ussually a week
     batches_all = split_in_batch(list(range(len(wind_t_deg))), batch_size)
     # Make sure the last batch is not smaller than the others
     # instead append it to the previous last one
     batches = batches_all[:-1]
-    batches[-1] = batches_all[-2]+batches_all[-1]
-    
+    batches[-1] = batches_all[-2] + batches_all[-1]
+
     # allocate vars
     Hpp_deg = np.zeros(len(wind_t_deg))
     P_curt_deg = np.zeros(len(wind_t_deg))
     b_t_deg = np.zeros(len(wind_t_deg))
-    b_E_SOC_t_deg = np.zeros(len(wind_t_deg)+1)
+    b_E_SOC_t_deg = np.zeros(len(wind_t_deg) + 1)
     penalty_deg = np.zeros(len(wind_t_deg))
     Hpp_up_deg = np.zeros(len(wind_t_deg))
     Hpp_dwn_deg = np.zeros(len(wind_t_deg))
-    
+
     b_E_SOC_0 = b_E_SOC_t.iloc[0]
     for ib, batch in enumerate(batches):
         wind_ts_sel = wind_t_deg.iloc[batch]
         # solar_ts_sel = solar_ts.iloc[batch]
-        #price_ts_sel = price_ts.iloc[batch]
+        # price_ts_sel = price_ts.iloc[batch]
         b_E_sel = b_E.iloc[batch]
         batt_degradation_sel = batt_degradation.iloc[batch]
         hpp_curt_t_sel = hpp_curt_t.iloc[batch]
@@ -1590,32 +2393,40 @@ def ems_operation_wind_batt_deg(
         price_up_t_sel = price_up_t.iloc[batch]
         price_dwn_t_sel = price_dwn_t.iloc[batch]
         hpp_t_sel = hpp_t.iloc[batch]
-        
-        #print(f'batch {ib+1} out of {len(batches)}')
-        start=time.time()
-        Hpp_deg_batch, P_curt_deg_batch, b_t_deg_batch, b_E_SOC_t_deg_batch, Hpp_up_deg_batch, Hpp_dwn_deg_batch, penalty_deg_batch = operation_wind_batt_deg_parts(
-            wind_t_deg = wind_ts_sel,
+
+        # print(f'batch {ib+1} out of {len(batches)}')
+        start = time.time()
+        (
+            Hpp_deg_batch,
+            P_curt_deg_batch,
+            b_t_deg_batch,
+            b_E_SOC_t_deg_batch,
+            Hpp_up_deg_batch,
+            Hpp_dwn_deg_batch,
+            penalty_deg_batch,
+        ) = operation_wind_batt_deg_parts(
+            wind_t_deg=wind_ts_sel,
             # solar_t_deg,
-            batt_degradation = batt_degradation_sel,
-            hpp_curt_t = hpp_curt_t_sel,
-            b_t = b_t_sel,
-            b_E_SOC_t = b_E_SOC_t_sel,
-            b_P = b_P,
-            b_E = b_E_sel,
-            battery_depth_of_discharge = battery_depth_of_discharge,
-            battery_charge_efficiency = battery_charge_efficiency,
-            P_up_reg_t = P_up_reg_t_sel,
-            P_dwn_reg_t = P_dwn_reg_t_sel,
-            P_up_max_t = P_up_max_t_sel,
-            P_dwn_max_t = P_dwn_max_t_sel,
-            price_up_t = price_up_t_sel,
-            price_dwn_t = price_dwn_t_sel,
-            hpp_t = hpp_t_sel,
-            penalty_BM = penalty_BM,
-            b_E_SOC_0 = b_E_SOC_0,
+            batt_degradation=batt_degradation_sel,
+            hpp_curt_t=hpp_curt_t_sel,
+            b_t=b_t_sel,
+            b_E_SOC_t=b_E_SOC_t_sel,
+            b_P=b_P,
+            b_E=b_E_sel,
+            battery_depth_of_discharge=battery_depth_of_discharge,
+            battery_charge_efficiency=battery_charge_efficiency,
+            P_up_reg_t=P_up_reg_t_sel,
+            P_dwn_reg_t=P_dwn_reg_t_sel,
+            P_up_max_t=P_up_max_t_sel,
+            P_dwn_max_t=P_dwn_max_t_sel,
+            price_up_t=price_up_t_sel,
+            price_dwn_t=price_dwn_t_sel,
+            hpp_t=hpp_t_sel,
+            penalty_BM=penalty_BM,
+            b_E_SOC_0=b_E_SOC_0,
         )
-        end=time.time()
-        print("Time of batch: ", ib, end-start)
+        end = time.time()
+        print("Time of batch: ", ib, end - start)
         Hpp_deg[batch] = Hpp_deg_batch
         P_curt_deg[batch] = P_curt_deg_batch
         b_t_deg[batch] = b_t_deg_batch
@@ -1624,14 +2435,21 @@ def ems_operation_wind_batt_deg(
         Hpp_dwn_deg[batch] = Hpp_dwn_deg_batch
         penalty_deg[batch] = penalty_deg_batch
         b_E_SOC_0 = b_E_SOC_t_deg_batch[-1]
-   
-    
-    return Hpp_deg, P_curt_deg, b_t_deg, b_E_SOC_t_deg, Hpp_up_deg, Hpp_dwn_deg, penalty_deg
+
+    return (
+        Hpp_deg,
+        P_curt_deg,
+        b_t_deg,
+        b_E_SOC_t_deg,
+        Hpp_up_deg,
+        Hpp_dwn_deg,
+        penalty_deg,
+    )
 
 
 def operation_wind_batt_deg_parts(
     wind_t_deg,
-    #solar_t_deg,
+    # solar_t_deg,
     batt_degradation,
     hpp_curt_t,
     b_t,
@@ -1650,7 +2468,6 @@ def operation_wind_batt_deg_parts(
     penalty_BM,
     b_E_SOC_0,
 ):
-
     """EMS operation for degraded Wind and battery based on an existing EMS.
 
     Parameters
@@ -1667,7 +2484,7 @@ def operation_wind_batt_deg_parts(
     b_E_SOC_t: HPP battery state of charge (SoC) time series results form an EMS planed without degradation
     b_E_SOC_0: Initial charge status of the actual operation
     price_ts : price time series
-    G_MW : grid connection    
+    G_MW : grid connection
     E_batt_MWh_t : battery energy capacity time series
     battery_depth_of_discharge : battery depth of discharge
     battery_charge_efficiency : battery charge efficiency
@@ -1677,63 +2494,83 @@ def operation_wind_batt_deg_parts(
 
     Returns
     -------
-    Hpp_deg : HPP power time series 
+    Hpp_deg : HPP power time series
     P_curt_deg : HPP curtailed power time series
     b_t_sat : Battery charge/discharge power time series
-    b_E_SOC_t_sat : Battery energy SOC time series  
-    Hpp_up : Up regulation power time series 
-    Hpp_dwn : Down regulation power time series 
+    b_E_SOC_t_sat : Battery energy SOC time series
+    Hpp_up : Up regulation power time series
+    Hpp_dwn : Down regulation power time series
     penalty_ts : penalty for not reaching expected energy production at peak hours
     """
-     
-    # N_t = len(wind_t_deg.index) 
-    
-    mdl = Model(name='EMS')
+
+    # N_t = len(wind_t_deg.index)
+
+    mdl = Model(name="EMS")
     mdl.context.cplex_parameters.threads = 1
     # CPLEX parameter pg 87 Emphasize feasibility over optimality
-    # mdl.context.cplex_parameters.emphasis.mip = 1 
-    mdl.context.cplex_parameters.emphasis.mip = 1 
-    mdl.context.cplex_parameters.timelimit = 2e+2
+    # mdl.context.cplex_parameters.emphasis.mip = 1
+    mdl.context.cplex_parameters.emphasis.mip = 1
+    mdl.context.cplex_parameters.timelimit = 2e2
     # mdl.context.cplex_parameters.mip.tolerances.mipgap=1e-3
- 
+
     time = wind_t_deg.index
     # time set with an additional time slot for the last soc
-    SOCtime = time.append(pd.Index([time[-1] + pd.Timedelta('1hour')]))
-
+    SOCtime = time.append(pd.Index([time[-1] + pd.Timedelta("1hour")]))
 
     # Variables definition
-    Hpp_deg = mdl.continuous_var_dict(time, lb=0, name='HPP power with degradation')
-    P_curt_deg = mdl.continuous_var_dict(time, lb=0, name='Curtailment with degradation')
-    
-    b_t_deg = mdl.continuous_var_dict(time, lb=-b_P, ub=b_P, name='Battery power with degradation')    
-    b_E_SOC_t_deg = mdl.continuous_var_dict(SOCtime, name='Battery energy level with degradation')
+    Hpp_deg = mdl.continuous_var_dict(time, lb=0, name="HPP power with degradation")
+    P_curt_deg = mdl.continuous_var_dict(
+        time, lb=0, name="Curtailment with degradation"
+    )
 
-    Hpp_up_deg = mdl.continuous_var_dict(time, lb=0, name='Up regulation power with degradation')
-    Hpp_dwn_deg = mdl.continuous_var_dict(time, lb=0, name='Down regulation power with degradation')    
+    b_t_deg = mdl.continuous_var_dict(
+        time, lb=-b_P, ub=b_P, name="Battery power with degradation"
+    )
+    b_E_SOC_t_deg = mdl.continuous_var_dict(
+        SOCtime, name="Battery energy level with degradation"
+    )
+
+    Hpp_up_deg = mdl.continuous_var_dict(
+        time, lb=0, name="Up regulation power with degradation"
+    )
+    Hpp_dwn_deg = mdl.continuous_var_dict(
+        time, lb=0, name="Down regulation power with degradation"
+    )
     # penalty_deg = mdl.continuous_var(time, lb=0, name='penalty with degradation')
-    
+
     # # Piecewise function for "absolute value" function, using for penalty on battery operation in objective function
-    fabs = mdl.piecewise(-1, [(0,0)], 1)
-    # pircewise linear representation of charge vs dischrage effciency 
-    f_batt = mdl.piecewise(battery_charge_efficiency,[(0,0)],1/battery_charge_efficiency)
+    fabs = mdl.piecewise(-1, [(0, 0)], 1)
+    # pircewise linear representation of charge vs dischrage effciency
+    f_batt = mdl.piecewise(
+        battery_charge_efficiency, [(0, 0)], 1 / battery_charge_efficiency
+    )
 
     mdl.minimize(
-    # deviations from ideal EMS schedule
-    # mdl.sum(penalty_BM *(hpp_t[t]-Hpp_deg[t]) for t in time) + mdl.sum(100*(P_up_reg_t[t]-Hpp_up_deg[t]) for t in time) + mdl.sum(100*(P_dwn_reg_t[t]-Hpp_dwn_deg[t]) for t in time) + mdl.sum(0.5*fabs(b_t[t]-b_t_deg[t]) for t in time))  
-    mdl.sum(penalty_BM *(hpp_t[t]-Hpp_deg[t]) for t in time) + mdl.sum(price_up_t[t]*(P_up_reg_t[t]-Hpp_up_deg[t]) for t in time) + mdl.sum(price_dwn_t[t]*(P_dwn_reg_t[t]-Hpp_dwn_deg[t]) for t in time) \
-             -  mdl.sum((hpp_curt_t[t]-P_curt_deg[t]) for t in time)\
-                  + mdl.sum(fabs(b_t[t]-b_t_deg[t]) for t in time)
-            ) 
-    
+        # deviations from ideal EMS schedule
+        # mdl.sum(penalty_BM *(hpp_t[t]-Hpp_deg[t]) for t in time) + mdl.sum(100*(P_up_reg_t[t]-Hpp_up_deg[t]) for t in time) + mdl.sum(100*(P_dwn_reg_t[t]-Hpp_dwn_deg[t]) for t in time) + mdl.sum(0.5*fabs(b_t[t]-b_t_deg[t]) for t in time))
+        mdl.sum(penalty_BM * (hpp_t[t] - Hpp_deg[t]) for t in time)
+        + mdl.sum(price_up_t[t] * (P_up_reg_t[t] - Hpp_up_deg[t]) for t in time)
+        + mdl.sum(price_dwn_t[t] * (P_dwn_reg_t[t] - Hpp_dwn_deg[t]) for t in time)
+        - mdl.sum((hpp_curt_t[t] - P_curt_deg[t]) for t in time)
+        + mdl.sum(fabs(b_t[t] - b_t_deg[t]) for t in time)
+    )
+
     # Intitial SOC is kept same as in the ideal EMS operation without degradation
-    mdl.add_constraint( b_E_SOC_t_deg[SOCtime[0]] == b_E_SOC_0)
-      
+    mdl.add_constraint(b_E_SOC_t_deg[SOCtime[0]] == b_E_SOC_0)
+
     for t in time:
         # Time index for successive time step
-        tt = t + pd.Timedelta('1hour')
+        tt = t + pd.Timedelta("1hour")
         # Delta_t of 1 hour
         dt = 1
-        mdl.add_constraint(Hpp_deg[t] == wind_t_deg[t] + b_t_deg[t] - P_curt_deg[t] - Hpp_up_deg[t] + Hpp_dwn_deg[t])
+        mdl.add_constraint(
+            Hpp_deg[t]
+            == wind_t_deg[t]
+            + b_t_deg[t]
+            - P_curt_deg[t]
+            - Hpp_up_deg[t]
+            + Hpp_dwn_deg[t]
+        )
         # mdl.add_constraint(P_curt_deg[t] <= hpp_curt_t[t])
         mdl.add_constraint(Hpp_deg[t] <= hpp_t[t])
         # mdl.add_constraint(penalty_deg[t] == penalty_BM *(hpp_t[t]-Hpp_deg[t]))
@@ -1743,31 +2580,39 @@ def operation_wind_batt_deg_parts(
         else:
             mdl.add_constraint(Hpp_up_deg[t] <= P_up_reg_t[t])
             mdl.add_constraint(Hpp_dwn_deg[t] == 0)
-        
+
         # if P_dwn_max_t [t] == 0:
         #     mdl.add_constraint(Hpp_dwn_deg[t] == 0)
         # else:
         #     mdl.add_constraint(Hpp_dwn_deg[t] <= P_dwn_max_t[t])
 
         if b_t[t] < 0:
-             mdl.add_constraint(b_t_deg[t] >= -b_P) 
-             mdl.add_constraint(b_t_deg[t] <= 0)
-             mdl.add_constraint(b_E_SOC_t_deg[tt] == b_E_SOC_t_deg[t] - b_t_deg[t] * dt * battery_charge_efficiency)
-             mdl.add_constraint(b_E_SOC_t_deg[tt] <= b_E[t] * batt_degradation[t])
+            mdl.add_constraint(b_t_deg[t] >= -b_P)
+            mdl.add_constraint(b_t_deg[t] <= 0)
+            mdl.add_constraint(
+                b_E_SOC_t_deg[tt]
+                == b_E_SOC_t_deg[t] - b_t_deg[t] * dt * battery_charge_efficiency
+            )
+            mdl.add_constraint(b_E_SOC_t_deg[tt] <= b_E[t] * batt_degradation[t])
         else:
-             mdl.add_constraint(b_t_deg[t] <= b_P)
-             mdl.add_constraint(b_t_deg[t] >= 0)
-             mdl.add_constraint(b_E_SOC_t_deg[tt] == b_E_SOC_t_deg[t] - b_t_deg[t] * dt/battery_charge_efficiency)
-             mdl.add_constraint(b_E_SOC_t_deg[tt] >= (1 - battery_depth_of_discharge) * b_E[t] * batt_degradation[t])
-        
+            mdl.add_constraint(b_t_deg[t] <= b_P)
+            mdl.add_constraint(b_t_deg[t] >= 0)
+            mdl.add_constraint(
+                b_E_SOC_t_deg[tt]
+                == b_E_SOC_t_deg[t] - b_t_deg[t] * dt / battery_charge_efficiency
+            )
+            mdl.add_constraint(
+                b_E_SOC_t_deg[tt]
+                >= (1 - battery_depth_of_discharge) * b_E[t] * batt_degradation[t]
+            )
+
         # mdl.add_constraint(b_E_SOC_t_deg[tt] == b_E_SOC_t_deg[t] - f_batt(b_t_deg[t]) * dt)
         # mdl.add_constraint(b_E_SOC_t_deg[tt] >= (1 - battery_depth_of_discharge) * b_E[t] * batt_degradation[t])
         # mdl.add_constraint(b_E_SOC_t_deg[tt] <= b_E[t] * batt_degradation[t])
 
     # Solving the problem
-    sol = mdl.solve(
-        log_output=False)
-        # log_output=True)
+    sol = mdl.solve(log_output=False)
+    # log_output=True)
     # Print model information
     # print("Model information:")
     # print("Number of variables:", mdl.number_of_variables)
@@ -1775,33 +2620,51 @@ def operation_wind_batt_deg_parts(
     # # print("Objective Value for EMS_LT:", sol.objective_value)
     print("Status for EMS-LT:", sol.solve_status)
 
-    Hpp_deg_df = pd.DataFrame.from_dict(sol.get_value_dict(Hpp_deg), orient='index').loc[:,0]
-    P_curt_deg_df = pd.DataFrame.from_dict(sol.get_value_dict(P_curt_deg), orient='index').loc[:,0]
-    b_t_deg_df = pd.DataFrame.from_dict(sol.get_value_dict(b_t_deg), orient='index').loc[:,0]
-    b_E_SOC_t_deg_df = pd.DataFrame.from_dict(sol.get_value_dict(b_E_SOC_t_deg), orient='index').loc[:,0]
-    Hpp_up_deg_df = pd.DataFrame.from_dict(sol.get_value_dict(Hpp_up_deg), orient='index').loc[:,0]
-    Hpp_dwn_deg_df = pd.DataFrame.from_dict(sol.get_value_dict(Hpp_dwn_deg), orient='index').loc[:,0]
+    Hpp_deg_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(Hpp_deg), orient="index"
+    ).loc[:, 0]
+    P_curt_deg_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(P_curt_deg), orient="index"
+    ).loc[:, 0]
+    b_t_deg_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(b_t_deg), orient="index"
+    ).loc[:, 0]
+    b_E_SOC_t_deg_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(b_E_SOC_t_deg), orient="index"
+    ).loc[:, 0]
+    Hpp_up_deg_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(Hpp_up_deg), orient="index"
+    ).loc[:, 0]
+    Hpp_dwn_deg_df = pd.DataFrame.from_dict(
+        sol.get_value_dict(Hpp_dwn_deg), orient="index"
+    ).loc[:, 0]
     # penalty_deg_df = pd.DataFrame.from_dict(sol.get_value_dict(penalty_deg), orient='index').loc[:,0]
 
-    #Cplex sometimes returns missing values :O
-    Hpp_deg = Hpp_deg_df.reindex(time,fill_value=0).values
-    P_curt_deg = P_curt_deg_df.reindex(time,fill_value=0).values
-    b_t_deg = b_t_deg_df.reindex(time,fill_value=0).values
-    b_E_SOC_t_deg = b_E_SOC_t_deg_df.reindex(SOCtime,fill_value=0).values
-    Hpp_up_deg = Hpp_up_deg_df.reindex(time,fill_value=0).values
-    Hpp_dwn_deg = Hpp_dwn_deg_df.reindex(time,fill_value=0).values
+    # Cplex sometimes returns missing values :O
+    Hpp_deg = Hpp_deg_df.reindex(time, fill_value=0).values
+    P_curt_deg = P_curt_deg_df.reindex(time, fill_value=0).values
+    b_t_deg = b_t_deg_df.reindex(time, fill_value=0).values
+    b_E_SOC_t_deg = b_E_SOC_t_deg_df.reindex(SOCtime, fill_value=0).values
+    Hpp_up_deg = Hpp_up_deg_df.reindex(time, fill_value=0).values
+    Hpp_dwn_deg = Hpp_dwn_deg_df.reindex(time, fill_value=0).values
     # penalty_deg = penalty_deg_df.reindex(time,fill_value=0).values
-    
+
     print("MIP gap: ", mdl.solve_details.mip_relative_gap)
     mdl.end()
 
-
     # penalty for not meeting the scheduled DA power
-    penalty_deg = penalty_BM * (hpp_t-Hpp_deg)
+    penalty_deg = penalty_BM * (hpp_t - Hpp_deg)
     # penalty_deg = np.zeros(N_t)
 
-    return Hpp_deg, P_curt_deg, b_t_deg, b_E_SOC_t_deg, Hpp_up_deg, Hpp_dwn_deg, penalty_deg
-
+    return (
+        Hpp_deg,
+        P_curt_deg,
+        b_t_deg,
+        b_E_SOC_t_deg,
+        Hpp_up_deg,
+        Hpp_dwn_deg,
+        penalty_deg,
+    )
 
 
 def operation_rule_base_no_penalty(
@@ -1817,12 +2680,11 @@ def operation_rule_base_no_penalty(
     b_E,
     battery_depth_of_discharge,
     battery_charge_efficiency,
-    b_E_SOC_0 = None,
-    load_min = 3,
-    load_min_penalty_factor = 1e6,
-    change_BES_charging = 'only_for_less_power',
+    b_E_SOC_0=None,
+    load_min=3,
+    load_min_penalty_factor=1e6,
+    change_BES_charging="only_for_less_power",
 ):
-
     """EMS operation for degraded PV and battery based on an existing EMS.
 
     Parameters
@@ -1832,7 +2694,7 @@ def operation_rule_base_no_penalty(
     batt_degradation: Battery degradation as health factor [0=dead,1=new]
     b_t: HPP battery power (charge/discharge) time series results form an EMS planed without degradation
     b_E_SOC_t: HPP battery state of charge (SoC) time series results form an EMS planed without degradation
-    G_MW : grid connection    
+    G_MW : grid connection
     E_batt_MWh_t : battery energy capacity time series
     battery_depth_of_discharge : battery depth of discharge
     battery_charge_efficiency : battery charge efficiency
@@ -1842,79 +2704,83 @@ def operation_rule_base_no_penalty(
 
     Returns
     -------
-    Hpp_deg : HPP power time series 
+    Hpp_deg : HPP power time series
     P_curt_deg : HPP curtailed power time series
     b_t_sat : Battery charge/discharge power time series
-    b_E_SOC_t_sat : Battery energy SOC time series  
+    b_E_SOC_t_sat : Battery energy SOC time series
     penalty_ts : penalty for not reaching minimum electrical load constraint
     """
 
     B_p = np.max(np.abs(b_t))
-    
+
     wind_solar_t = solar_t + wind_t
     wind_solar_t_deg = solar_t_deg + wind_t_deg
-    
+
     P_deg_t_sat_loss = (solar_t - solar_t_deg) + (wind_t - wind_t_deg)
-    P_loss =  np.maximum( 0 , P_deg_t_sat_loss  - hpp_curt_t)
-    
+    P_loss = np.maximum(0, P_deg_t_sat_loss - hpp_curt_t)
+
     b_t_less_sol = b_t.copy()
     dt = 1
-    
+
     # Reduction in power to battery due to reduction of solar
     for i in range(len(b_t)):
         if b_t[i] < 0:
-            if change_BES_charging == 'proportional':
+            if change_BES_charging == "proportional":
                 if wind_solar_t[i] != 0:
                     # Try to keep the ratio of b_t[i] / wind_solar_t[i]  SoC to the maximum
-                    b_t_less_sol[i] = ( b_t[i] / wind_solar_t[i] ) * ( wind_solar_t_deg[i] )
+                    b_t_less_sol[i] = (b_t[i] / wind_solar_t[i]) * (wind_solar_t_deg[i])
 
-            elif change_BES_charging == 'only_for_less_power':
-                if -b_t[i] > P_loss[i]:    
+            elif change_BES_charging == "only_for_less_power":
+                if -b_t[i] > P_loss[i]:
                     b_t_less_sol[i] = b_t_less_sol[i] + P_loss[i]
-            
-            elif change_BES_charging == 'always':
+
+            elif change_BES_charging == "always":
                 # Try to follow SoC to the maximum
-                if -b_t[i] > wind_solar_t_deg[i]:    
+                if -b_t[i] > wind_solar_t_deg[i]:
                     b_t_less_sol[i] = -wind_solar_t_deg[i]
 
-            b_t_less_sol[i] = np.clip(
-                b_t_less_sol[i], 
-                -B_p,
-                B_p)
-    
+            b_t_less_sol[i] = np.clip(b_t_less_sol[i], -B_p, B_p)
+
     # Initialize the SoC
     b_E_SOC_t_sat = b_E_SOC_t.copy()
     if b_E_SOC_0 == None:
         try:
-            b_E_SOC_t_sat[0]= b_E_SOC_t[0]
+            b_E_SOC_t_sat[0] = b_E_SOC_t[0]
         except:
-            raise('len(b_E_SOC_t):', len(b_E_SOC_t))
+            raise ("len(b_E_SOC_t):", len(b_E_SOC_t))
     else:
-        b_E_SOC_t_sat[0]= b_E_SOC_0
+        b_E_SOC_t_sat[0] = b_E_SOC_0
 
     # Update the SoC
     for i in range(len(b_t_less_sol)):
-        if b_t_less_sol[i] < 0: # charging
-            b_E_SOC_t_sat[i+1] = b_E_SOC_t_sat[i] - b_t_less_sol[i] * dt * battery_charge_efficiency
-        if b_t_less_sol[i] >= 0: # discharging
-            b_E_SOC_t_sat[i+1] = b_E_SOC_t_sat[i] - b_t_less_sol[i] * dt / battery_charge_efficiency
-        
-        b_E_SOC_t_sat[i+1] = np.clip(
-            b_E_SOC_t_sat[i+1], 
-            (1-battery_depth_of_discharge) * b_E * batt_degradation[i], 
-            b_E * batt_degradation[i]  )
-        
+        if b_t_less_sol[i] < 0:  # charging
+            b_E_SOC_t_sat[i + 1] = (
+                b_E_SOC_t_sat[i] - b_t_less_sol[i] * dt * battery_charge_efficiency
+            )
+        if b_t_less_sol[i] >= 0:  # discharging
+            b_E_SOC_t_sat[i + 1] = (
+                b_E_SOC_t_sat[i] - b_t_less_sol[i] * dt / battery_charge_efficiency
+            )
+
+        b_E_SOC_t_sat[i + 1] = np.clip(
+            b_E_SOC_t_sat[i + 1],
+            (1 - battery_depth_of_discharge) * b_E * batt_degradation[i],
+            b_E * batt_degradation[i],
+        )
+
     # Recompute the battery power
     b_t_sat = b_t.copy()
     for i in range(len(b_t_sat)):
         if b_t[i] < 0:
-            b_t_sat[i] = ( ( b_E_SOC_t_sat[i] - b_E_SOC_t_sat[i+1] ) / battery_charge_efficiency ) / dt
+            b_t_sat[i] = (
+                (b_E_SOC_t_sat[i] - b_E_SOC_t_sat[i + 1]) / battery_charge_efficiency
+            ) / dt
         elif b_t[i] >= 0:
-            b_t_sat[i] = ( (b_E_SOC_t_sat[i] - b_E_SOC_t_sat[i+1] )  * battery_charge_efficiency ) / dt 
-    
-    Hpp_deg = np.minimum( wind_t_deg + solar_t_deg + b_t_sat, G_MW)
-    P_curt_deg = np.maximum( wind_t_deg + solar_t_deg + b_t_sat - G_MW, 0)
+            b_t_sat[i] = (
+                (b_E_SOC_t_sat[i] - b_E_SOC_t_sat[i + 1]) * battery_charge_efficiency
+            ) / dt
 
+    Hpp_deg = np.minimum(wind_t_deg + solar_t_deg + b_t_sat, G_MW)
+    P_curt_deg = np.maximum(wind_t_deg + solar_t_deg + b_t_sat - G_MW, 0)
 
     return Hpp_deg, P_curt_deg, b_t_sat, b_E_SOC_t_sat
-    

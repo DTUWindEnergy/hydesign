@@ -1,11 +1,18 @@
-
 # basic libraries
 import numpy as np
 import pandas as pd
+
 # import seaborn as sns
 import scipy as sp
-from hydesign.finance.finance import calculate_NPV_IRR, calculate_WACC, get_inflation_index, calculate_CAPEX_phasing
+
+from hydesign.finance.finance import (
+    calculate_CAPEX_phasing,
+    calculate_NPV_IRR,
+    calculate_WACC,
+    get_inflation_index,
+)
 from hydesign.openmdao_wrapper import ComponentWrapper
+
 
 class finance_P2X_bidirectional:
     """Hybrid power plant financial model to estimate the overall profitability of the hybrid power plant with P2X.
@@ -17,39 +24,36 @@ class finance_P2X_bidirectional:
     """
 
     def __init__(
-        self, 
-                 N_time, 
-        
+        self,
+        N_time,
         # Depreciation curve
         depreciation_yr,
         depreciation,
-        
         # Inflation curve
         inflation_yr,
         inflation,
         ref_yr_inflation,
-        
         # Early paying or CAPEX Phasing
         phasing_yr,
         phasing_CAPEX,
-                 life_y = 25,
-                price_H2=None,
-                wind_WACC=None,
-                solar_WACC=None,
-                battery_WACC=None,
-                ptg_WACC=None,
-                tax_rate=None,
-                ):
+        life_y=25,
+        price_H2=None,
+        wind_WACC=None,
+        solar_WACC=None,
+        battery_WACC=None,
+        ptg_WACC=None,
+        tax_rate=None,
+    ):
         """Initialization of the HPP finance model
 
         Parameters
         ----------
         N_time : Number of hours in the representative dataset
         life_h : Lifetime of the plant in hours
-        """ 
+        """
         # super().__init__()
         self.N_time = int(N_time)
-        self.life_h = int(life_y*365*24)
+        self.life_h = int(life_y * 365 * 24)
 
         # Depreciation curve
         self.depreciation_yr = depreciation_yr
@@ -71,199 +75,105 @@ class finance_P2X_bidirectional:
         self.ptg_WACC = ptg_WACC
         self.tax_rate = tax_rate
 
-    # def setup(self):
+        # def setup(self):
         self.inputs = [
-        ('price_t_ext',
-         dict(
-                       desc="Electricity price time series",
-                       shape=[self.life_h])
-        ),
-        ('hpp_t',
-         dict(
-                       desc="HPP power time series",
-                       units='MW',
-                       shape=[self.life_h])
-        ),
-        ('penalty_t',
-         dict(
-                       desc="penalty for not reaching expected energy productin at peak hours",
-                       shape=[self.life_h])
-        ),
-        ('hpp_curt_t',
-         dict(
-                       desc="HPP curtailed power time series",
-                       units='MW',
-                       shape=[self.life_h])
-        ),
-
-        ('m_H2_t',
-         dict(
-                       desc = "Produced Hydrogen",
-                       units = 'kg',
-                       shape=[self.life_h])
-        ),
-        ('m_H2_offtake_t',
-         dict(
-                       desc = "Produced Hydrogen",
-                       units = 'kg',
-                       shape=[self.life_h])
-        ),
-
-        ('P_ptg_grid_t',
-         dict(
-                       desc = "Power from grid",
-                       units = 'MW',
-                       shape=[self.life_h])
-        ),
-        ('m_H2_demand_t_ext',
-         dict(
-                       desc = "Hydrogen demand times series",
-                       units = 'kg',
-                       shape=[self.life_h])
-        ),
-
-        ('P_ptg_t',
-         dict(
-                       desc = "Electrolyzer power consumption time series",
-                       units = 'MW',
-                       shape=[self.life_h])
-        ),
-
-        ('CAPEX_w',
-         dict(
-                       desc="CAPEX wpp")
-        ),
-        ('OPEX_w',
-         dict(
-                       desc="OPEX wpp")
-        ),
-        ('CAPEX_s',
-         dict(
-                       desc="CAPEX solar pvp")
-        ),
-        ('OPEX_s',
-         dict(
-                       desc="OPEX solar pvp")
-        ),
-        ('CAPEX_b',
-         dict(
-                       desc="CAPEX battery")
-        ),
-        ('OPEX_b',
-         dict(
-                       desc="OPEX battery")
-        ),
-        ('CAPEX_el',
-         dict(
-                       desc="CAPEX electrical infrastructure")
-        ),
-        ('OPEX_el',
-         dict(
-                       desc="OPEX electrical infrastructure")
-        ),
-        ('CAPEX_ptg',
-         dict(
-                       desc = "CAPEX ptg plant")
-        ),
-        ("OPEX_ptg",
-         dict(
-                       desc = "OPEX ptg plant")
-        ),
-        ("water_consumption_cost",
-         dict(
-                       desc = "Water usage and purification for the electrolysis")
-        )
+            (
+                "price_t_ext",
+                dict(desc="Electricity price time series", shape=[self.life_h]),
+            ),
+            (
+                "hpp_t",
+                dict(desc="HPP power time series", units="MW", shape=[self.life_h]),
+            ),
+            (
+                "penalty_t",
+                dict(
+                    desc="penalty for not reaching expected energy productin at peak hours",
+                    shape=[self.life_h],
+                ),
+            ),
+            (
+                "hpp_curt_t",
+                dict(
+                    desc="HPP curtailed power time series",
+                    units="MW",
+                    shape=[self.life_h],
+                ),
+            ),
+            ("m_H2_t", dict(desc="Produced Hydrogen", units="kg", shape=[self.life_h])),
+            (
+                "m_H2_offtake_t",
+                dict(desc="Produced Hydrogen", units="kg", shape=[self.life_h]),
+            ),
+            (
+                "P_ptg_grid_t",
+                dict(desc="Power from grid", units="MW", shape=[self.life_h]),
+            ),
+            (
+                "m_H2_demand_t_ext",
+                dict(
+                    desc="Hydrogen demand times series", units="kg", shape=[self.life_h]
+                ),
+            ),
+            (
+                "P_ptg_t",
+                dict(
+                    desc="Electrolyzer power consumption time series",
+                    units="MW",
+                    shape=[self.life_h],
+                ),
+            ),
+            ("CAPEX_w", dict(desc="CAPEX wpp")),
+            ("OPEX_w", dict(desc="OPEX wpp")),
+            ("CAPEX_s", dict(desc="CAPEX solar pvp")),
+            ("OPEX_s", dict(desc="OPEX solar pvp")),
+            ("CAPEX_b", dict(desc="CAPEX battery")),
+            ("OPEX_b", dict(desc="OPEX battery")),
+            ("CAPEX_el", dict(desc="CAPEX electrical infrastructure")),
+            ("OPEX_el", dict(desc="OPEX electrical infrastructure")),
+            ("CAPEX_ptg", dict(desc="CAPEX ptg plant")),
+            ("OPEX_ptg", dict(desc="OPEX ptg plant")),
+            (
+                "water_consumption_cost",
+                dict(desc="Water usage and purification for the electrolysis"),
+            ),
         ]
         self.outputs = [
-        
-        ('CAPEX',
-            dict(
-                desc="CAPEX")
-        ),
-
-        ('OPEX',
-            dict(
-                desc="OPEX")
-        ),
-
-        ('NPV',
-            dict(
-                desc="NPV")
-        ),
-
-        ('IRR',
-            dict(
-                desc="IRR")
-        ),
-
-        ('NPV_over_CAPEX',
-            dict(
-                desc="NPV/CAPEX")
-        ),
-
-        ('mean_Power2Grid',
-            dict(
-                desc="Power to grid")
-        ),
-
-        ('mean_AEP',
-            dict(
-                desc="mean AEP")
-        ),
-
-        ('annual_H2',
-            dict(
-                desc="Annual H2 production")
-        ),
-
-        ('LCOE',
-            dict(
-                desc="LCOE")
-        ),
-
-        ('LCOH',
-            dict(
-                desc="LCOH")
-        ),
-
-        ('Revenue',
-            dict(
-                desc="Revenue")
-        ),
-
-        ('annual_P_ptg',
-            dict(
-                desc="annual_P_ptg")
-        ),
-
-        ('annual_P_ptg_H2',
-            dict(
-                desc="annual_P_ptg_H2")
-        ),
-
-        ('penalty_lifetime',
-            dict(
-                desc="penalty_lifetime")
-        ),
-
-        ('break_even_H2_price',
-            dict(
-                desc='price of hydrogen that results in NPV=0 with the given hybrid power plant configuration and operation',
-                val=0)
-        ),
-
-        ('break_even_PPA_price',
-            dict(
-                desc='PPA price of electricity that results in NPV=0 with the given hybrid power plant configuration and operation',
-                val=0)
-        )
+            ("CAPEX", dict(desc="CAPEX")),
+            ("OPEX", dict(desc="OPEX")),
+            ("NPV", dict(desc="NPV")),
+            ("IRR", dict(desc="IRR")),
+            ("NPV_over_CAPEX", dict(desc="NPV/CAPEX")),
+            ("mean_Power2Grid", dict(desc="Power to grid")),
+            ("mean_AEP", dict(desc="mean AEP")),
+            ("annual_H2", dict(desc="Annual H2 production")),
+            ("LCOE", dict(desc="LCOE")),
+            ("LCOH", dict(desc="LCOH")),
+            ("Revenue", dict(desc="Revenue")),
+            ("annual_P_ptg", dict(desc="annual_P_ptg")),
+            ("annual_P_ptg_H2", dict(desc="annual_P_ptg_H2")),
+            ("penalty_lifetime", dict(desc="penalty_lifetime")),
+            (
+                "break_even_H2_price",
+                dict(
+                    desc="price of hydrogen that results in NPV=0 with the given hybrid power plant configuration and operation",
+                    val=0,
+                ),
+            ),
+            (
+                "break_even_PPA_price",
+                dict(
+                    desc="PPA price of electricity that results in NPV=0 with the given hybrid power plant configuration and operation",
+                    val=0,
+                ),
+            ),
         ]
 
     # def setup_partials(self):
     #     self.declare_partials('*', '*', method='fd')
 
     def compute(self, **inputs):
-        """ Calculating the financial metrics of the hybrid power plant project.
+        """Calculating the financial metrics of the hybrid power plant project.
 
         Parameters
         ----------
@@ -280,7 +190,7 @@ class finance_P2X_bidirectional:
         CAPEX_w : CAPEX of the wind power plant
         OPEX_w : OPEX of the wind power plant
         CAPEX_s : CAPEX of the solar power plant
-        OPEX_s : OPEX of solar power plant   
+        OPEX_s : OPEX of solar power plant
         CAPEX_b : CAPEX of the battery
         OPEX_b : OPEX of the battery
         CAPEX_ptg : CAPEX of P2G plant
@@ -313,7 +223,7 @@ class finance_P2X_bidirectional:
         outputs = {}
         N_time = self.N_time
         life_h = self.life_h
-        
+
         depreciation_yr = self.depreciation_yr
         depreciation = self.depreciation
 
@@ -323,198 +233,248 @@ class finance_P2X_bidirectional:
 
         phasing_yr = self.phasing_yr
         phasing_CAPEX = self.phasing_CAPEX
-        
+
         df = pd.DataFrame()
-        
-        df['hpp_t'] = inputs['hpp_t']
-        df['m_H2_t'] = inputs['m_H2_t']
-        df['P_ptg_grid_t'] = inputs['P_ptg_grid_t']
-        df['m_H2_demand_t_ext'] = inputs['m_H2_demand_t_ext']
-        df['m_H2_offtake_t'] = inputs['m_H2_offtake_t']
-        df['P_ptg_t'] = inputs['P_ptg_t']
-        df['hpp_curt_t'] = inputs['hpp_curt_t']
+
+        df["hpp_t"] = inputs["hpp_t"]
+        df["m_H2_t"] = inputs["m_H2_t"]
+        df["P_ptg_grid_t"] = inputs["P_ptg_grid_t"]
+        df["m_H2_demand_t_ext"] = inputs["m_H2_demand_t_ext"]
+        df["m_H2_offtake_t"] = inputs["m_H2_offtake_t"]
+        df["P_ptg_t"] = inputs["P_ptg_t"]
+        df["hpp_curt_t"] = inputs["hpp_curt_t"]
         price_H2 = self.price_H2
-        price_t = inputs['price_t_ext']
-        df['penalty_t'] = inputs['penalty_t']
-        
-        df['i_year'] = np.hstack([np.array([ii]*N_time) 
-                                  for ii in range(int(np.ceil(life_h/N_time)))])[:life_h]
+        price_t = inputs["price_t_ext"]
+        df["penalty_t"] = inputs["penalty_t"]
+
+        df["i_year"] = np.hstack(
+            [np.array([ii] * N_time) for ii in range(int(np.ceil(life_h / N_time)))]
+        )[:life_h]
 
         revenues = calculate_revenues_P2X_bidirectional(price_H2, price_t, df)
-        CAPEX = inputs['CAPEX_w'] + inputs['CAPEX_s'] + \
-            inputs['CAPEX_b'] + inputs['CAPEX_el'] + inputs['CAPEX_ptg']
-        OPEX = inputs['OPEX_w'] + inputs['OPEX_s'] + \
-            inputs['OPEX_b'] + inputs['OPEX_el'] + inputs['OPEX_ptg'] + inputs['water_consumption_cost']
-        
-        CAPEX_LCOE = inputs['CAPEX_w'] + inputs['CAPEX_s'] + \
-            inputs['CAPEX_b'] + inputs['CAPEX_el'] 
-        OPEX_LCOE = inputs['OPEX_w'] + inputs['OPEX_s'] + \
-            inputs['OPEX_b'] + inputs['OPEX_el'] 
-        
-        outputs['CAPEX'] = CAPEX
-        outputs['OPEX'] = OPEX
-        
+        CAPEX = (
+            inputs["CAPEX_w"]
+            + inputs["CAPEX_s"]
+            + inputs["CAPEX_b"]
+            + inputs["CAPEX_el"]
+            + inputs["CAPEX_ptg"]
+        )
+        OPEX = (
+            inputs["OPEX_w"]
+            + inputs["OPEX_s"]
+            + inputs["OPEX_b"]
+            + inputs["OPEX_el"]
+            + inputs["OPEX_ptg"]
+            + inputs["water_consumption_cost"]
+        )
+
+        CAPEX_LCOE = (
+            inputs["CAPEX_w"]
+            + inputs["CAPEX_s"]
+            + inputs["CAPEX_b"]
+            + inputs["CAPEX_el"]
+        )
+        OPEX_LCOE = (
+            inputs["OPEX_w"] + inputs["OPEX_s"] + inputs["OPEX_b"] + inputs["OPEX_el"]
+        )
+
+        outputs["CAPEX"] = CAPEX
+        outputs["OPEX"] = OPEX
+
         # Discount rates
         WACC_after_tax = calculate_WACC_P2X(
-            inputs['CAPEX_w'],
-            inputs['CAPEX_s'],
-            inputs['CAPEX_b'],
-            inputs['CAPEX_el'],
-            inputs['CAPEX_ptg'],
+            inputs["CAPEX_w"],
+            inputs["CAPEX_s"],
+            inputs["CAPEX_b"],
+            inputs["CAPEX_el"],
+            inputs["CAPEX_ptg"],
             self.wind_WACC,
             self.solar_WACC,
             self.battery_WACC,
             self.ptg_WACC,
-            )
+        )
         WACC_after_tax_LCOE = calculate_WACC(
-            inputs['CAPEX_w'],
-            inputs['CAPEX_s'],
-            inputs['CAPEX_b'],
-            inputs['CAPEX_el'],
+            inputs["CAPEX_w"],
+            inputs["CAPEX_s"],
+            inputs["CAPEX_b"],
+            inputs["CAPEX_el"],
             self.wind_WACC,
             self.solar_WACC,
             self.battery_WACC,
-            )
-        
-        # Apply CAPEX phasing using the inflation index for all years before the start of the project (t=0). 
+        )
+
+        # Apply CAPEX phasing using the inflation index for all years before the start of the project (t=0).
         inflation_index_phasing = get_inflation_index(
-            yr = phasing_yr,
-            inflation_yr = inflation_yr, 
-            inflation = inflation,
-            ref_yr_inflation = ref_yr_inflation,
+            yr=phasing_yr,
+            inflation_yr=inflation_yr,
+            inflation=inflation,
+            ref_yr_inflation=ref_yr_inflation,
         )
         CAPEX_eq = calculate_CAPEX_phasing(
-            CAPEX = CAPEX,
-            phasing_yr = phasing_yr,
-            phasing_CAPEX = phasing_CAPEX,
-            discount_rate = WACC_after_tax,
-            inflation_index = inflation_index_phasing,
-            )
+            CAPEX=CAPEX,
+            phasing_yr=phasing_yr,
+            phasing_CAPEX=phasing_CAPEX,
+            discount_rate=WACC_after_tax,
+            inflation_index=inflation_index_phasing,
+        )
 
         # len of revenues = years of life
-        iy = np.arange(len(revenues)) + 1 # Plus becasue the year zero is added externally in the NPV and IRR calculations
+        iy = (
+            np.arange(len(revenues)) + 1
+        )  # Plus becasue the year zero is added externally in the NPV and IRR calculations
 
         # Compute inflation, all cahsflow are in nominal prices
         inflation_index = get_inflation_index(
-                yr = np.arange(len(revenues)+1), # It includes t=0, to compute the reference
-                inflation_yr = inflation_yr, 
-                inflation = inflation,
-                ref_yr_inflation = ref_yr_inflation,
+            yr=np.arange(
+                len(revenues) + 1
+            ),  # It includes t=0, to compute the reference
+            inflation_yr=inflation_yr,
+            inflation=inflation,
+            ref_yr_inflation=ref_yr_inflation,
         )
-        
+
         # We need to add Development costs
         DEVEX = 0
-        
+
         NPV, IRR = calculate_NPV_IRR(
-            Net_revenue_t = revenues.values.flatten(),
-            investment_cost = CAPEX_eq, # Include phasing
-            maintenance_cost_per_year = OPEX,
-            tax_rate = self.tax_rate,
-            discount_rate = WACC_after_tax,
-            depreciation_yr = depreciation_yr,
-            depreciation = depreciation,
-            development_cost = DEVEX, 
-            inflation_index = inflation_index,
+            Net_revenue_t=revenues.values.flatten(),
+            investment_cost=CAPEX_eq,  # Include phasing
+            maintenance_cost_per_year=OPEX,
+            tax_rate=self.tax_rate,
+            discount_rate=WACC_after_tax,
+            depreciation_yr=depreciation_yr,
+            depreciation=depreciation,
+            development_cost=DEVEX,
+            inflation_index=inflation_index,
         )
-        
-        
-        outputs['NPV'] = NPV
-        outputs['IRR'] = IRR
-        outputs['NPV_over_CAPEX'] = NPV / CAPEX
+
+        outputs["NPV"] = NPV
+        outputs["IRR"] = IRR
+        outputs["NPV_over_CAPEX"] = NPV / CAPEX
 
         # LCOE calculation
         hpp_discount_factor_LCOE = WACC_after_tax_LCOE
-        level_costs = np.sum(OPEX_LCOE / (1 + hpp_discount_factor_LCOE)**iy) + CAPEX_LCOE
-        AEP_per_year = df.groupby('i_year').hpp_t.mean()*365*24 + df.groupby('i_year').P_ptg_t.mean()*365*24
-        level_AEP = np.sum(AEP_per_year / (1 + hpp_discount_factor_LCOE)**iy)
+        level_costs = (
+            np.sum(OPEX_LCOE / (1 + hpp_discount_factor_LCOE) ** iy) + CAPEX_LCOE
+        )
+        AEP_per_year = (
+            df.groupby("i_year").hpp_t.mean() * 365 * 24
+            + df.groupby("i_year").P_ptg_t.mean() * 365 * 24
+        )
+        level_AEP = np.sum(AEP_per_year / (1 + hpp_discount_factor_LCOE) ** iy)
 
         mean_AEP_per_year = np.mean(AEP_per_year)
-        Power2Grid_per_year = df.groupby('i_year').hpp_t.mean()*365*24
+        Power2Grid_per_year = df.groupby("i_year").hpp_t.mean() * 365 * 24
         mean_Power2Grid_per_year = np.mean(Power2Grid_per_year)
-        
+
         if level_AEP > 0:
-            LCOE = level_costs / (level_AEP) # in Euro/MWh
+            LCOE = level_costs / (level_AEP)  # in Euro/MWh
         else:
             LCOE = 1e6
-        outputs['LCOE'] = LCOE
+        outputs["LCOE"] = LCOE
 
-        P_ptg_per_year = df.groupby('i_year').P_ptg_t.mean()*365*24
+        P_ptg_per_year = df.groupby("i_year").P_ptg_t.mean() * 365 * 24
         mean_P_ptg_per_year = np.mean(P_ptg_per_year)
 
-        P_ptg_H2_per_year = df.groupby('i_year').P_ptg_grid_t.mean()*365*24
+        P_ptg_H2_per_year = df.groupby("i_year").P_ptg_grid_t.mean() * 365 * 24
         mean_P_ptg_H2_per_year = np.mean(P_ptg_H2_per_year)
 
         # LCOH calculation using LCOE
-        OPEX_ptg = inputs['OPEX_ptg'] + inputs['water_consumption_cost']
-        CAPEX_ptg = inputs['CAPEX_ptg']
+        OPEX_ptg = inputs["OPEX_ptg"] + inputs["water_consumption_cost"]
+        CAPEX_ptg = inputs["CAPEX_ptg"]
         hpp_discount_factor_H2 = self.ptg_WACC
-        OPEX_ptg_el = LCOE*np.sum(inputs['P_ptg_t']) #operational cost for the electrilcity consumed to produce hydrogen
-        level_costs_H2 = np.sum(OPEX_ptg / (1 + hpp_discount_factor_H2)**iy) + OPEX_ptg_el + CAPEX_ptg
-        AHP_per_year = df.groupby('i_year').m_H2_t.mean()*365*24
-        level_AHP = np.sum(AHP_per_year / (1 + hpp_discount_factor_H2)**iy)
-        
+        OPEX_ptg_el = LCOE * np.sum(
+            inputs["P_ptg_t"]
+        )  # operational cost for the electrilcity consumed to produce hydrogen
+        level_costs_H2 = (
+            np.sum(OPEX_ptg / (1 + hpp_discount_factor_H2) ** iy)
+            + OPEX_ptg_el
+            + CAPEX_ptg
+        )
+        AHP_per_year = df.groupby("i_year").m_H2_t.mean() * 365 * 24
+        level_AHP = np.sum(AHP_per_year / (1 + hpp_discount_factor_H2) ** iy)
+
         mean_AHP_per_year = np.mean(AHP_per_year)
         if level_AHP > 0:
-            outputs['LCOH'] = level_costs_H2 / (level_AHP) # in Euro/kg
+            outputs["LCOH"] = level_costs_H2 / (level_AHP)  # in Euro/kg
         else:
-            outputs['LCOH'] = 1e6
+            outputs["LCOH"] = 1e6
 
         break_even_H2_price = calculate_break_even_H2_price_bidirectional(
-            df = df, 
-            CAPEX = CAPEX_eq, 
-            OPEX = OPEX, 
-            tax_rate = self.tax_rate, 
-            discount_rate = WACC_after_tax, 
-            price_el = price_t,     
-            depreciation_yr = depreciation_yr, 
-            depreciation = depreciation, 
-            DEVEX = DEVEX, 
-            inflation_index = inflation_index,
+            df=df,
+            CAPEX=CAPEX_eq,
+            OPEX=OPEX,
+            tax_rate=self.tax_rate,
+            discount_rate=WACC_after_tax,
+            price_el=price_t,
+            depreciation_yr=depreciation_yr,
+            depreciation=depreciation,
+            DEVEX=DEVEX,
+            inflation_index=inflation_index,
         )
 
         break_even_PPA_price = np.maximum(
-            0, 
+            0,
             calculate_break_even_PPA_price_P2X_bidirectional(
-                df = df, 
-                CAPEX = CAPEX_eq, 
-                OPEX = OPEX, 
-                tax_rate = self.tax_rate,
-                discount_rate = WACC_after_tax, 
-                price_H2 = price_H2,
-                depreciation_yr = depreciation_yr, 
-                depreciation = depreciation, 
-                DEVEX = DEVEX, 
-                inflation_index = inflation_index,
-                )
-            )
-        
-        outputs['Revenue'] = np.sum(revenues.values.flatten())
-        outputs['annual_P_ptg'] = mean_P_ptg_per_year
-        outputs['annual_P_ptg_H2'] = mean_P_ptg_H2_per_year
-        outputs['mean_AEP'] = mean_AEP_per_year
-        outputs['mean_Power2Grid'] = mean_Power2Grid_per_year
-        outputs['annual_H2'] = mean_AHP_per_year
-        outputs['penalty_lifetime'] = df['penalty_t'].sum()
-        outputs['break_even_H2_price'] = break_even_H2_price
-        outputs['break_even_PPA_price'] = break_even_PPA_price
+                df=df,
+                CAPEX=CAPEX_eq,
+                OPEX=OPEX,
+                tax_rate=self.tax_rate,
+                discount_rate=WACC_after_tax,
+                price_H2=price_H2,
+                depreciation_yr=depreciation_yr,
+                depreciation=depreciation,
+                DEVEX=DEVEX,
+                inflation_index=inflation_index,
+            ),
+        )
 
+        outputs["Revenue"] = np.sum(revenues.values.flatten())
+        outputs["annual_P_ptg"] = mean_P_ptg_per_year
+        outputs["annual_P_ptg_H2"] = mean_P_ptg_H2_per_year
+        outputs["mean_AEP"] = mean_AEP_per_year
+        outputs["mean_Power2Grid"] = mean_Power2Grid_per_year
+        outputs["annual_H2"] = mean_AHP_per_year
+        outputs["penalty_lifetime"] = df["penalty_t"].sum()
+        outputs["break_even_H2_price"] = break_even_H2_price
+        outputs["break_even_PPA_price"] = break_even_PPA_price
 
-        out_keys = ['CAPEX', 'OPEX', 'NPV', 'IRR', 'NPV_over_CAPEX', 'mean_Power2Grid', 'mean_AEP', 'annual_H2', 'LCOE', 'LCOH', 'Revenue', 
-                    'annual_P_ptg', 'annual_P_ptg_H2', 'penalty_lifetime', 'break_even_H2_price', 'break_even_PPA_price']
+        out_keys = [
+            "CAPEX",
+            "OPEX",
+            "NPV",
+            "IRR",
+            "NPV_over_CAPEX",
+            "mean_Power2Grid",
+            "mean_AEP",
+            "annual_H2",
+            "LCOE",
+            "LCOH",
+            "Revenue",
+            "annual_P_ptg",
+            "annual_P_ptg_H2",
+            "penalty_lifetime",
+            "break_even_H2_price",
+            "break_even_PPA_price",
+        ]
         return [outputs[k] for k in out_keys]
+
 
 class finance_P2X_bidirectional_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
         model = finance_P2X_bidirectional(**insta_inp)
-        super().__init__(inputs=model.inputs,
-                            outputs=model.outputs,
-                            function=model.compute,
-                            partial_options=[{'dependent': False, 'val': 0}],)
+        super().__init__(
+            inputs=model.inputs,
+            outputs=model.outputs,
+            function=model.compute,
+            partial_options=[{"dependent": False, "val": 0}],
+        )
 
 
 # -----------------------------------------------------------------------
 # Auxiliar functions for financial modelling
 # -----------------------------------------------------------------------
+
 
 def calculate_WACC_P2X(
     CAPEX_w,
@@ -526,8 +486,8 @@ def calculate_WACC_P2X(
     solar_WACC,
     battery_WACC,
     ptg_WACC,
-    ):
-    """ This function returns the weighted average cost of capital after tax, using solar, wind, electrolyzer and battery
+):
+    """This function returns the weighted average cost of capital after tax, using solar, wind, electrolyzer and battery
     WACC. First the shared costs WACC is computed by taking the mean of the WACCs across all technologies.
     Then the WACC after tax is calculated by taking the weighted sum by the corresponding CAPEX.
 
@@ -547,69 +507,84 @@ def calculate_WACC_P2X(
     WACC_after_tax : WACC after tax
     """
 
-    # Weighted average cost of capital 
-    WACC_after_tax = \
-        ( CAPEX_w * wind_WACC + \
-          CAPEX_s * solar_WACC + \
-          CAPEX_b * battery_WACC + \
-          CAPEX_ptg * ptg_WACC +\
-          CAPEX_el * (wind_WACC + solar_WACC + battery_WACC + ptg_WACC)/4 ) / \
-        ( CAPEX_w + CAPEX_s + CAPEX_b + CAPEX_el + CAPEX_ptg)
+    # Weighted average cost of capital
+    WACC_after_tax = (
+        CAPEX_w * wind_WACC
+        + CAPEX_s * solar_WACC
+        + CAPEX_b * battery_WACC
+        + CAPEX_ptg * ptg_WACC
+        + CAPEX_el * (wind_WACC + solar_WACC + battery_WACC + ptg_WACC) / 4
+    ) / (CAPEX_w + CAPEX_s + CAPEX_b + CAPEX_el + CAPEX_ptg)
     return WACC_after_tax
 
 
 def calculate_revenues_P2X_bidirectional(price_H2, price_el, df):
-    df['revenue'] = df['hpp_t'] * np.broadcast_to(price_el, df['hpp_t'].shape) + df['m_H2_offtake_t'] * price_H2 - df['P_ptg_grid_t'] * np.broadcast_to(1.2*price_el, df['hpp_t'].shape)- df['penalty_t']
-    return df.groupby('i_year').revenue.mean()*365*24
-    
+    df["revenue"] = (
+        df["hpp_t"] * np.broadcast_to(price_el, df["hpp_t"].shape)
+        + df["m_H2_offtake_t"] * price_H2
+        - df["P_ptg_grid_t"] * np.broadcast_to(1.2 * price_el, df["hpp_t"].shape)
+        - df["penalty_t"]
+    )
+    return df.groupby("i_year").revenue.mean() * 365 * 24
 
 
-def calculate_break_even_PPA_price_P2X_bidirectional(df, CAPEX, OPEX, tax_rate, discount_rate, price_H2,
-                                       depreciation_yr, depreciation, DEVEX, inflation_index):
+def calculate_break_even_PPA_price_P2X_bidirectional(
+    df,
+    CAPEX,
+    OPEX,
+    tax_rate,
+    discount_rate,
+    price_H2,
+    depreciation_yr,
+    depreciation,
+    DEVEX,
+    inflation_index,
+):
     def fun(price_el):
         revenues = calculate_revenues_P2X_bidirectional(price_H2, price_el, df)
         NPV, _ = calculate_NPV_IRR(
-            Net_revenue_t = revenues.values.flatten(),
-            investment_cost = CAPEX,
-            maintenance_cost_per_year = OPEX,
-            tax_rate = tax_rate,
-            discount_rate = discount_rate,
-            depreciation_yr = depreciation_yr,
-            depreciation = depreciation,
-            development_cost = DEVEX,
-            inflation_index = inflation_index,
+            Net_revenue_t=revenues.values.flatten(),
+            investment_cost=CAPEX,
+            maintenance_cost_per_year=OPEX,
+            tax_rate=tax_rate,
+            discount_rate=discount_rate,
+            depreciation_yr=depreciation_yr,
+            depreciation=depreciation,
+            development_cost=DEVEX,
+            inflation_index=inflation_index,
         )
-        return NPV ** 2
-    out = sp.optimize.minimize(
-        fun=fun, 
-        x0=50, 
-        method='SLSQP',
-        tol=1e-10)
+        return NPV**2
+
+    out = sp.optimize.minimize(fun=fun, x0=50, method="SLSQP", tol=1e-10)
     return out.x
 
 
-def calculate_break_even_H2_price_bidirectional(df, CAPEX, OPEX, tax_rate, discount_rate, price_el, 
-                                  depreciation_yr, depreciation, DEVEX, inflation_index):
+def calculate_break_even_H2_price_bidirectional(
+    df,
+    CAPEX,
+    OPEX,
+    tax_rate,
+    discount_rate,
+    price_el,
+    depreciation_yr,
+    depreciation,
+    DEVEX,
+    inflation_index,
+):
     def fun(price_H2):
         revenues = calculate_revenues_P2X_bidirectional(price_H2, price_el, df)
         NPV, _ = calculate_NPV_IRR(
-            Net_revenue_t = revenues.values.flatten(),
-            investment_cost = CAPEX,
-            maintenance_cost_per_year = OPEX,
-            tax_rate = tax_rate,
-            discount_rate = discount_rate,
-            depreciation_yr = depreciation_yr,
-            depreciation = depreciation,
-            development_cost = DEVEX,
-            inflation_index = inflation_index
+            Net_revenue_t=revenues.values.flatten(),
+            investment_cost=CAPEX,
+            maintenance_cost_per_year=OPEX,
+            tax_rate=tax_rate,
+            discount_rate=discount_rate,
+            depreciation_yr=depreciation_yr,
+            depreciation=depreciation,
+            development_cost=DEVEX,
+            inflation_index=inflation_index,
         )
-        return NPV ** 2
-    out = sp.optimize.minimize(
-        fun=fun, 
-        x0=4, 
-        method='SLSQP',
-        tol=1e-10)
+        return NPV**2
+
+    out = sp.optimize.minimize(fun=fun, x0=4, method="SLSQP", tol=1e-10)
     return out.x
-
-
-

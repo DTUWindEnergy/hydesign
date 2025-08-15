@@ -1,2 +1,3 @@
 import os
-tfp = os.path.dirname(__file__).replace("\\", "/") + '/'
+
+tfp = os.path.dirname(__file__).replace("\\", "/") + "/"

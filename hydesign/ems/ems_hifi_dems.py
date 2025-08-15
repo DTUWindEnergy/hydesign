@@ -1,19 +1,23 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import openmdao.api as om
+
 # from numpy import newaxis as na
 import pandas as pd
-import openmdao.api as om
+
+import hydesign.HiFiEMS.DEMS as EMS
+from hydesign.ems.ems import expand_to_lifetime
+from hydesign.HiFiEMS.utils import run
+
+# from hydesign.ems.ems import split_in_batch
+from hydesign.openmdao_wrapper import ComponentWrapper
+
 # import yaml
 
 # import xarray as xr
 # from docplex.mp.model import Model
 
-from hydesign.HiFiEMS.utils import run
-import hydesign.HiFiEMS.DEMS as EMS
-from hydesign.ems.ems import expand_to_lifetime
-# from hydesign.ems.ems import split_in_batch
-from hydesign.openmdao_wrapper import ComponentWrapper
 
 class ems:
     """Energy management optimization model
@@ -26,7 +30,7 @@ class ems:
     ----------
     wind_t : WPP power time series [MW]
     solar_t : PVP power time series [MW]
-    price_t : Electricity price time series 
+    price_t : Electricity price time series
     b_P : Battery power capacity [MW]
     b_E : Battery energy storage capacity [MW]
     G_MW : Grid capacity [MW]
@@ -45,20 +49,20 @@ class ems:
     b_t : Battery charge/discharge power time series
     b_E_SOC_t : Battery energy SOC time series
     penalty_t : Penalty for not reaching expected energy productin at peak hours
-    
+
     """
 
     def __init__(
-        self, 
+        self,
         parameter_dict,
         simulation_dict,
         market_fn,
         N_time,
-        life_y = 25,
-        intervals_per_hour = 4,
+        life_y=25,
+        intervals_per_hour=4,
         BM_model=False,
         RD_model=True,
-        ):
+    ):
 
         # super().__init__()
         self.parameter_dict = parameter_dict
@@ -72,370 +76,518 @@ class ems:
         self.BM_model = BM_model
         self.RD_model = RD_model
         self.N_time = N_time
-        
 
     def compute(self, **inputs):
         outputs = {}
         parameter_dict = self.parameter_dict
-        parameter_dict.update({
-            # hpp parameters
-            'hpp_grid_connection': float(inputs['G_MW'][0]),  # in MW
+        parameter_dict.update(
+            {
+                # hpp parameters
+                "hpp_grid_connection": float(inputs["G_MW"][0]),  # in MW
+                # hpp wind parameters
+                "wind_capacity": float(inputs["wind_MW"][0]),  # in MW
+                # hpp solar parameters
+                "solar_capacity": float(inputs["solar_MW"][0]),  # in MW
+                # hpp battery parameters
+                "battery_energy_capacity": float(inputs["b_E"][0]),  # in MWh
+                "battery_power_capacity": float(inputs["b_P"][0]),  # in MW
+                "battery_minimum_SoC": 1
+                - float(inputs["battery_depth_of_discharge"][0]),
+            }
+        )
 
-            # hpp wind parameters
-            'wind_capacity': float(inputs['wind_MW'][0]), #in MW
+        Wind_data = pd.DataFrame(
+            {
+                "Measurement": inputs["wind_t_measurement"] / inputs["wind_MW"],
+                "DA": inputs["wind_t_da"] / inputs["wind_MW"],
+                "HA": inputs["wind_t_ha"] / inputs["wind_MW"],
+                "RT": inputs["wind_t_rt"] / inputs["wind_MW"],
+                "time": pd.date_range(
+                    self.simulation_dict["start_date"],
+                    periods=365 * 24 * 4,
+                    freq="15min",
+                ),
+            }
+        )
 
-            # hpp solar parameters
-            'solar_capacity': float(inputs['solar_MW'][0]),  # in MW
-                       
-            # hpp battery parameters
-            'battery_energy_capacity': float(inputs['b_E'][0]),  # in MWh
-            'battery_power_capacity': float(inputs['b_P'][0]),  # in MW
-            'battery_minimum_SoC': 1 - float(inputs['battery_depth_of_discharge'][0]),
-            })
-        
-        Wind_data = pd.DataFrame({'Measurement': inputs['wind_t_measurement'] / inputs['wind_MW'],
-                                  'DA': inputs['wind_t_da'] / inputs['wind_MW'],
-                                  'HA': inputs['wind_t_ha'] / inputs['wind_MW'],
-                                  'RT': inputs['wind_t_rt'] / inputs['wind_MW'],
-                                  'time': pd.date_range(self.simulation_dict['start_date'], periods = 365 * 24 * 4, freq='15min')})
-        
-        Solar_data = pd.DataFrame({'Measurement': inputs['solar_t_measurement'] / inputs['solar_MW'],
-                                   'DA': inputs['solar_t_da'] / inputs['solar_MW'],
-                                   'HA': inputs['solar_t_ha'] / inputs['solar_MW'],
-                                   'RT': inputs['solar_t_rt'] / inputs['solar_MW'],
-                                   'time': pd.date_range(self.simulation_dict['start_date'], periods = 365 * 24 * 4, freq='15min')})
+        Solar_data = pd.DataFrame(
+            {
+                "Measurement": inputs["solar_t_measurement"] / inputs["solar_MW"],
+                "DA": inputs["solar_t_da"] / inputs["solar_MW"],
+                "HA": inputs["solar_t_ha"] / inputs["solar_MW"],
+                "RT": inputs["solar_t_rt"] / inputs["solar_MW"],
+                "time": pd.date_range(
+                    self.simulation_dict["start_date"],
+                    periods=365 * 24 * 4,
+                    freq="15min",
+                ),
+            }
+        )
 
         Market_data = pd.read_csv(self.market_fn)
 
         simulation_dict = self.simulation_dict
-        simulation_dict.update({
-            'wind_as_component': 1,
-            'solar_as_component': 1,  
-            'battery_as_component': 1,
-            
-            'DA_wind': "DA",   #DA, Measurement
-            'HA_wind': "HA" ,  #HA, Measurement
-            'FMA_wind':"RT",#5min_ahead, Measurement
-            'DA_solar': "DA",
-            'HA_solar': "HA",
-            'FMA_solar': "RT",
-                
-            'wind_df': Wind_data,
-            'solar_df': Solar_data,
-            'market_df': Market_data,
-            })
-        
+        simulation_dict.update(
+            {
+                "wind_as_component": 1,
+                "solar_as_component": 1,
+                "battery_as_component": 1,
+                "DA_wind": "DA",  # DA, Measurement
+                "HA_wind": "HA",  # HA, Measurement
+                "FMA_wind": "RT",  # 5min_ahead, Measurement
+                "DA_solar": "DA",
+                "HA_solar": "HA",
+                "FMA_solar": "RT",
+                "wind_df": Wind_data,
+                "solar_df": Solar_data,
+                "market_df": Market_data,
+            }
+        )
 
-        (P_HPP_SM_t_opt,
-         SM_price_cleared,
-         BM_dw_price_cleared,
-         BM_up_price_cleared,
-         P_HPP_RT_ts,
-         P_HPP_RT_refs,
-         P_HPP_UP_bid_ts,
-         P_HPP_DW_bid_ts,
-         s_UP_t,
-         s_DW_t,
-         residual_imbalance,
-         P_curtailment_ts,
-         P_charge_discharge_ts, 
-         E_SOC_ts) = ems_cplex(parameter_dict=parameter_dict,
-                               simulation_dict=simulation_dict,
-                               BM_model=self.BM_model,
-                               RD_model=self.RD_model,)
-
-        E_SOC_ts[-1] = E_SOC_ts[0] 
-
-        outputs['P_HPP_SM_t_opt']=expand_to_lifetime(
+        (
             P_HPP_SM_t_opt,
-            life = self.life_intervals, intervals_per_hour=self.intervals_per_hour
-            )
-        outputs['SM_price_cleared']=expand_to_lifetime(
             SM_price_cleared,
-            life = self.life_h, intervals_per_hour=1
-            )
-        outputs['BM_dw_price_cleared']=expand_to_lifetime(
             BM_dw_price_cleared,
-            life = self.life_h, intervals_per_hour=1
-            )
-        outputs['BM_up_price_cleared']=expand_to_lifetime(
             BM_up_price_cleared,
-            life = self.life_h, intervals_per_hour=1
-            )
-        outputs['P_HPP_ts']=expand_to_lifetime(
             P_HPP_RT_ts,
-            life = self.life_intervals, intervals_per_hour=self.intervals_per_hour
-            )
-        outputs['P_HPP_RT_refs']=expand_to_lifetime(
             P_HPP_RT_refs,
-            life = self.life_intervals, intervals_per_hour=self.intervals_per_hour
-            )
-        outputs['P_HPP_UP_bid_ts']=expand_to_lifetime(
             P_HPP_UP_bid_ts,
-            life = self.life_intervals, intervals_per_hour=self.intervals_per_hour
-            )
-        outputs['P_HPP_DW_bid_ts']=expand_to_lifetime(
             P_HPP_DW_bid_ts,
-            life = self.life_intervals, intervals_per_hour=self.intervals_per_hour
-            )
-        outputs['s_UP_t']=expand_to_lifetime(
             s_UP_t,
-            life = self.life_intervals, intervals_per_hour=self.intervals_per_hour
-            )
-        outputs['s_DW_t']=expand_to_lifetime(
             s_DW_t,
-            life = self.life_intervals, intervals_per_hour=self.intervals_per_hour
-            )
-        outputs['residual_imbalance']=expand_to_lifetime(
             residual_imbalance,
-            life = self.life_intervals, intervals_per_hour=self.intervals_per_hour
-            )
-        outputs['P_curtailment_ts']=expand_to_lifetime(
             P_curtailment_ts,
-            life = self.life_intervals, intervals_per_hour=self.intervals_per_hour
-            )
-        outputs['P_charge_discharge_ts']=expand_to_lifetime(
             P_charge_discharge_ts,
-            life = self.life_intervals, intervals_per_hour=self.intervals_per_hour
-            )
-        outputs['E_SOC_ts']=expand_to_lifetime(
             E_SOC_ts,
-            life = self.life_intervals + 1, intervals_per_hour=self.intervals_per_hour
-            )
-        out_keys = ['P_HPP_SM_t_opt', 'SM_price_cleared', 'BM_dw_price_cleared', 'BM_up_price_cleared', 'P_HPP_ts', 'P_HPP_RT_refs', 'P_HPP_UP_bid_ts', 'P_HPP_DW_bid_ts', 's_UP_t', 's_DW_t', 'residual_imbalance', 'P_curtailment_ts', 'P_charge_discharge_ts', 'E_SOC_ts']
+        ) = ems_cplex(
+            parameter_dict=parameter_dict,
+            simulation_dict=simulation_dict,
+            BM_model=self.BM_model,
+            RD_model=self.RD_model,
+        )
+
+        E_SOC_ts[-1] = E_SOC_ts[0]
+
+        outputs["P_HPP_SM_t_opt"] = expand_to_lifetime(
+            P_HPP_SM_t_opt,
+            life=self.life_intervals,
+            intervals_per_hour=self.intervals_per_hour,
+        )
+        outputs["SM_price_cleared"] = expand_to_lifetime(
+            SM_price_cleared, life=self.life_h, intervals_per_hour=1
+        )
+        outputs["BM_dw_price_cleared"] = expand_to_lifetime(
+            BM_dw_price_cleared, life=self.life_h, intervals_per_hour=1
+        )
+        outputs["BM_up_price_cleared"] = expand_to_lifetime(
+            BM_up_price_cleared, life=self.life_h, intervals_per_hour=1
+        )
+        outputs["P_HPP_ts"] = expand_to_lifetime(
+            P_HPP_RT_ts,
+            life=self.life_intervals,
+            intervals_per_hour=self.intervals_per_hour,
+        )
+        outputs["P_HPP_RT_refs"] = expand_to_lifetime(
+            P_HPP_RT_refs,
+            life=self.life_intervals,
+            intervals_per_hour=self.intervals_per_hour,
+        )
+        outputs["P_HPP_UP_bid_ts"] = expand_to_lifetime(
+            P_HPP_UP_bid_ts,
+            life=self.life_intervals,
+            intervals_per_hour=self.intervals_per_hour,
+        )
+        outputs["P_HPP_DW_bid_ts"] = expand_to_lifetime(
+            P_HPP_DW_bid_ts,
+            life=self.life_intervals,
+            intervals_per_hour=self.intervals_per_hour,
+        )
+        outputs["s_UP_t"] = expand_to_lifetime(
+            s_UP_t, life=self.life_intervals, intervals_per_hour=self.intervals_per_hour
+        )
+        outputs["s_DW_t"] = expand_to_lifetime(
+            s_DW_t, life=self.life_intervals, intervals_per_hour=self.intervals_per_hour
+        )
+        outputs["residual_imbalance"] = expand_to_lifetime(
+            residual_imbalance,
+            life=self.life_intervals,
+            intervals_per_hour=self.intervals_per_hour,
+        )
+        outputs["P_curtailment_ts"] = expand_to_lifetime(
+            P_curtailment_ts,
+            life=self.life_intervals,
+            intervals_per_hour=self.intervals_per_hour,
+        )
+        outputs["P_charge_discharge_ts"] = expand_to_lifetime(
+            P_charge_discharge_ts,
+            life=self.life_intervals,
+            intervals_per_hour=self.intervals_per_hour,
+        )
+        outputs["E_SOC_ts"] = expand_to_lifetime(
+            E_SOC_ts,
+            life=self.life_intervals + 1,
+            intervals_per_hour=self.intervals_per_hour,
+        )
+        out_keys = [
+            "P_HPP_SM_t_opt",
+            "SM_price_cleared",
+            "BM_dw_price_cleared",
+            "BM_up_price_cleared",
+            "P_HPP_ts",
+            "P_HPP_RT_refs",
+            "P_HPP_UP_bid_ts",
+            "P_HPP_DW_bid_ts",
+            "s_UP_t",
+            "s_DW_t",
+            "residual_imbalance",
+            "P_curtailment_ts",
+            "P_charge_discharge_ts",
+            "E_SOC_ts",
+        ]
         return [outputs[k] for k in out_keys]
+
 
 class ems_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
         model = ems(**insta_inp)
         super().__init__(
-            inputs = [
-        ('G_MW',
-          dict(units='MW',
-                       desc='Grid size'),),
-        
-        ('wind_MW',
-          dict(units='MW',
-                       desc='Wind plant nominal size'),),
-        
-        ('solar_MW',
-          dict(units='MW',
-                       desc='Solar plant nominal size'),),
-        
-        ('b_E',
-           dict(            desc="Battery energy storage capacity"),),
-        
+            inputs=[
+                (
+                    "G_MW",
+                    dict(units="MW", desc="Grid size"),
+                ),
+                (
+                    "wind_MW",
+                    dict(units="MW", desc="Wind plant nominal size"),
+                ),
+                (
+                    "solar_MW",
+                    dict(units="MW", desc="Solar plant nominal size"),
+                ),
+                (
+                    "b_E",
+                    dict(desc="Battery energy storage capacity"),
+                ),
+                (
+                    "battery_depth_of_discharge",
+                    dict(desc="battery depth of discharge", units="MW"),
+                ),
+                (
+                    "b_P",
+                    dict(desc="Battery power capacity", units="MW"),
+                ),
+                (
+                    "wind_t_da",
+                    dict(
+                        desc="day ahead power time series at the hub height",
+                        units="MW",
+                        shape=[model.N_time],
+                    ),
+                ),
+                (
+                    "wind_t_ha",
+                    dict(
+                        desc="hour ahead power time series at the hub height",
+                        units="MW",
+                        shape=[model.N_time],
+                    ),
+                ),
+                (
+                    "wind_t_rt",
+                    dict(
+                        desc="real time power time series at the hub height",
+                        units="MW",
+                        shape=[model.N_time],
+                    ),
+                ),
+                (
+                    "wind_t_measurement",
+                    dict(
+                        desc="real time power time series at the hub height",
+                        units="MW",
+                        shape=[model.N_time],
+                    ),
+                ),
+                (
+                    "solar_t_da",
+                    dict(
+                        desc="day ahead pv power time series",
+                        units="MW",
+                        shape=[model.N_time],
+                    ),
+                ),
+                (
+                    "solar_t_ha",
+                    dict(
+                        desc="hour ahead pv power time series",
+                        units="MW",
+                        shape=[model.N_time],
+                    ),
+                ),
+                (
+                    "solar_t_rt",
+                    dict(
+                        desc="real time pv power time series",
+                        units="MW",
+                        shape=[model.N_time],
+                    ),
+                ),
+                (
+                    "solar_t_measurement",
+                    dict(
+                        desc="real time pv power time series",
+                        units="MW",
+                        shape=[model.N_time],
+                    ),
+                ),
+            ],
+            # ----------------------------------------------------------------------------------------------------------
+            outputs=[
+                (
+                    "P_HPP_SM_t_opt",
+                    dict(
+                        desc="",
+                        shape=[model.life_intervals],
+                    ),
+                ),
+                (
+                    "SM_price_cleared",
+                    dict(
+                        desc="",
+                        shape=[model.life_h],
+                    ),
+                ),
+                (
+                    "BM_dw_price_cleared",
+                    dict(
+                        desc="",
+                        shape=[model.life_h],
+                    ),
+                ),
+                (
+                    "BM_up_price_cleared",
+                    dict(
+                        desc="",
+                        shape=[model.life_h],
+                    ),
+                ),
+                (
+                    "P_HPP_ts",
+                    dict(
+                        desc="",
+                        shape=[model.life_intervals],
+                    ),
+                ),
+                (
+                    "P_HPP_RT_refs",
+                    dict(
+                        desc="",
+                        shape=[model.life_intervals],
+                    ),
+                ),
+                (
+                    "P_HPP_UP_bid_ts",
+                    dict(
+                        desc="",
+                        shape=[model.life_intervals],
+                    ),
+                ),
+                (
+                    "P_HPP_DW_bid_ts",
+                    dict(
+                        desc="",
+                        shape=[model.life_intervals],
+                    ),
+                ),
+                (
+                    "s_UP_t",
+                    dict(
+                        desc="",
+                        shape=[model.life_intervals],
+                    ),
+                ),
+                (
+                    "s_DW_t",
+                    dict(
+                        desc="",
+                        shape=[model.life_intervals],
+                    ),
+                ),
+                (
+                    "residual_imbalance",
+                    dict(
+                        desc="",
+                        shape=[model.life_intervals],
+                    ),
+                ),
+                (
+                    "P_curtailment_ts",
+                    dict(
+                        desc="",
+                        shape=[model.life_intervals],
+                    ),
+                ),
+                (
+                    "P_charge_discharge_ts",
+                    dict(
+                        desc="",
+                        shape=[model.life_intervals],
+                    ),
+                ),
+                (
+                    "E_SOC_ts",
+                    dict(
+                        desc="",
+                        shape=[model.life_intervals + 1],
+                    ),
+                ),
+            ],
+            function=model.compute,
+            partial_options=[{"dependent": False, "val": 0}],
+        )
 
-        ('battery_depth_of_discharge',
-           dict(            desc="battery depth of discharge",
-                       units='MW'),),
 
-
-        ('b_P',
-           dict(            desc="Battery power capacity",
-                       units='MW'),),
-
-        ('wind_t_da',
-            dict(            desc="day ahead power time series at the hub height",
-                        units='MW',
-                        shape=[model.N_time]),),
-
-        ('wind_t_ha',
-           dict(             desc="hour ahead power time series at the hub height",
-                        units='MW',
-                        shape=[model.N_time]),),
-
-        ('wind_t_rt',
-           dict(             desc="real time power time series at the hub height",
-                        units='MW',
-                        shape=[model.N_time]),),
-
-        ('wind_t_measurement',
-           dict(             desc="real time power time series at the hub height",
-                        units='MW',
-                        shape=[model.N_time]),),
-
-        ('solar_t_da',
-           dict(             desc="day ahead pv power time series",
-                        units='MW',
-                        shape=[model.N_time]),),
-
-        ('solar_t_ha',
-           dict(             desc="hour ahead pv power time series",
-                        units='MW',
-                        shape=[model.N_time]),),
-
-        ('solar_t_rt',
-           dict(             desc="real time pv power time series",
-                        units='MW',
-                        shape=[model.N_time]),),
-
-        ('solar_t_measurement',
-           dict(             desc="real time pv power time series",
-                        units='MW',
-                        shape=[model.N_time]),),
-        ],
-
-        # ----------------------------------------------------------------------------------------------------------
-        outputs = [
-        ('P_HPP_SM_t_opt',dict(desc='',shape=[model.life_intervals],)),
-        ('SM_price_cleared',dict(desc='',shape=[model.life_h],)),
-        ('BM_dw_price_cleared',dict(desc='',shape=[model.life_h],)),
-        ('BM_up_price_cleared',dict(desc='',shape=[model.life_h],)),
-        ('P_HPP_ts',dict(desc='',shape=[model.life_intervals],)),
-        ('P_HPP_RT_refs',dict(desc='',shape=[model.life_intervals],)),
-        ('P_HPP_UP_bid_ts',dict(desc='',shape=[model.life_intervals],)),
-        ('P_HPP_DW_bid_ts',dict(desc='',shape=[model.life_intervals],)),
-        ('s_UP_t',dict(desc='',shape=[model.life_intervals],)),
-        ('s_DW_t',dict(desc='',shape=[model.life_intervals],)),
-        ('residual_imbalance',dict(desc='',shape=[model.life_intervals],)),
-        ('P_curtailment_ts',dict(desc='',shape=[model.life_intervals],)),
-        ('P_charge_discharge_ts',dict(desc='',shape=[model.life_intervals],)),
-        ('E_SOC_ts',dict(desc='',shape=[model.life_intervals + 1],)),
-        ],
-        function=model.compute,
-        partial_options=[{'dependent': False, 'val': 0}],)
-        
 def ems_cplex(
     parameter_dict,
     simulation_dict,
     BM_model=False,
-    RD_model=False,):
+    RD_model=False,
+):
 
-    (P_HPP_SM_t_opt,
-     SM_price_cleared,
-     BM_dw_price_cleared,
-     BM_up_price_cleared,
-     P_HPP_RT_ts,
-     P_HPP_RT_refs,
-     P_HPP_UP_bid_ts,
-     P_HPP_DW_bid_ts,
-     s_UP_t,
-     s_DW_t,
-     residual_imbalance,
-     RES_RT_cur_ts,
-     P_dis_RT_ts, 
-     P_cha_RT_ts, 
-     SoC_ts) = run(parameter_dict=parameter_dict,
-                   simulation_dict=simulation_dict,
-                   EMS=EMS,
-                   EMStype="DEMS",
-                   BM_model=BM_model,)
-  
+    (
+        P_HPP_SM_t_opt,
+        SM_price_cleared,
+        BM_dw_price_cleared,
+        BM_up_price_cleared,
+        P_HPP_RT_ts,
+        P_HPP_RT_refs,
+        P_HPP_UP_bid_ts,
+        P_HPP_DW_bid_ts,
+        s_UP_t,
+        s_DW_t,
+        residual_imbalance,
+        RES_RT_cur_ts,
+        P_dis_RT_ts,
+        P_cha_RT_ts,
+        SoC_ts,
+    ) = run(
+        parameter_dict=parameter_dict,
+        simulation_dict=simulation_dict,
+        EMS=EMS,
+        EMStype="DEMS",
+        BM_model=BM_model,
+    )
+
     P_charge_discharge_ts = P_dis_RT_ts - P_cha_RT_ts
 
-    return (P_HPP_SM_t_opt,
-            SM_price_cleared,
-            BM_dw_price_cleared,
-            BM_up_price_cleared,
-            P_HPP_RT_ts,
-            P_HPP_RT_refs,
-            P_HPP_UP_bid_ts,
-            P_HPP_DW_bid_ts,
-            s_UP_t,
-            s_DW_t,
-            residual_imbalance,
-            RES_RT_cur_ts,
-            P_charge_discharge_ts, 
-            SoC_ts,)
+    return (
+        P_HPP_SM_t_opt,
+        SM_price_cleared,
+        BM_dw_price_cleared,
+        BM_up_price_cleared,
+        P_HPP_RT_ts,
+        P_HPP_RT_refs,
+        P_HPP_UP_bid_ts,
+        P_HPP_DW_bid_ts,
+        s_UP_t,
+        s_DW_t,
+        residual_imbalance,
+        RES_RT_cur_ts,
+        P_charge_discharge_ts,
+        SoC_ts,
+    )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     from hydesign.examples import examples_filepath
-    
-    dic = {'wind_fn': examples_filepath + "HiFiEMS_inputs/Power/Winddata2021_15min.csv",
-           'solar_fn': examples_filepath + "HiFiEMS_inputs/Power/Solardata2021_15min.csv",
-           'market_fn': examples_filepath + "HiFiEMS_inputs/Market/Market2021.csv",}
+
+    dic = {
+        "wind_fn": examples_filepath + "HiFiEMS_inputs/Power/Winddata2021_15min.csv",
+        "solar_fn": examples_filepath + "HiFiEMS_inputs/Power/Solardata2021_15min.csv",
+        "market_fn": examples_filepath + "HiFiEMS_inputs/Market/Market2021.csv",
+    }
 
     Wind_data = pd.read_csv(dic["wind_fn"])
     Solar_data = pd.read_csv(dic["solar_fn"])
     Market_data = pd.read_csv(dic["market_fn"])
-    
-    parameter_dict = {
-            
-            # hpp parameters
-            'hpp_grid_connection': 100,  # in MW
-    
-            # hpp wind parameters
-            'wind_capacity': 120, #in MW
-    
-            # hpp solar parameters
-            'solar_capacity': 10,  # in MW
-    
-            # hpp battery parameters
-            'battery_energy_capacity': 120,  # in MWh
-            'battery_power_capacity': 40,  # in MW
-            'battery_minimum_SoC': 0.1,
-            'battery_maximum_SoC': 0.9,
-            'battery_initial_SoC': 0.1,
-            'battery_hour_discharge_efficiency': 0.985,  #
-            'battery_hour_charge_efficiency': 0.975,
-            'battery_self_discharge_efficiency': 0,
 
-            # hpp battery degradation parameters
-            'battery_initial_degradation': 0,  
-            'battery_marginal_degradation_cost': 142000, # in /MWh
-            'battery_capital_cost': 142000, # in /MWh
-            'degradation_in_optimization': 0, # 1:yes 0:no
-            
-            # bid parameters
-            'max_up_bid': 50,
-            'max_dw_bid': 50,
-            'min_up_bid': 5,
-            'min_dw_bid': 5,
-            
-            # interval parameters: note that DI must <= SI
-            'dispatch_interval': 1/4,
-            'settlement_interval': 1/4,
-            
-            'imbalance_fee': 0.13,  # DK: 0.13 €/MWh, other Nordic countries: , others: 0.001
-            'battery_initial_degradation': 0,  # hpp battery degradation parameters
-            'degradation_in_optimization': 0,         
-            }
-    
+    parameter_dict = {
+        # hpp parameters
+        "hpp_grid_connection": 100,  # in MW
+        # hpp wind parameters
+        "wind_capacity": 120,  # in MW
+        # hpp solar parameters
+        "solar_capacity": 10,  # in MW
+        # hpp battery parameters
+        "battery_energy_capacity": 120,  # in MWh
+        "battery_power_capacity": 40,  # in MW
+        "battery_minimum_SoC": 0.1,
+        "battery_maximum_SoC": 0.9,
+        "battery_initial_SoC": 0.1,
+        "battery_hour_discharge_efficiency": 0.985,  #
+        "battery_hour_charge_efficiency": 0.975,
+        "battery_self_discharge_efficiency": 0,
+        # hpp battery degradation parameters
+        "battery_initial_degradation": 0,
+        "battery_marginal_degradation_cost": 142000,  # in /MWh
+        "battery_capital_cost": 142000,  # in /MWh
+        "degradation_in_optimization": 0,  # 1:yes 0:no
+        # bid parameters
+        "max_up_bid": 50,
+        "max_dw_bid": 50,
+        "min_up_bid": 5,
+        "min_dw_bid": 5,
+        # interval parameters: note that DI must <= SI
+        "dispatch_interval": 1 / 4,
+        "settlement_interval": 1 / 4,
+        "imbalance_fee": 0.13,  # DK: 0.13 €/MWh, other Nordic countries: , others: 0.001
+        "battery_initial_degradation": 0,  # hpp battery degradation parameters
+        "degradation_in_optimization": 0,
+    }
+
     simulation_dict = {
-            'wind_as_component': 1,
-            'solar_as_component': 1,  # The code does not support for solar power plant
-            'battery_as_component': 1,
-            'start_date': '1/1/21',
-            'number_of_run_day': 50,   # 
-            'out_dir':"./test/",
-    
-            'DA_wind': "DA",   #DA, Measurement
-            'HA_wind': "HA" ,  #HA, Measurement
-            'FMA_wind':"RT",#5min_ahead, Measurement
-            'DA_solar': "DA",
-            'HA_solar': "HA",
-            'FMA_solar': "RT",
-            'SP': "SM_forecast",  # SM_forecast;SM_cleared
-            'RP': "reg_forecast", #reg_cleared;reg_forecast_pre
-            'BP': 1, #1:forecast value 2: perfect value
-            
-            # Data
-            'wind_df': Wind_data,
-            'solar_df': Solar_data,
-            'market_df': Market_data,
-                    }
-    
-    out_keys = ['P_HPP_SM_t_opt',
-                'SM_price_cleared',
-                'BM_dw_price_cleared',
-                'BM_up_price_cleared',
-                'P_HPP_ts',
-                'P_HPP_RT_refs',
-                'P_HPP_UP_bid_ts',
-                'P_HPP_DW_bid_ts',
-                's_UP_t',
-                's_DW_t',
-                'residual_imbalance',
-                'P_curtailment_ts',
-                'P_charge_discharge_ts',
-                'E_SOC_ts',]
-    
-        
+        "wind_as_component": 1,
+        "solar_as_component": 1,  # The code does not support for solar power plant
+        "battery_as_component": 1,
+        "start_date": "1/1/21",
+        "number_of_run_day": 50,  #
+        "out_dir": "./test/",
+        "DA_wind": "DA",  # DA, Measurement
+        "HA_wind": "HA",  # HA, Measurement
+        "FMA_wind": "RT",  # 5min_ahead, Measurement
+        "DA_solar": "DA",
+        "HA_solar": "HA",
+        "FMA_solar": "RT",
+        "SP": "SM_forecast",  # SM_forecast;SM_cleared
+        "RP": "reg_forecast",  # reg_cleared;reg_forecast_pre
+        "BP": 1,  # 1:forecast value 2: perfect value
+        # Data
+        "wind_df": Wind_data,
+        "solar_df": Solar_data,
+        "market_df": Market_data,
+    }
+
+    out_keys = [
+        "P_HPP_SM_t_opt",
+        "SM_price_cleared",
+        "BM_dw_price_cleared",
+        "BM_up_price_cleared",
+        "P_HPP_ts",
+        "P_HPP_RT_refs",
+        "P_HPP_UP_bid_ts",
+        "P_HPP_DW_bid_ts",
+        "s_UP_t",
+        "s_DW_t",
+        "residual_imbalance",
+        "P_curtailment_ts",
+        "P_charge_discharge_ts",
+        "E_SOC_ts",
+    ]
+
     res = ems_cplex(parameter_dict, simulation_dict)
     lst = []
     for k, r in zip(out_keys, res):
-        lst.append({'key': k, 'sum': r.sum(), 'mean': r.mean(), 'size':r.size})
+        lst.append({"key": k, "sum": r.sum(), "mean": r.mean(), "size": r.size})
     df = pd.DataFrame(lst)
 
     outputs = {}
@@ -443,77 +595,67 @@ if __name__ == '__main__':
     intervals_per_hour = 4
     life_h = life_y * 365 * 24
     life_intervals = life_h * intervals_per_hour
-    outputs['P_HPP_SM_t_opt']=expand_to_lifetime(
-        res[out_keys.index('P_HPP_SM_t_opt')],
-        life=life_intervals)
-    outputs['SM_price_cleared']=expand_to_lifetime(
-        res[out_keys.index('SM_price_cleared')],
-        life=life_h)
-    outputs['BM_dw_price_cleared']=expand_to_lifetime(
-        res[out_keys.index('BM_dw_price_cleared')],
-        life=life_h)
-    outputs['BM_up_price_cleared']=expand_to_lifetime(
-        res[out_keys.index('BM_up_price_cleared')],
-        life=life_h)
-    outputs['P_HPP_RT_refs']=expand_to_lifetime(
-        res[out_keys.index('P_HPP_RT_refs')],
-        life=life_intervals
-        )
-    outputs['P_HPP_UP_bid_ts']=expand_to_lifetime(
-        res[out_keys.index('P_HPP_UP_bid_ts')],
-        life=life_intervals
-        )
-    outputs['P_HPP_DW_bid_ts']=expand_to_lifetime(
-        res[out_keys.index('P_HPP_DW_bid_ts')],
-        life=life_intervals
-        )
-    outputs['s_UP_t']=expand_to_lifetime(
-        res[out_keys.index('s_UP_t')],
-        life=life_intervals
-        )
-    outputs['s_DW_t']=expand_to_lifetime(
-        res[out_keys.index('s_DW_t')],
-        life=life_intervals
-        )
-    outputs['residual_imbalance']=expand_to_lifetime(
-        res[out_keys.index('residual_imbalance')],
-        life=life_intervals
-        )
-    outputs['P_HPP_ts']=expand_to_lifetime(
-        res[out_keys.index('P_HPP_ts')],
-        life=life_intervals
-        )
-    outputs['P_curtailment_ts']=expand_to_lifetime(
-        res[out_keys.index('P_curtailment_ts')],
-        life=life_intervals
-        )
-    outputs['P_charge_discharge_ts']=expand_to_lifetime(
-        res[out_keys.index('P_charge_discharge_ts')],
-        life=life_intervals
-        )
-    outputs['E_SOC_ts']=expand_to_lifetime(
-        res[out_keys.index('E_SOC_ts')],
-        life=life_intervals+1
-        )
-    
+    outputs["P_HPP_SM_t_opt"] = expand_to_lifetime(
+        res[out_keys.index("P_HPP_SM_t_opt")], life=life_intervals
+    )
+    outputs["SM_price_cleared"] = expand_to_lifetime(
+        res[out_keys.index("SM_price_cleared")], life=life_h
+    )
+    outputs["BM_dw_price_cleared"] = expand_to_lifetime(
+        res[out_keys.index("BM_dw_price_cleared")], life=life_h
+    )
+    outputs["BM_up_price_cleared"] = expand_to_lifetime(
+        res[out_keys.index("BM_up_price_cleared")], life=life_h
+    )
+    outputs["P_HPP_RT_refs"] = expand_to_lifetime(
+        res[out_keys.index("P_HPP_RT_refs")], life=life_intervals
+    )
+    outputs["P_HPP_UP_bid_ts"] = expand_to_lifetime(
+        res[out_keys.index("P_HPP_UP_bid_ts")], life=life_intervals
+    )
+    outputs["P_HPP_DW_bid_ts"] = expand_to_lifetime(
+        res[out_keys.index("P_HPP_DW_bid_ts")], life=life_intervals
+    )
+    outputs["s_UP_t"] = expand_to_lifetime(
+        res[out_keys.index("s_UP_t")], life=life_intervals
+    )
+    outputs["s_DW_t"] = expand_to_lifetime(
+        res[out_keys.index("s_DW_t")], life=life_intervals
+    )
+    outputs["residual_imbalance"] = expand_to_lifetime(
+        res[out_keys.index("residual_imbalance")], life=life_intervals
+    )
+    outputs["P_HPP_ts"] = expand_to_lifetime(
+        res[out_keys.index("P_HPP_ts")], life=life_intervals
+    )
+    outputs["P_curtailment_ts"] = expand_to_lifetime(
+        res[out_keys.index("P_curtailment_ts")], life=life_intervals
+    )
+    outputs["P_charge_discharge_ts"] = expand_to_lifetime(
+        res[out_keys.index("P_charge_discharge_ts")], life=life_intervals
+    )
+    outputs["E_SOC_ts"] = expand_to_lifetime(
+        res[out_keys.index("E_SOC_ts")], life=life_intervals + 1
+    )
+
     for k, v in outputs.items():
         print(k, np.shape(v))
 
     from hydesign.HiFiEMS.utils import Revenue_calculation
-    SM_revenue, _, _, BM_revenue, _ = Revenue_calculation(parameter_dict,
-                        outputs['P_HPP_SM_t_opt'],
-                        outputs['P_HPP_ts'],
-                        outputs['P_HPP_RT_refs'],
-                        outputs['SM_price_cleared'],
-                        outputs['BM_dw_price_cleared'],
-                        outputs['BM_up_price_cleared'],
-                        outputs['P_HPP_UP_bid_ts'],
-                        outputs['P_HPP_DW_bid_ts'],
-                        outputs['s_UP_t'],
-                        outputs['s_DW_t'],
-                        BI=1,
-                        )
+
+    SM_revenue, _, _, BM_revenue, _ = Revenue_calculation(
+        parameter_dict,
+        outputs["P_HPP_SM_t_opt"],
+        outputs["P_HPP_ts"],
+        outputs["P_HPP_RT_refs"],
+        outputs["SM_price_cleared"],
+        outputs["BM_dw_price_cleared"],
+        outputs["BM_up_price_cleared"],
+        outputs["P_HPP_UP_bid_ts"],
+        outputs["P_HPP_DW_bid_ts"],
+        outputs["s_UP_t"],
+        outputs["s_DW_t"],
+        BI=1,
+    )
     total_revenue = SM_revenue + BM_revenue
     print(total_revenue.sum() / 10**6)
-    
-    
