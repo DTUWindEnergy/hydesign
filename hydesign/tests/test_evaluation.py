@@ -58,37 +58,41 @@ def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
             b_E_h,
             cost_of_batt_degr,
         ]
-    # elif case in ['SolarX']:
-    #     sf_area = output_df.loc['sf_area', design_name]
-    #     tower_height = output_df.loc['tower_height', design_name]
-    #     area_cpv_receiver_m2 = output_df.loc['area_cpv_receiver_m2', design_name]
-    #     heat_exchanger_capacity = output_df.loc['heat_exchanger_capacity', design_name]
-    #     p_rated_st = output_df.loc['p_rated_st', design_name]
-    #     v_molten_salt_tank_m3 = output_df.loc['v_molten_salt_tank_m3', design_name]
-    #     area_cst_receiver_m2 = output_df.loc['area_cst_receiver_m2', design_name]
-    #     area_dni_reactor_biogas_h2 = output_df.loc['area_dni_reactor_biogas_h2', design_name]
-    #     area_el_reactor_biogas_h2 = output_df.loc['area_el_reactor_biogas_h2', design_name]
-    # x = [
-    #     # sizing variables
-    #     # sf
-    #     sf_area,
-    #     tower_height,
-
-    #     # cpv
-    #     area_cpv_receiver_m2,
-
-    #     # cst
-    #     heat_exchanger_capacity,
-    #     p_rated_st,
-    #     v_molten_salt_tank_m3,
-    #     area_cst_receiver_m2,
-
-    #     # bigas_h2
-    #     area_dni_reactor_biogas_h2,
-    #     area_el_reactor_biogas_h2,
-    # ]
-    # else:
-    #     x = None
+    # elif case in ["SolarX"]:
+    #     output_df = pd.read_csv(tfp + out_name, index_col=0, sep=";")
+    #     sf_area = output_df.loc["sf_area", design_name]
+    #     tower_height = output_df.loc["tower_height", design_name]
+    #     # tower_num = output_df.loc["tower_num", design_name]
+    #     area_cpv_receiver_m2 = output_df.loc["area_cpv_receiver_m2", design_name]
+    #     heat_exchanger_capacity = output_df.loc["heat_exchanger_capacity", design_name]
+    #     p_rated_st = output_df.loc["p_rated_st", design_name]
+    #     v_molten_salt_tank_m3 = output_df.loc["v_molten_salt_tank_m3", design_name]
+    #     area_cst_receiver_m2 = output_df.loc["area_cst_receiver_m2", design_name]
+    #     area_dni_reactor_biogas_h2 = output_df.loc[
+    #         "area_dni_reactor_biogas_h2", design_name
+    #     ]
+    #     area_el_reactor_biogas_h2 = output_df.loc[
+    #         "area_el_reactor_biogas_h2", design_name
+    #     ]
+    #     x = [
+    #         # sizing variables
+    #         # sf
+    #         sf_area,
+    #         tower_height,
+    #         # tower_num,
+    #         # cpv
+    #         area_cpv_receiver_m2,
+    #         # cst
+    #         heat_exchanger_capacity,
+    #         p_rated_st,
+    #         v_molten_salt_tank_m3,
+    #         area_cst_receiver_m2,
+    #         # bigas_h2
+    #         area_dni_reactor_biogas_h2,
+    #         area_el_reactor_biogas_h2,
+    #     ]
+    else:
+        x = None
 
     if case == "base":
         hpp = hpp_model(
@@ -210,17 +214,18 @@ def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
 
     elif case == "SolarX":
         batch_size = 1 * 24
-        sim_pars_fn = examples_filepath + "solarX/hpp_pars.yml"
+        sim_pars_fn = os.path.join(examples_filepath, "Europe/hpp_pars_solarX.yml")
         hpp = hpp_model_solarX(
-            latitude=latitude,
-            longitude=longitude,
-            altitude=altitude,  # Geographical data for the site
+            latitude=8.59,
+            longitude=56.23,
+            altitude=10,  # Geographical data for the site
             work_dir="./",  # Directory for saving outputs
             sim_pars_fn=sim_pars_fn,  # Simulation parameters
             input_ts_fn=input_ts_fn,  # Input time series (weather, prices, etc.)
             batch_size=batch_size,
+            tower_num=25,  # Number of solar towers in the plant
         )
-        x = [10000.0, 100, 10, 10, 10, 1000, 10, 5, 5]
+        x = [8000, 50, 4, 50, 12, 2300, 9, 4, 16]
 
     elif case == "PyWake":
         from py_wake import NOJ
@@ -333,7 +338,7 @@ def load_evaluation(
     elif case in ["HiFiEMS"]:
         load_file = np.array(output_df.iloc[14:][design_name])
     elif case in ["SolarX"]:
-        load_file = np.array(output_df.iloc[12:][design_name])
+        load_file = np.array(output_df.iloc[13:][design_name])
     elif case in ["PyWake"]:
         load_file = np.array(output_df.iloc[19:][design_name], dtype=float)
     else:
@@ -849,6 +854,7 @@ def load_evaluation_SolarX():
 def test_evaluation_SolarX():
     evaluation_metrics = run_evaluation_SolarX()
     loaded_metrics = load_evaluation_SolarX()
+
     for i in range(len(loaded_metrics)):
         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=3e-03)
 

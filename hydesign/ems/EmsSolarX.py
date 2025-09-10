@@ -1601,10 +1601,6 @@ def ems_cplex_solarX_parts(
         name="biogas_h2_reactor_effictive_heat_mwt_per_m2",
     )
 
-    # import matplotlib.pyplot as plt
-    # plt.plot(biogas_h2_heat_mwt_per_m2_efficiency_curve, biogas_h2_effictive_heat_mwt_per_m2_efficiency_curve, '-ok')
-    # plt.show()
-
     # Penalty for unmet peak hour requirements
     penalty = mdl.continuous_var(name="penalty", lb=-1e12)
     e_penalty = mdl.continuous_var(name="e_penalty", lb=-1e12)
@@ -1957,7 +1953,6 @@ def expand_to_lifetime(x, life_h=25 * 365 * 24, weeks_per_season_per_year=None):
     x_ext: extended variable
     """
     if weeks_per_season_per_year == None:
-
         # Extend the data to match the expected lifetime
         len_x = len(x)
         N_repeats = int(np.ceil(life_h / len_x))

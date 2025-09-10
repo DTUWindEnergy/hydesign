@@ -21,9 +21,9 @@ def main():
         altitude = ex_site["altitude"].values[0]
 
         # input_ts_fn = examples_filepath + "solarX/input_ts_tests.csv"
-        input_ts_fn = examples_filepath + "solarX/input_ts_Denmark_good_solar.csv"
+        input_ts_fn = examples_filepath + "Europe/solarX_Spain.csv"
 
-        sim_pars_fn = examples_filepath + "solarX/hpp_pars.yml"
+        sim_pars_fn = examples_filepath + "Europe/hpp_pars_solarX.yml"
         batch_size = 30 * 24
 
         inputs = {
@@ -52,67 +52,73 @@ def main():
 
         inputs["variables"] = {
             # sf
-            "sf_area": {"var_type": "design", "limits": [1e4, 1e6], "types": "float"},
-            # {'var_type':'fixed',
-            #  'value': 1e4
-            #  },
+            "sf_area":
+            # {'var_type':'design',
+            #   'limits':[1e3, 1e4],
+            #   'types':'float'
+            #   },
+            {"var_type": "fixed", "value": 8000},
             "tower_height":
             # {'var_type':'design',
             #   'limits':[11, 30],
             #   'types':'float'
             #   },
-            {"var_type": "fixed", "value": 100},  # can only be 20, 25 or 30
+            {"var_type": "fixed", "value": 50},  # can only be 20, 25 or 30
+            "tower_num": {"var_type": "design", "limits": [1, 30], "types": "int"},
+            # {'var_type':'fixed',
+            #  'value': 25 # can only be 20, 25 or 30
+            #  },
             # cpv
             "area_cpv_receiver_m2": {
                 "var_type": "design",
-                "limits": [0, 10],
+                "limits": [0, 20],
                 "types": "float",
             },
             # {'var_type':'fixed',
-            #  'value': 10
+            #  'value': 4
             # },
             # cst
             "heat_exchanger_capacity": {
                 "var_type": "design",
-                "limits": [0, 50],
+                "limits": [0, 1600],
                 "types": "float",
             },
             # {'var_type':'fixed',
-            #  'value': 40
+            #  'value': 400
             # },
-            "p_rated_st": {"var_type": "design", "limits": [0, 20], "types": "float"},
+            "p_rated_st": {"var_type": "design", "limits": [0, 50], "types": "float"},
             # {'var_type':'fixed',
-            #  'value': 10
+            #  'value': 12.5
             # },
             "v_molten_salt_tank_m3": {
                 "var_type": "design",
-                "limits": [0, 1e3],
+                "limits": [0, 1e4],
                 "types": "float",
             },
             # {'var_type':'fixed',
-            #  'value': 1e3
+            #  'value': 2300
             # },
             "area_cst_receiver_m2": {
                 "var_type": "design",
-                "limits": [0, 10],
+                "limits": [0, 20],
                 "types": "float",
             },
             # {'var_type':'fixed',
-            #  'value': 10
+            #  'value': 9
             # },
             # bigas_h2
             "area_dni_reactor_biogas_h2": {
                 "var_type": "design",
-                "limits": [0, 10],
+                "limits": [0, 20],
                 "types": "float",
             },
             # {'var_type':'fixed',
-            #  'value': 10
+            #  'value': 4
             # },
             "area_el_reactor_biogas_h2": {
                 "var_type": "design",
-                "limits": [0, 10],
-                "types": "int",
+                "limits": [0, 200],
+                "types": "float",
             },
             # {'var_type':'fixed',
             #  'value': 10

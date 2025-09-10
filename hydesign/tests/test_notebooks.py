@@ -27,6 +27,7 @@ excluded = [
     "Simple_Sizing_Example.ipynb",  # takes 18 min
     "Simple_Sizing_P2X_Example.ipynb",  # takes ??
     "sizing_with_reliability.ipynb",  # takes ??
+    "Simple_Sizing_SolarX_Example.ipynb",  # takes ??
 ]
 notebooks = [nb for nb in notebooks if os.path.basename(nb.filename) not in excluded]
 

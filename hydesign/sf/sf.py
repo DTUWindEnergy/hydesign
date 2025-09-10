@@ -19,7 +19,9 @@ class sf:
     def __init__(
         self,
         N_time,  # Number of time steps
-        sf_azimuth_altitude_efficiency_table,  # Efficiency table for the solar field
+        sf_azimuth_altitude_efficiency_table_cpv,  # Efficiency table for the solar field - cpv
+        sf_azimuth_altitude_efficiency_table_cst,  # Efficiency table for the solar field - cst
+        sf_azimuth_altitude_efficiency_table_h2,  # Efficiency table for the solar field - h2
         latitude,  # Latitude of the site
         longitude,  # Longitude of the site
         altitude,  # Altitude of the site
@@ -49,7 +51,15 @@ class sf:
         """
         # super().__init__()
         self.N_time = N_time
-        self.sf_azimuth_altitude_efficiency_table = sf_azimuth_altitude_efficiency_table
+        self.sf_azimuth_altitude_efficiency_table_cpv = (
+            sf_azimuth_altitude_efficiency_table_cpv
+        )
+        self.sf_azimuth_altitude_efficiency_table_cst = (
+            sf_azimuth_altitude_efficiency_table_cst
+        )
+        self.sf_azimuth_altitude_efficiency_table_h2 = (
+            sf_azimuth_altitude_efficiency_table_h2
+        )
         self.latitude = latitude
         self.longitude = longitude
         self.altitude = altitude
@@ -77,12 +87,6 @@ class sf:
         ]
         # Outputs
         self.outputs = [
-            (
-                "flux_sf_t",
-                dict(
-                    desc="solar flux from solar field", shape=[self.N_time], units="MW"
-                ),
-            ),
             (
                 "max_solar_flux_cpv_t",
                 dict(
@@ -140,6 +144,18 @@ class sf:
         area_cst_receiver_m2 = inputs["area_cst_receiver_m2"]
         area_dni_reactor_biogas_h2 = inputs["area_dni_reactor_biogas_h2"]
 
+        concentration_ratio_cpv = (
+            sf_area / area_cpv_receiver_m2 if area_cpv_receiver_m2 != 0 else np.inf
+        )
+        concentration_ratio_cst = (
+            sf_area / area_cst_receiver_m2 if area_cst_receiver_m2 != 0 else np.inf
+        )
+        concentration_ratio_h2 = (
+            sf_area / area_dni_reactor_biogas_h2
+            if area_dni_reactor_biogas_h2 != 0
+            else np.inf
+        )
+
         cpv_receiver_height = tower_height - 0.5 * area_cpv_receiver_m2 / (
             math.pi * tower_diameter
         )
@@ -162,46 +178,54 @@ class sf:
         sun_azimuth = solar_position["azimuth"]
 
         # Convert the list to a Pandas Series for further calculations
-        flux_sf_cpv_t = self.calculate_flux_sf(
-            self.sf_azimuth_altitude_efficiency_table,
-            cpv_receiver_height,
-            sf_area,
-            sun_altitude,
-            sun_azimuth,
-            dni,
-        )
 
-        flux_sf_cst_t = self.calculate_flux_sf(
-            self.sf_azimuth_altitude_efficiency_table,
-            cst_receiver_height,
-            sf_area,
-            sun_altitude,
-            sun_azimuth,
-            dni,
-        )
-        flux_sf_biogas_h2_t = self.calculate_flux_sf(
-            self.sf_azimuth_altitude_efficiency_table,
-            h2_receiver_height,
-            sf_area,
-            sun_altitude,
-            sun_azimuth,
-            dni,
-        )
+        if area_cpv_receiver_m2 > 0:
+            max_solar_flux_cpv_t = self.calculate_flux_sf(
+                self.sf_azimuth_altitude_efficiency_table_cpv,
+                cpv_receiver_height,
+                sf_area,
+                concentration_ratio_cpv,
+                sun_altitude,
+                sun_azimuth,
+                dni,
+            )
 
-        # Compute maximum flux for cpv, cst, and H2 receivers
-        max_solar_flux_cpv_t = flux_sf_cpv_t
-        max_solar_flux_cst_t = flux_sf_cst_t
-        max_solar_flux_biogas_h2_t = flux_sf_biogas_h2_t
+        else:
+            max_solar_flux_cpv_t = 0
+
+        if area_cst_receiver_m2 > 0:
+            max_solar_flux_cst_t = self.calculate_flux_sf(
+                self.sf_azimuth_altitude_efficiency_table_cst,
+                cst_receiver_height,
+                sf_area,
+                concentration_ratio_cst,
+                sun_altitude,
+                sun_azimuth,
+                dni,
+            )
+        else:
+            max_solar_flux_cst_t = 0
+
+        if area_dni_reactor_biogas_h2 > 0:
+            max_solar_flux_biogas_h2_t = self.calculate_flux_sf(
+                self.sf_azimuth_altitude_efficiency_table_h2,
+                h2_receiver_height,
+                sf_area,
+                concentration_ratio_h2,
+                sun_altitude,
+                sun_azimuth,
+                dni,
+            )
+        else:
+            max_solar_flux_biogas_h2_t = 0
 
         # Assign computed fluxes to the outputs
-        outputs["flux_sf_t"] = flux_sf_cpv_t
         outputs["max_solar_flux_cpv_t"] = max_solar_flux_cpv_t  # MW for cpv
         outputs["max_solar_flux_cst_t"] = max_solar_flux_cst_t  # MW for cst
         outputs["max_solar_flux_biogas_h2_t"] = (
             max_solar_flux_biogas_h2_t  # MW for biogas to H2
         )
         out_keys = [
-            "flux_sf_t",
             "max_solar_flux_cpv_t",
             "max_solar_flux_cst_t",
             "max_solar_flux_biogas_h2_t",
@@ -213,6 +237,7 @@ class sf:
         sf_azimuth_altitude_efficiency_table,
         tower_height,
         sf_area,
+        concentration_ratio,
         sun_altitude,
         sun_azimuth,
         dni,
@@ -234,20 +259,45 @@ class sf:
         # Extract data for interpolation
         tower_heights = sf_azimuth_altitude_efficiency_table["tower_height"]
         sf_areas = sf_azimuth_altitude_efficiency_table["sf_area"]
+        concentration_ratios = sf_azimuth_altitude_efficiency_table[
+            "concentration_ratio"
+        ]
         azimuth_values = sf_azimuth_altitude_efficiency_table["azimuth"]
         altitude_values = sf_azimuth_altitude_efficiency_table["altitude"]
         efficiency_data = np.array(sf_azimuth_altitude_efficiency_table["efficiency"])
 
-        # Ensure 360° azimuth is included in the efficiency table for interpolation
-        if 360 not in azimuth_values:
-            azimuth_values = np.append(azimuth_values, 360)
-            efficiency_data = np.concatenate(
-                [efficiency_data, efficiency_data[:, :, :, 0:1]], axis=3
-            )  # Duplicate 0° column as 360°
+        # Check if 0° or 360° is already present
+        azimuth_values = np.array(azimuth_values)
+        if 0 not in azimuth_values or 360 not in azimuth_values:
+            # Find the index of the azimuth value closest to 0 or 360
+            closest_idx = np.argmin(
+                np.minimum(np.abs(azimuth_values - 0), np.abs(azimuth_values - 360))
+            )
 
-        # Interpolator for 4D efficiency data: (tower_height, sf_area, altitude, azimuth)
+            # Prepare the efficiency slice to duplicate
+            duplicate_slice = efficiency_data[..., closest_idx : closest_idx + 1]
+
+            # Add 0° at the beginning and 360° at the end
+            if 0 not in azimuth_values:
+                azimuth_values = np.concatenate(([0], azimuth_values))
+                efficiency_data = np.concatenate(
+                    [duplicate_slice, efficiency_data], axis=4
+                )
+            if 360 not in azimuth_values:
+                azimuth_values = np.concatenate((azimuth_values, [360]))
+                efficiency_data = np.concatenate(
+                    [efficiency_data, duplicate_slice], axis=4
+                )
+
+        # Interpolator for 5D efficiency data: (tower_height, sf_area, concentration_ratio, altitude, azimuth)
         efficiency_interpolator = RegularGridInterpolator(
-            (tower_heights, sf_areas, altitude_values, azimuth_values),
+            (
+                tower_heights,
+                sf_areas,
+                concentration_ratios,
+                altitude_values,
+                azimuth_values,
+            ),
             efficiency_data,
             bounds_error=False,  # Allow extrapolation
             fill_value=None,  # Extrapolated values return None
@@ -257,7 +307,9 @@ class sf:
         effective_flux_sf = []
         for alt, azi, dni_value in zip(sun_altitude, sun_azimuth, dni):
             # Interpolate efficiency for the given tower height, sf area, altitude, and azimuth
-            efficiency = efficiency_interpolator((tower_height, sf_area, alt, azi))
+            efficiency = efficiency_interpolator(
+                (tower_height, sf_area, concentration_ratio, alt, azi)
+            )
             if efficiency is None:
                 efficiency = 0  # Default to 0 if extrapolation fails
             effective_flux_sf.append(dni_value * efficiency * sf_area)  # Calculate flux

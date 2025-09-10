@@ -1,6 +1,8 @@
 # import os
 # import time
 
+import copy
+
 # basic libraries
 import numpy as np
 
@@ -65,6 +67,7 @@ class finance_solarX:
         """
 
         # super().__init__()
+        # super().__init__()
         self.N_time = int(N_time)
         self.life_h = int(life_h)
 
@@ -82,6 +85,7 @@ class finance_solarX:
         self.phasing_CAPEX = phasing_CAPEX
 
         # def setup(self):
+        # def setup(self):
         """
         Defines inputs and outputs for the financial model in OpenMDAO.
 
@@ -90,6 +94,122 @@ class finance_solarX:
         """
         # inputs
         # hpp
+        self.inputs = [
+            (
+                "hpp_t_ext",
+                dict(desc="HPP power time series", units="MW", shape=[self.life_h]),
+            ),
+            (
+                "hpp_curt_t_ext",
+                dict(
+                    desc="HPP curtailment power time series",
+                    units="MW",
+                    shape=[self.life_h],
+                ),
+            ),
+            # cpv
+            (
+                "cpv_t_ext",
+                dict(desc="cpv power time series", units="MW", shape=[self.life_h]),
+            ),
+            # cst
+            (
+                "p_st_t_ext",
+                dict(desc="CSP power time series", units="MW", shape=[self.life_h]),
+            ),
+            (
+                "q_t_ext",
+                dict(desc="produced heat time series", units="MW", shape=[self.life_h]),
+            ),
+            # biogas_h2
+            (
+                "h2_t_ext",
+                dict(
+                    desc="H2 production time series", units="kg/h", shape=[self.life_h]
+                ),
+            ),
+            (
+                "biogas_t_ext",
+                dict(
+                    desc="Consumed biogas time series",
+                    units="kg/h",
+                    shape=[self.life_h],
+                ),
+            ),
+            # prices
+            (
+                "price_el_t_ext",
+                dict(desc="Electricity price time series", shape=[self.life_h]),
+            ),
+            (
+                "price_h2_t_ext",
+                dict(desc="Hydrogen price time series", shape=[self.life_h]),
+            ),
+            (
+                "price_biogas_t_ext",
+                dict(desc="Biogas price time series", shape=[self.life_h]),
+            ),
+            # capex and opex
+            ("CAPEX_sf", dict(desc="CAPEX solar field")),
+            ("OPEX_sf", dict(desc="OPEX solar field")),
+            ("CAPEX_cpv", dict(desc="CAPEX cpv")),
+            ("OPEX_cpv", dict(desc="OPEX cpv")),
+            ("CAPEX_cst", dict(desc="CAPEX CST")),
+            ("OPEX_cst", dict(desc="OPEX CSP")),
+            ("CAPEX_h2", dict(desc="CAPEX Biogas_H2")),
+            ("OPEX_h2", dict(desc="OPEX H2")),
+            ("CAPEX_sh", dict(desc="CAPEX electrical infrastructure")),
+            ("OPEX_sh", dict(desc="OPEX electrical infrastructure")),
+            # other
+            (
+                "penalty_t_ext",
+                dict(
+                    desc="penalty for not reaching expected energy production at peak hours",
+                    shape=[self.life_h],
+                ),
+            ),
+            (
+                "penalty_q_t_ext",
+                dict(
+                    desc="penalty for not reaching expected heat production",
+                    shape=[self.life_h],
+                ),
+            ),
+            ("discount_rate", dict(desc="discount rate")),
+            ("tax_rate", dict(desc="Corporate tax rate")),
+        ]
+        self.outputs = [
+            # outputs
+            ("CAPEX", dict(desc="CAPEX")),
+            ("OPEX", dict(desc="OPEX")),
+            ("NPV", dict(desc="NPV")),
+            ("IRR", dict(desc="IRR")),
+            ("NPV_over_CAPEX", dict(desc="NPV/CAPEX")),
+            ("mean_AEP", dict(desc="mean AEP")),
+            ("mean_AH2P", dict(desc="mean annual H2 production")),
+            ("LCOE", dict(desc="LCOE")),
+            ("revenues", dict(desc="Revenues")),
+            ("penalty_lifetime", dict(desc="penalty_lifetime")),
+            (
+                "break_even_PPA_price",
+                dict(
+                    desc="PPA price of electricity that results in NPV=0 with the given hybrid power plant configuration and operation"
+                ),
+            ),
+            (
+                "break_even_PPA_price_h2",
+                dict(
+                    desc="PPA price of hydrogen that results in NPV=0 with the given hybrid power plant configuration and operation"
+                ),
+            ),
+            (
+                "break_even_PPA_price_q",
+                dict(
+                    desc="PPA price of heat that results in NPV=0 with the given hybrid power plant configuration and operation"
+                ),
+            ),
+            ("lcove", dict(desc="cost of valued energy")),
+        ]
         self.inputs = [
             (
                 "hpp_t_ext",
@@ -222,6 +342,7 @@ class finance_solarX:
             Dictionary of computed financial outputs, including CAPEX, OPEX, NPV, IRR, etc.
         """
         outputs = {}
+        outputs = {}
         # Extract inputs and setup time-based parameters
         N_time = self.N_time
         life_h = self.life_h
@@ -261,10 +382,10 @@ class finance_solarX:
             + inputs["CAPEX_h2"]
         )
         OPEX = (
-            inputs["OPEX_sf"] * life_yr
-            + inputs["OPEX_cpv"] * life_yr
-            + inputs["OPEX_cst"] * life_yr
-            + inputs["OPEX_sh"] * life_yr
+            inputs["OPEX_sf"]
+            + inputs["OPEX_cpv"]
+            + inputs["OPEX_cst"]
+            + inputs["OPEX_sh"]
             + inputs["OPEX_h2"]
         )
 
@@ -308,7 +429,7 @@ class finance_solarX:
         # DEVEX
         DEVEX = 0
 
-        opex_per_year = OPEX / life_yr
+        opex_per_year = OPEX
 
         # Calculate the
         NPV, IRR = calculate_NPV_IRR(
@@ -361,22 +482,20 @@ class finance_solarX:
             + inputs["CAPEX_cst"]
             + inputs["CAPEX_sh"]
         )
-        OPEX_no_h2 = (
-            inputs["OPEX_sf"] * life_yr
-            + inputs["OPEX_cpv"] * life_yr
-            + inputs["OPEX_cst"] * life_yr
-            + inputs["OPEX_sh"] * life_yr
+        opex_no_h2_per_year = (
+            inputs["OPEX_sf"]
+            + inputs["OPEX_cpv"]
+            + inputs["OPEX_cst"]
+            + inputs["OPEX_sh"]
         )
-        opex_no_h2_per_year = OPEX_no_h2 / life_yr
+
         level_costs_no_h2 = (
             np.sum(opex_no_h2_per_year / (1 + inputs["discount_rate"]) ** iy)
             + CAPEX_no_h2
         )
-        AEP_per_year_no_h2 = (
-            (df.groupby("i_year").p_cpv_t.mean() + df.groupby("i_year").p_st_t.mean())
-            * 365
-            * 24
-        )
+        p_cpv = df.groupby("i_year")["p_cpv_t"].mean()
+        p_st = df.groupby("i_year")["p_st_t"].mean()
+        AEP_per_year_no_h2 = (p_cpv + p_st) * 365 * 24
         level_AEP_no_h2 = np.sum(
             AEP_per_year_no_h2 / (1 + inputs["discount_rate"]) ** iy
         )
@@ -399,7 +518,11 @@ class finance_solarX:
 
         # lcove
         revenues_discount = np.sum(revenues / (1 + inputs["discount_rate"]) ** iy)
-        lcove = level_costs / revenues_discount
+        lcove = (
+            level_costs * df["price_el_t"].mean() / (revenues_discount)
+            if revenues_discount != 0
+            else np.inf
+        )
         outputs["lcove"] = lcove
         out_keys = [
             "CAPEX",
@@ -529,19 +652,21 @@ def calculate_break_even_PPA_price(
 ):
 
     # Generalized objective function for any price (electricity, hydrogen, or heat)
+    df_temp = copy.deepcopy(df)
+
     def fun(price, price_type):
         # Update the price in the DataFrame depending on the price_type
         if price_type == "el":
-            df["price_el_t"] = np.broadcast_to(
+            df_temp["price_el_t"] = np.broadcast_to(
                 price, df["price_el_t"].shape
             )  # Update price for electricity
         elif price_type == "h2":
-            df["price_h2_t"] = np.broadcast_to(
+            df_temp["price_h2_t"] = np.broadcast_to(
                 price, df["price_h2_t"].shape
             )  # Update price for hydrogen
 
         # Calculate the total revenue with the updated price
-        revenues = calculate_revenues(df)
+        revenues = calculate_revenues(df_temp)
 
         # Calculate NPV with the updated revenue
         NPV, _ = calculate_NPV_IRR(

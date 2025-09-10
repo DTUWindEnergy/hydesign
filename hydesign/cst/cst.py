@@ -20,7 +20,7 @@ class cst:
         Cold_molten_salt_specific_q,  # kJ/kg/K
         heat_exchanger_efficiency,
         steam_turbine_efficiency,
-        flow_ms_max_cst_receiver_per_m2,
+        flux_max_cst_reciever_MW_per_m2,
     ):
         # super().__init__()
         self.N_time = N_time
@@ -38,7 +38,7 @@ class cst:
         self.Cold_molten_salt_specific_q = Cold_molten_salt_specific_q  # kJ/kg/K
         self.heat_exchanger_efficiency = heat_exchanger_efficiency
         self.steam_turbine_efficiency = steam_turbine_efficiency
-        self.flow_ms_max_cst_receiver_per_m2 = flow_ms_max_cst_receiver_per_m2
+        self.flux_max_cst_reciever_MW_per_m2 = flux_max_cst_reciever_MW_per_m2
 
         # def setup(self):
         # inputs
@@ -128,7 +128,13 @@ class cst:
 
         # Compute received heat on the CST receiver (MW)
         flux_cst_t = inputs["max_solar_flux_cst_t"]
-        cst_efficiency = efficiency_interpolator((flux_cst_t, self.wind_speed))
+        if area_cst_receiver_m2 != 0:
+            cst_efficiency = efficiency_interpolator(
+                (flux_cst_t / area_cst_receiver_m2, self.wind_speed)
+            )
+        else:
+            cst_efficiency = 0
+
         q_cst_receiver = cst_efficiency * flux_cst_t  # MW
 
         # Calculate molten salt flow rate (kg/s)
@@ -137,7 +143,10 @@ class cst:
         )  # [MW]/[kJ/kg]=[MW]/[kWh/(3600*kg)]= 3.6e6 * [kg/h]
 
         flow_ms_max_cst_receiver_capacity = (
-            self.flow_ms_max_cst_receiver_per_m2 * area_cst_receiver_m2
+            3.6e6
+            * self.flux_max_cst_reciever_MW_per_m2
+            * area_cst_receiver_m2
+            / delta_q_hot_cold_ms_per_kg
         )
 
         # Set computed outputs

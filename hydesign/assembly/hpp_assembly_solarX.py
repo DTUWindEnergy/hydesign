@@ -50,13 +50,6 @@ class hpp_model_solarX(hpp_base):
         N_time = self.N_time
         sim_pars = self.sim_pars
         weather = self.weather
-        dni = (
-            weather["dni"] / 1e6
-        )  # scaling Direct Normal Irradiance (DNI) from [W/m2] to [MW/m2]
-        WS_1 = weather["WS_1"]  # Wind Speed at 1 meter hight
-        weeks_per_season_per_year = sim_pars["weeks_per_season_per_year"]
-        N_life = sim_pars["N_life"]
-        life_h = N_life * 365 * 24  # total hours in project lifetime
         # Extract necessary data series from weather data
         price_el_t = weather["Price"]
         price_h2_t = weather.get("Price_h2", pd.Series(0, index=price_el_t.index))
@@ -67,13 +60,31 @@ class hpp_model_solarX(hpp_base):
         price_water_t = weather.get("Price_water", pd.Series(0, index=price_el_t.index))
         price_co2_t = weather.get("Price_co2", pd.Series(0, index=price_el_t.index))
 
+        dni = (
+            weather["dni"] / 1e6
+        )  # scaling Direct Normal Irradiance (DNI) from [W/m2] to [MW/m2]
+        WS_1 = weather.get(
+            "WS_1", pd.Series(0, index=price_el_t.index)
+        )  # Wind Speed at 1 meter hight
+        weeks_per_season_per_year = sim_pars["weeks_per_season_per_year"]
+        N_life = sim_pars["N_life"]
+        life_h = N_life * 365 * 24  # total hours in project lifetime
+        tower_num = sim_pars["tower_num"]
+        self.tower_num = tower_num
+
         comps = [
             (
                 "sf",
                 sf(
                     N_time=N_time,
-                    sf_azimuth_altitude_efficiency_table=sim_pars[
-                        "sf_azimuth_altitude_efficiency_table"
+                    sf_azimuth_altitude_efficiency_table_cpv=sim_pars[
+                        "sf_azimuth_altitude_efficiency_table_cpv"
+                    ],
+                    sf_azimuth_altitude_efficiency_table_cst=sim_pars[
+                        "sf_azimuth_altitude_efficiency_table_cst"
+                    ],
+                    sf_azimuth_altitude_efficiency_table_h2=sim_pars[
+                        "sf_azimuth_altitude_efficiency_table_h2"
                     ],
                     latitude=sim_pars["latitude"],
                     longitude=sim_pars["longitude"],
@@ -119,8 +130,8 @@ class hpp_model_solarX(hpp_base):
                         "Cold_molten_salt_specific_heat"
                     ],  # kJ/kg/K
                     wind_speed=WS_1,
-                    flow_ms_max_cst_receiver_per_m2=sim_pars[
-                        "flow_ms_max_cst_receiver_per_m2"
+                    flux_max_cst_reciever_MW_per_m2=sim_pars[
+                        "flux_max_cst_reciever_MW_per_m2"
                     ],
                 ),
             ),
@@ -339,6 +350,7 @@ class hpp_model_solarX(hpp_base):
             # sf
             "sf_area",
             "tower_height",
+            # "tower_num",
             # cpv
             "area_cpv_receiver_m2",
             # cst
@@ -357,6 +369,7 @@ class hpp_model_solarX(hpp_base):
         # sf
         sf_area,
         tower_height,
+        # tower_num,
         # cpv
         area_cpv_receiver_m2,
         # cst
@@ -420,7 +433,7 @@ class hpp_model_solarX(hpp_base):
             area_el_reactor_biogas_h2,
         ]
         prob = self.prob
-        self.dni_total = self.dni * sf_area
+        self.dni_total = self.dni * sf_area * self.tower_num
 
         # sizing variables
         # sf
@@ -431,47 +444,113 @@ class hpp_model_solarX(hpp_base):
         prob.set_val("area_cpv_receiver_m2", area_cpv_receiver_m2)
 
         # cst
-        prob.set_val("p_rated_st", p_rated_st)
-        prob.set_val("p_rated_st", p_rated_st)
-        prob.set_val("heat_exchanger_capacity", heat_exchanger_capacity)
-        prob.set_val("v_molten_salt_tank_m3", v_molten_salt_tank_m3)
+        prob.set_val("p_rated_st", p_rated_st / self.tower_num)
+        prob.set_val(
+            "heat_exchanger_capacity", heat_exchanger_capacity / self.tower_num
+        )
+        prob.set_val("v_molten_salt_tank_m3", v_molten_salt_tank_m3 / self.tower_num)
         prob.set_val("area_cst_receiver_m2", area_cst_receiver_m2)
 
         # bigas_h2
         prob.set_val("area_dni_reactor_biogas_h2", area_dni_reactor_biogas_h2)
-        prob.set_val("area_el_reactor_biogas_h2", area_el_reactor_biogas_h2)
+        prob.set_val(
+            "area_el_reactor_biogas_h2", area_el_reactor_biogas_h2 / self.tower_num
+        )
 
         self.prob = prob
 
         prob.run_model()  # execute the OpenMDAO model
 
+        # # Post-process: scale outputs by number of towers
+        # prob.set_val(
+        #     "sf.max_solar_flux_cpv_t",
+        #     prob.get_val("sf.max_solar_flux_cpv_t") * tower_num,
+        # )
+        # # prob.set_val('cpv.max_solar_flux_cpv_t', prob.get_val('cpv.max_solar_flux_cpv_t') * tower_num)
+        # prob.set_val(
+        #     "sf.max_solar_flux_cst_t",
+        #     prob.get_val("sf.max_solar_flux_cst_t") * tower_num,
+        # )
+        # # prob.set_val('cst.max_solar_flux_cst_t', prob.get_val('cst.max_solar_flux_cst_t') * tower_num)
+        # prob.set_val(
+        #     "sf.max_solar_flux_biogas_h2_t",
+        #     prob.get_val("sf.max_solar_flux_biogas_h2_t") * tower_num,
+        # )
+        # # prob.set_val('BiogasH2.max_solar_flux_biogas_h2_t', prob.get_val('BiogasH2.max_solar_flux_biogas_h2_t') * tower_num)
+        # prob.set_val(
+        #     "EmsSolarX.hpp_t_ext", prob.get_val("EmsSolarX.hpp_t_ext") * tower_num
+        # )
+        # prob.set_val(
+        #     "EmsSolarX.p_cpv_t_ext", prob.get_val("EmsSolarX.p_cpv_t_ext") * tower_num
+        # )
+        # prob.set_val(
+        #     "EmsSolarX.p_cpv_max_dni_t_ext",
+        #     prob.get_val("EmsSolarX.p_cpv_max_dni_t_ext") * tower_num,
+        # )
+        # prob.set_val(
+        #     "EmsSolarX.p_st_t_ext", prob.get_val("EmsSolarX.p_st_t_ext") * tower_num
+        # )
+        # prob.set_val(
+        #     "EmsSolarX.p_st_max_dni_t_ext",
+        #     prob.get_val("EmsSolarX.p_st_max_dni_t_ext") * tower_num,
+        # )
+        # prob.set_val(
+        #     "EmsSolarX.p_biogas_h2_t_ext",
+        #     prob.get_val("EmsSolarX.p_biogas_h2_t_ext") * tower_num,
+        # )
+        # prob.set_val("EmsSolarX.q_t_ext", prob.get_val("EmsSolarX.q_t_ext") * tower_num)
+        # prob.set_val(
+        #     "EmsSolarX.q_max_dni_t_ext",
+        #     prob.get_val("EmsSolarX.q_max_dni_t_ext") * tower_num,
+        # )
+        # prob.set_val(
+        #     "EmsSolarX.biogas_h2_procuded_h2_kg_in_dni_reactor_t_ext",
+        #     prob.get_val("EmsSolarX.biogas_h2_procuded_h2_kg_in_dni_reactor_t_ext")
+        #     * tower_num,
+        # )
+        # prob.set_val(
+        #     "EmsSolarX.biogas_h2_procuded_h2_kg_in_el_reactor_t_ext",
+        #     prob.get_val("EmsSolarX.biogas_h2_procuded_h2_kg_in_el_reactor_t_ext")
+        #     * tower_num,
+        # )
+        # prob.set_val(
+        #     "EmsSolarX.v_hot_ms_t_ext",
+        #     prob.get_val("EmsSolarX.v_hot_ms_t_ext") * tower_num,
+        # )
+        # prob.set_val(
+        #     "EmsSolarX.v_molten_salt_tank_m3",
+        #     prob.get_val("EmsSolarX.v_molten_salt_tank_m3") * tower_num,
+        # )
+
         # Collect and return financial metrics, converting units where necessary
         outputs = np.hstack(
             [
                 prob["NPV_over_CAPEX"],
-                prob["NPV"] / 1e6,
+                prob["NPV"] * self.tower_num / 1e6,
                 prob["IRR"],
                 prob["LCOE"],
                 prob["lcove"],
-                prob["revenues"] / 1e6,
-                prob["CAPEX"] / 1e6,
-                prob["OPEX"] / 1e6,
-                prob.get_val("finance_solarX.CAPEX_sf") / 1e6,
-                prob.get_val("finance_solarX.OPEX_sf") / 1e6,
-                prob.get_val("finance_solarX.CAPEX_cpv") / 1e6,
-                prob.get_val("finance_solarX.OPEX_cpv") / 1e6,
-                prob.get_val("finance_solarX.CAPEX_cst") / 1e6,
-                prob.get_val("finance_solarX.OPEX_cst") / 1e6,
-                prob.get_val("finance_solarX.CAPEX_h2") / 1e6,
-                prob.get_val("finance_solarX.OPEX_h2") / 1e6,
-                prob.get_val("finance_solarX.CAPEX_sh") / 1e6,
-                prob.get_val("finance_solarX.OPEX_sh") / 1e6,
+                prob["revenues"] * self.tower_num / 1e6,
+                prob["CAPEX"] * self.tower_num / 1e6,
+                prob["OPEX"] * self.tower_num / 1e6,
+                prob.get_val("finance_solarX.CAPEX_sf") * self.tower_num / 1e6,
+                prob.get_val("finance_solarX.OPEX_sf") * self.tower_num / 1e6,
+                prob.get_val("finance_solarX.CAPEX_cpv") * self.tower_num / 1e6,
+                prob.get_val("finance_solarX.OPEX_cpv") * self.tower_num / 1e6,
+                prob.get_val("finance_solarX.CAPEX_cst") * self.tower_num / 1e6,
+                prob.get_val("finance_solarX.OPEX_cst") * self.tower_num / 1e6,
+                prob.get_val("finance_solarX.CAPEX_h2") * self.tower_num / 1e6,
+                prob.get_val("finance_solarX.OPEX_h2") * self.tower_num / 1e6,
+                prob.get_val("finance_solarX.CAPEX_sh") * self.tower_num / 1e6,
+                prob.get_val("finance_solarX.OPEX_sh") * self.tower_num / 1e6,
                 prob["penalty_lifetime"] / 1e6,
-                prob["mean_AEP"] / 1e3,  # [GWh]
-                prob["mean_AH2P"] / 1e3,  # [T]
+                prob["mean_AEP"] * self.tower_num / 1e3,  # [GWh]
+                prob["mean_AH2P"] * self.tower_num / 1e3,  # [T]
                 # Grid Utilization factor
-                prob["mean_AEP"] / (self.sim_pars["grid_el_capacity"] * 365 * 24),
-                prob["total_curtailment"] / 1e3,  # [GWh]
+                prob["mean_AEP"]
+                * self.tower_num
+                / (self.sim_pars["grid_el_capacity"] * 365 * 24),
+                prob["total_curtailment"] * self.tower_num / 1e3,  # [GWh]
                 prob["break_even_PPA_price"],
                 prob["break_even_PPA_price_h2"],
             ]
@@ -481,29 +560,25 @@ class hpp_model_solarX(hpp_base):
 
     def plot_solarX_results(self, n_hours=1 * 24, index_hour_start=0):
         prob = self.prob
-        flux_sf_t = prob["sf.flux_sf_t"]
         # get data from solved hpp model
         price_el = prob.get_val("EmsSolarX.price_el_t")
         price_h2 = prob.get_val("EmsSolarX.price_h2_t")
         alpha_cpv_t = prob.get_val("EmsSolarX.alpha_cpv_t_ext")
         alpha_cst_t = prob.get_val("EmsSolarX.alpha_cst_t_ext")
         alpha_h2_t = prob.get_val("EmsSolarX.alpha_h2_t_ext")
-        p_hpp_t = prob.get_val("EmsSolarX.hpp_t_ext")
-        cpv_t = prob.get_val("EmsSolarX.p_cpv_t_ext")
-        # p_cpv_max_dni_t = prob.get_val('EmsSolarX.p_cpv_max_dni_t_ext')
-        p_st_t = prob.get_val("EmsSolarX.p_st_t_ext")
-        # p_st_max_dni = prob.get_val('EmsSolarX.p_st_max_dni_t_ext')
-        # p_biogas_h2_t = prob.get_val('EmsSolarX.p_biogas_h2_t_ext')
-        q_t = prob.get_val("EmsSolarX.q_t_ext")
-        # q_max_dni = prob.get_val('EmsSolarX.q_max_dni_t_ext')
-        biogas_h2_dni = prob.get_val(
-            "EmsSolarX.biogas_h2_procuded_h2_kg_in_dni_reactor_t_ext"
+        p_hpp_t = prob.get_val("EmsSolarX.hpp_t_ext") * self.tower_num
+        cpv_t = prob.get_val("EmsSolarX.p_cpv_t_ext") * self.tower_num
+        p_st_t = prob.get_val("EmsSolarX.p_st_t_ext") * self.tower_num
+        q_t = prob.get_val("EmsSolarX.q_t_ext") * self.tower_num
+        biogas_h2_dni = (
+            prob.get_val("EmsSolarX.biogas_h2_procuded_h2_kg_in_dni_reactor_t_ext")
+            * self.tower_num
         )
-        biogas_h2_el = prob.get_val(
-            "EmsSolarX.biogas_h2_procuded_h2_kg_in_el_reactor_t_ext"
+        biogas_h2_el = (
+            prob.get_val("EmsSolarX.biogas_h2_procuded_h2_kg_in_el_reactor_t_ext")
+            * self.tower_num
         )
-        V_hot_ms_t = prob.get_val("EmsSolarX.v_hot_ms_t_ext")
-        # V_tot = prob.get_val('EmsSolarX.v_molten_salt_tank_m3')
+        V_hot_ms_t = prob.get_val("EmsSolarX.v_hot_ms_t_ext") * self.tower_num
 
         # Create a figure with 2x2 subplots
         plt.rcParams.update(
@@ -582,15 +657,6 @@ class hpp_model_solarX(hpp_base):
         # Plot 3: Energy generation
         # ------------------------------
         axs[0][1].step(
-            range(len(flux_sf_t[h_start:h_end])),
-            flux_sf_t[h_start:h_end],
-            where="mid",
-            color="gray",
-            linestyle=":",
-            linewidth=0.5,
-            label="DNI_sf",
-        )
-        axs[0][1].step(
             range(len(p_hpp_t[h_start:h_end])),
             p_hpp_t[h_start:h_end],
             where="mid",
@@ -621,8 +687,6 @@ class hpp_model_solarX(hpp_base):
             linestyle="--",
             label="P_ST",
         )
-        # axs[0][1].step(range(len(p_biogas_h2_t[h_start:h_end])), -p_biogas_h2_t[h_start:h_end], where='mid', color='purple', linestyle=':', linewidth=0.8,
-        #                label='P_H2 (consumed)')
         axs[0][1].set_ylabel("Energy (MWh & MWht)")
 
         # Secondary y-axis for hydrogen production
@@ -633,7 +697,7 @@ class hpp_model_solarX(hpp_base):
             where="mid",
             color="purple",
             linestyle="-",
-            label="H2 (DNI Reactor)",
+            label="H2 (DNI)",
         )
         ax2.step(
             range(len(biogas_h2_el[h_start:h_end])),
@@ -641,7 +705,7 @@ class hpp_model_solarX(hpp_base):
             where="mid",
             color="purple",
             linestyle="--",
-            label="H2 (EL Reactor)",
+            label="H2 (EL)",
         )
         ax2.set_ylabel("Produced H2 (kg)")
 
