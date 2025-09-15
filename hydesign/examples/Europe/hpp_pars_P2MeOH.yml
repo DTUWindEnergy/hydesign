@@ -1,0 +1,169 @@
+# --------------------------------------------------------------------------------------------
+# HPP Global
+# --------------------------------------------------------------------------------------------
+hpp_grid_connection: 150 # Grid capacity
+year: '2012' # Single representative year
+life_h: 219000 # 219000 hours in lifetime
+N_time: 8760 # number of hours in one year
+life_y: 25 # Lifetime in year
+
+# --------------------------------------------------------------------------------------------
+# Wind
+# --------------------------------------------------------------------------------------------
+wind_turbine_cost: 640_000  # [Euro/MW] for reference turbine
+wind_civil_works_cost: 260_000  # [Euro/MW]
+wind_fixed_onm_cost: 12_600  # Wind fixed O&M cost per year [Euro/MW /year]
+wind_variable_onm_cost: 1.35 #[EUR/MWh_e] Danish Energy Agency
+
+d_ref: 145
+hh_ref: 100
+p_rated_ref: 5.0 #[MW] 
+
+# Degradation
+wpp_efficiency: 1
+wind_deg_yr: [0, 25]
+wind_deg: [0, 0.25] #25yr * 1%/yr
+share_WT_deg_types: 0.5
+
+# --------------------------------------------------------------------------------------------
+# PV 
+# --------------------------------------------------------------------------------------------
+solar_PV_cost: 110_000   # [Euro/MW DC]
+solar_hardware_installation_cost: 100_000  # [Euro/MW DC]
+solar_inverter_cost: 20_000 #[Euro/MW]
+solar_fixed_onm_cost: 4_500  # Solar O&M cost per year [Euro/MW] DC
+land_use_per_solar_MW: 0.001226 # Danish energy agency
+
+#selected tracker
+tracking: 'No' # 'single_axis'  #
+
+# Degradation
+pv_deg_yr: [0,    1,   25]
+pv_deg: [0.03, 0.03, 0.28] #0.03 intial + 25yr * 1%/yr
+
+latitude: null
+longitude: null
+altitude: null
+
+# --------------------------------------------------------------------------------------------
+# Battery
+# --------------------------------------------------------------------------------------------
+#battery_energy_cost: 90_000  # [Euro/MWh]
+#battery_power_cost: 32_000    # Power conversion system cost [Euro/MW]
+#battery_BOP_installation_commissioning_cost: 36_000 # Electric BalanceOfPlant, instal+commission cost [Euro/MW]
+#battery_control_system_cost: 9_000  # Grid management control system cost[Euro/MW]
+#battery_energy_onm_cost: 0 
+
+# battery_energy_cost: 45_000  # [Euro/MWh]
+# battery_power_cost: 16_000    # Power conversion system cost [Euro/MW]
+# battery_BOP_installation_commissioning_cost: 18_000 # Electric BalanceOfPlant, instal+commission cost [Euro/MW]
+# battery_control_system_cost: 4_500  # Grid management control system cost[Euro/MW]
+# battery_energy_onm_cost: 0 
+
+# Reference is DEA catalogue
+battery_energy_cost: 62_000 #[Euro/MWh]
+battery_power_cost: 16_000    # Power conversion system cost [Euro/MW]
+battery_BOP_installation_commissioning_cost: 80_000 # Electric BalanceOfPlant, instal+commission cost [Euro/MW]
+battery_control_system_cost: 2250  # Grid management control system cost[Euro/MW]
+battery_energy_onm_cost: 0 # [Euro/MWh]
+
+# EMS and Degradation parameters
+battery_depth_of_discharge: 0.9 # 1 - Minimum energy level in the battery
+battery_charging_efficiency: 0.985  # Charge efficiency for Lithium-ion
+battery_price_reduction_per_year: 0.05 # Battery price reduction per year
+# n_steps_in_LoH: 20 # Number of battery degradation levels for discretization of lifetime operation
+#min_LoH: 0.7 # Minimum energy storage capacity in percent for the storage to be replaced
+
+# Penalty is defined as: Number of peak hours of full load expected per day.
+n_full_power_hours_expected_per_day_at_peak_price: 0 
+peak_hr_quantile: 0.9 # An hour of peak price has prices above this quantile
+
+# Indian case Penalty has expected hours at 0.85*3= 2.55
+# n_full_power_hours_expected_per_day_at_peak_price: 2.55
+
+# --------------------------------------------------------------------------------------------
+# P2MeOH parameters
+# --------------------------------------------------------------------------------------------
+penalty_factor_MeOH: 1 #[Euro/kg]
+price_green_MeOH: 2 #[Euro/kg] https://www.irena.org/-/media/Files/IRENA/Agency/Publication/2021/Jan/IRENA_Innovation_Renewable_Methanol_2021.pdf
+price_grid_MeOH: 2 #[Euro/kg]
+lhv: 0.03333 #[MWh/kg] 
+water_consumption : 130_500 #[kgH20cons/kgMeOH]  
+SOEC_capex_cost : 1_901_000  #[EUR/MWelec] https://ens.dk/en/analyses-and-statistics/technology-data-renewable-fuels Price assumed to be for 1MW SOEC
+SOEC_opex_cost : 228_120  #It is 12% of SOEC_capex_cost #[EUR/MW] https://ens.dk/en/analyses-and-statistics/technology-data-renewable-fuels
+SOEC_power_electronics_cost : 0  #[EUR/MW] included in the capex_cost but can be considered seperately also
+water_cost : 0.004 #[EUR/kg]
+water_treatment_cost : 0.002  #[EUR/kg]
+electrolyzer_eff_curve_name: 'SOEC efficiency' # Efficiency curve for SOEC electrolyzer
+electrolyzer_eff_curve_type: 'efficiency'  # 'efficiency' or 'production' curves are supported. For efficiency curves also the low heat value, lhv nees to be set
+heater_efficiency: 0.85
+heater_capex_cost: 60_000 #[EUR/MWhelec] https://ens.dk/en/analyses-and-statistics/technology-data-generation-electricity-and-district-heating
+heater_opex_cost: 1_138 #[EUR/MWhelec] https://ens.dk/en/analyses-and-statistics/technology-data-generation-electricity-and-district-heating 
+psi_DAC_MWhkg: 0.000366 #[MWh/kg] https://iopscience.iop.org/article/10.1088/2516-1083/abf1ce/meta
+phi_DAC_MWhkg: 0.001458 #[MWh/kg] https://iopscience.iop.org/article/10.1088/2516-1083/abf1ce/meta
+DAC_capex_cost: 16_393_443 #[EUR/MWelec] (6 mil eur/[t_CO2/h]) https://ens.dk/en/analyses-and-statistics/technology-data-carbon-capture-transport-and-storage
+DAC_opex_cost: 819_673 #[EUR/MWelec] (0.3 mil eur/[t_CO2/h]) https://ens.dk/en/analyses-and-statistics/technology-data-carbon-capture-transport-and-storage
+M_CO2: 44 #[g/mol]
+M_H2: 2 #[g/mol]
+M_H2O: 18 #[g/mol]
+M_CH3OH: 32 #[g/mol]
+w_comp_reactor_MWhkg: 0.000656 #[MWh/kg] https://www.sciencedirect.com/science/article/pii/S0959652623040039
+H2O_yield: 0.5873 #[kgH2Oprod/kgMeOH] https://www.sciencedirect.com/science/article/pii/S0959652623040039
+MeOH_yield: 0.9999 #https://www.sciencedirect.com/science/article/pii/S0959652623040039
+MeOH_reactor_capex_cost: 10_981_694 #[EUR/MWelec] https://ens.dk/sites/ens.dk/files/Analyser/technology_data_for_renewable_fuels.pdf p244
+MeOH_reactor_opex_cost: 329_451 #[EUR/MWelec] https://ens.dk/sites/ens.dk/files/Analyser/technology_data_for_renewable_fuels.pdf p245
+m_MeOH_tank_flow_max_kg: 69_000 #[kg/h] p.49 https://utw10182.utweb.utexas.edu/eldridge/ChE473K/drop_folder/Methanol%20Magic%20Senior%20Design%20Report.pdf
+charging_efficiency_MeOH_tank: 0.975 #https://www.nature.com/articles/s41929-021-00696-w
+MeOH_tank_capex_cost: 0.46 #[€/kgMeOH] p.46 https://utw10182.utweb.utexas.edu/eldridge/ChE473K/drop_folder/Methanol%20Magic%20Senior%20Design%20Report.pdf
+MeOH_tank_opex_cost: 0.023 #€/kgMeOH 5% CAPEX https://utw10182.utweb.utexas.edu/eldridge/ChE473K/drop_folder/Methanol%20Magic%20Senior%20Design%20Report.pdf
+w: 1 #parameter for the multi-objective EMS operation
+
+MeOH_demand_scheme: 'infinite'
+
+# For infinite methanol offtake keep the demand very high in 'MeOH_demand.csv' file
+
+
+# --------------------------------------------------------------------------------------------
+# Shared costs
+# --------------------------------------------------------------------------------------------
+hpp_BOS_soft_cost: 119_940       # [Euro/MW]
+hpp_grid_connection_cost: 50_000 # [Euro/MW]
+#land cost not same format in excel it's per MW
+land_cost: 300_000  #  [Euro/km**2] from Hybridize imputs 6-12k Euro/acre. 1km2 = 247.105acre
+Awpp: 122.5 #[km**2], assuming space around one WTG is 50m*50m, and the wind farm is 240MW.
+Apvp: 1_375 #[km**2], assuming there is 13_750 m**2 per MWelec of solar
+
+# --------------------------------------------------------------------------------------------
+# Financial and Economic data (ATB NREL)
+# --------------------------------------------------------------------------------------------
+wind_WACC: 0.06    # Markup of after tax WACC for onshore WT
+solar_WACC: 0.06   # After tax WACC for solar PV
+battery_WACC: 0.06 # After tax WACC for stationary storge li-ion batteries
+tax_rate: 0.22      # Corporate tax rate
+P2MeOH_WACC: 0.06 # After tax WACC for the P2MeOH part of the plant
+
+# Early CAPEX payment, or phasing 
+phasing_yr: [-1,0]
+phasing_CAPEX: [1,1] # shares will be normalized to sum the CAPEX
+
+# Inflation will be linearly interpolated at integer year values
+inflation_yr: [-3,    0,    1,   25]
+inflation: [ 0.10, 0.10, 0.06, 0.06]
+ref_yr_inflation: 0 # inflation index is computed with respect to this year
+
+# depreciation
+depreciation_yr: [0, 25]
+depreciation: [0, 1]
+
+# Inputs for Balancing markets operations
+penalty_BM: 2000 # Euro/MWh Penalty for not meeting the scheduled DA power - reference - Nord Pool
+
+
+# --------------------------------------------------------------------------------------------
+# Weather databases
+# Not required if the user provides input_ts_fn.csv to hpp_model
+# --------------------------------------------------------------------------------------------
+era5_zarr: '/groups/reanalyses/era5/app/era5.zarr' # location of wind speed renalysis
+ratio_gwa_era5: '/groups/INP/era5/ratio_gwa2_era5.nc' # location of mean wind speed correction factor
+era5_ghi_zarr: '/groups/INP/era5/ghi.zarr' # location of GHI renalysis
+elevation_fn: '/groups/INP/era5/SRTMv3_plus_ViewFinder_coarsen.nc' # Altitude map for extracting altitude

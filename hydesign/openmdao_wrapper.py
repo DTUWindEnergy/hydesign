@@ -169,3 +169,20 @@ class ComponentWrapper(ExplicitComponent):
                         J[o, k] = d
         self.grad_time_sum += time.time() - t
         self.n_grad_eval += 1
+
+
+class OpenMDAOModel2Python:
+    def __init__(self):
+        self.inputs = []
+        self.outputs = []
+        self.setup()
+
+    def add_input(self, name, **kwargs):
+        self.inputs.append((name, kwargs))
+
+    def add_output(self, name, **kwargs):
+        self.outputs.append((name, kwargs))
+
+    def run(self, **inputs):
+        outputs = self.compute(inputs, {})
+        return [outputs[o] for o in [x[0] for x in self.outputs]]
