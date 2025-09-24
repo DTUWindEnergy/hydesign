@@ -320,7 +320,7 @@ class hpp_model(hpp_base):
             "Shared CAPEX [MEuro]",
             "Shared OPEX [MEuro]",
             # 'penalty lifetime [MEuro]',
-            "AEP [GWh]",
+            "Mean Annual Electricity Sold [GWh]",
             "GUF",
             "grid [MW]",
             "wind [MW]",

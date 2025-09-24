@@ -358,7 +358,7 @@ class hpp_model(hpp_base):
             "Shared CAPEX [MEuro]",
             "Shared OPEX [MEuro]",
             "penalty lifetime [MEuro]",
-            "AEP [GWh]",
+            "Mean Annual Electricity Sold [GWh]",
             "GUF",
             "grid [MW]",
             "wind [MW]",
@@ -374,6 +374,8 @@ class hpp_model(hpp_base):
             "Number of batteries used in lifetime",
             "Break-even PPA price [Euro/MWh]",
             "Capacity factor wind [-]",
+            "AEP [GWh]",
+            "AEP with degradation [GWh]",
         ]
 
         self.list_vars = [
@@ -499,6 +501,16 @@ class hpp_model(hpp_base):
                 prob.get_val("wind_t_ext_deg").mean() / p_rated / Nwt
             )  # Capacity factor of wind only
 
+        AEP = (
+            (prob["wind_t"].mean() + prob["solar_t"].mean()) * 1e-3 * 24 * 365
+        )  # Annual energy production [MWh]
+        AEP_deg = (
+            (prob["wind_t_ext_deg"].mean() + prob["solar_t_ext_deg"].mean())
+            * 1e-3
+            * 24
+            * 365
+        )  # Degraded annual energy production [MWh]
+
         outputs = np.hstack(
             [
                 prob["NPV_over_CAPEX"],
@@ -535,6 +547,8 @@ class hpp_model(hpp_base):
                 prob.get_val("n_batteries") * (b_P > 0),
                 prob["break_even_PPA_price"],
                 cf_wind,
+                AEP,
+                AEP_deg,
             ]
         )
         self.outputs = outputs

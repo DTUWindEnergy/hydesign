@@ -1,10 +1,9 @@
-Variable;Design 1
-longitude;8.59
-latitude;56.23
+;Design 1
+longitude;56.23
+latitude;8.59
 altitude;10.0
 sf_area;8000.0
 tower_height;50.0
-tower_num;25.0
 area_cpv_receiver_m2;4.0
 heat_exchanger_capacity;50.0
 p_rated_st;12.0
@@ -12,28 +11,28 @@ v_molten_salt_tank_m3;2300.0
 area_cst_receiver_m2;9.0
 area_dni_reactor_biogas_h2;4.0
 area_el_reactor_biogas_h2;16.0
-NPV_over_CAPEX;-0.8520813  
-NPV [MEuro];-68.80300901  
-IRR;0.0  
-LCOE [Euro/MWh];162.07593302  
-LCOVE [Euro/MWh];173.14518314  
-Revenues [MEuro];36.18638777  
-CAPEX [MEuro];80.747  
-OPEX [MEuro];0.6  
-SF CAPEX [MEuro];23.0  
-SF OPEX [MEuro];0.6  
-CPV CAPEX [MEuro];2.8  
-CPV OPEX [MEuro];0.0  
-CST CAPEX [MEuro];30.397  
-CST OPEX [MEuro];0.0  
-BiogasH2 CAPEX [MEuro];5.8  
-BiogasH2 OPEX [MEuro];0.0  
-Shared CAPEX [MEuro];18.75  
-Shared Opex [MEuro];0.0  
-penalty lifetime [MEuro];0.0  
-AEP [GWh];36.51173686  
-AH2P [T];0.0  
-GUF;0.20840032  
-Total curtailment [GWh];0.0  
-Break-even PPA price el [Euro/MWh];173.34694578  
+NPV_over_CAPEX;-0.8520813034576487
+NPV [MEuro];-68.80300901029474
+IRR;0.0
+LCOE [Euro/MWh];162.075933017585
+LCOVE [Euro/MWh];173.1451831384466
+Revenues [MEuro];36.18638776698614
+CAPEX [MEuro];80.747
+OPEX [MEuro];0.6
+SF CAPEX [MEuro];23.0
+SF OPEX [MEuro];0.6
+CPV CAPEX [MEuro];2.8
+CPV OPEX [MEuro];0.0
+CST CAPEX [MEuro];30.397
+CST OPEX [MEuro];0.0
+BiogasH2 CAPEX [MEuro];5.799999999999999
+BiogasH2 OPEX [MEuro];0.0
+Shared CAPEX [MEuro];18.75
+Shared Opex [MEuro];0.0
+penalty lifetime [MEuro];0.0
+AEP [GWh];36.51173685708972
+AH2P [T];0.0
+GUF;0.20840032452676782
+Total curtailment [GWh];0.0
+Break-even PPA price el [Euro/MWh];173.34694577960772
 Break-even PPA price H2 [Euro/kg];50.0

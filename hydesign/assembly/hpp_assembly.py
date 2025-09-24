@@ -284,7 +284,7 @@ class hpp_base:
                 if sim_pars[var] is None:
                     raise ValueError(f"variable: '{var}' cannot be provided as None")
 
-    def print_design(self, x_opt=None, outs=None):
+    def check_outputs(self, x_opt, outs):
         if x_opt is None:
             if hasattr(self, "inputs"):
                 x_opt = self.inputs
@@ -299,6 +299,10 @@ class hpp_base:
                 raise ValueError(
                     "No outputs provided. Please provide outputs to print the design."
                 )
+        return x_opt, outs
+
+    def print_design(self, x_opt=None, outs=None):
+        x_opt, outs = self.check_outputs(x_opt, outs)
         print()
         print("Design:")
         print("---------------")
@@ -318,10 +322,14 @@ class hpp_base:
         print()
         print()
         for i_v, var in enumerate(self.list_out_vars):
-            print(f"{var}: {outs[i_v]:.3f}")
+            try:
+                print(f"{var}: {outs[i_v]:.3f}")
+            except:
+                print(f"{var}: {outs[i_v]}")
         print()
 
-    def evaluation_in_csv(self, name_file, longitude, latitude, altitude, x_opt, outs):
+    def evaluation_in_df(self, x_opt=None, outs=None):
+        x_opt, outs = self.check_outputs(x_opt, outs)
         design_df = pd.DataFrame(
             columns=[
                 "longitude",
@@ -332,7 +340,14 @@ class hpp_base:
             + self.list_out_vars,
             index=range(1),
         )
-        design_df.iloc[0] = [longitude, latitude, altitude] + list(x_opt) + list(outs)
+        design_df.iloc[0] = (
+            [self.longitude, self.latitude, self.altitude] + list(x_opt) + list(outs)
+        )
+        return design_df
+
+    def evaluation_in_csv(self, name_file, design_df=None, x_opt=None, outs=None):
+        if design_df is None:
+            design_df = self.evaluation_in_df(x_opt, outs)
         design_df.to_csv(f"{name_file}.csv")
 
     def get_prob(self, comps):
@@ -641,7 +656,7 @@ class hpp_model(hpp_base):
             "Shared CAPEX [MEuro]",
             "Shared OPEX [MEuro]",
             "penalty lifetime [MEuro]",
-            "AEP [GWh]",
+            "Mean Annual Electricity Sold [GWh]",
             "GUF",
             "grid [MW]",
             "wind [MW]",
@@ -658,6 +673,8 @@ class hpp_model(hpp_base):
             "Number of batteries used in lifetime",
             "Break-even PPA price [Euro/MWh]",
             "Capacity factor wind [-]",
+            "AEP [GWh]",
+            "AEP with degradation [GWh]",
         ]
 
         self.list_vars = [
@@ -784,6 +801,15 @@ class hpp_model(hpp_base):
                 / p_rated
                 / Nwt
             )  # Capacity factor of wind only
+        AEP = (
+            (prob["wind_t"].mean() + prob["solar_t"].mean()) * 1e-3 * 24 * 365
+        )  # Annual energy production [MWh]
+        AEP_deg = (
+            (prob["wind_t_ext_deg"].mean() + prob["solar_t_ext_deg"].mean())
+            * 1e-3
+            * 24
+            * 365
+        )  # Degraded annual energy production [MWh]
 
         outputs = np.hstack(
             [
@@ -821,6 +847,8 @@ class hpp_model(hpp_base):
                 prob.get_val("battery_degradation.n_batteries") * (b_P > 0),
                 prob["break_even_PPA_price"],
                 cf_wind,
+                AEP,
+                AEP_deg,
             ]
         )
         self.outputs = outputs

@@ -29,19 +29,21 @@ Batt OPEX [MEuro];0.0
 Shared CAPEX [MEuro];63.83914285714286
 Shared OPEX [MEuro];0.0
 penalty lifetime [MEuro];8.1192
-AEP [GWh];262.7298432
-GUF;0.099973304109589
+Mean Annual Electricity Sold [GWh];262.7298432
+GUF;0.09997330410958905
 grid [MW];300.0
 wind [MW];300.0
 solar [MW];0.0
 Battery Energy [MWh];0.0
 Battery Power [MW];0.0
-Total curtailment [GWh];10623.960037381612
-Awpp [km2];42.85714285714285
+Total curtailment [GWh];10623.960048772693
+Awpp [km2];42.857142857142854
 Apvp [km2];0.0
-Plant area [km2];42.85714285714285
+Plant area [km2];42.857142857142854
 Rotor diam [m];134.86710626894708
 Hub height [m];77.43355313447354
 Number of batteries used in lifetime;0.0
 Break-even PPA price [Euro/MWh];69.5194070073198
-Capacity factor wind [-];0.2616774281285253
+Capacity factor wind [-];0.2616774284998862
+AEP [GWh];786.176142227574
+AEP with degradation [GWh];687.688282097701

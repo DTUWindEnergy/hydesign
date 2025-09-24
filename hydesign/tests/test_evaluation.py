@@ -310,10 +310,9 @@ def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
     tmp_path = tfp + "tmp"
     if not os.path.exists(tmp_path):
         os.makedirs(tmp_path)
-    hpp.evaluation_in_csv(
-        os.path.join(tmp_path, tmp_name), longitude, latitude, altitude, x, outs
-    )
-    return outs
+    design_df = hpp.evaluation_in_df()
+    hpp.evaluation_in_csv(os.path.join(tmp_path, tmp_name), design_df=design_df)
+    return outs, design_df
 
 
 def update_test(out_name, name, design_name, tmp_name, case, **kwargs):
@@ -321,9 +320,11 @@ def update_test(out_name, name, design_name, tmp_name, case, **kwargs):
         output_df = pd.read_csv(tfp + out_name, index_col=0, sep=";")
     else:
         output_df = pd.DataFrame()
-    run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs)
-    eval_df = pd.read_csv(os.path.join(tfp + "tmp", tmp_name + ".csv"))
-    output_df[design_name] = eval_df.T[0]
+    output_dict = output_df.to_dict()
+    _, eval_df = run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs)
+    eval_dict = {design_name: eval_df.T.to_dict()[0]}
+    output_dict.update(eval_dict)
+    output_df = pd.DataFrame.from_dict(output_dict)
     output_df.to_csv(tfp + out_name, sep=";")
 
 
@@ -333,17 +334,7 @@ def load_evaluation(
     case,
 ):
     output_df = pd.read_csv(tfp + out_name, index_col=0, sep=";")
-    if case in ["p2x", "p2x_bidirectional"]:
-        load_file = np.array(output_df.iloc[17:][design_name])
-    elif case in ["HiFiEMS"]:
-        load_file = np.array(output_df.iloc[14:][design_name])
-    elif case in ["SolarX"]:
-        load_file = np.array(output_df.iloc[13:][design_name])
-    elif case in ["PyWake"]:
-        load_file = np.array(output_df.iloc[19:][design_name], dtype=float)
-    else:
-        load_file = np.array(output_df.iloc[15:][design_name])
-    return load_file
+    return output_df[design_name]
 
 
 # ------------------------------------------------------------------------------------------------
@@ -379,8 +370,8 @@ def load_evaluation_design_1():
 
 
 def test_evaluation_design_1():
-    evaluation_metrics = run_evaluation_design_1()
-    loaded_metrics = load_evaluation_design_1()
+    evaluation_metrics = run_evaluation_design_1()[1].to_numpy().squeeze()
+    loaded_metrics = load_evaluation_design_1().to_numpy().squeeze()
     for i in range(len(loaded_metrics)):
         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=1e-04)
 
@@ -418,8 +409,8 @@ def load_evaluation_design_2():
 
 
 def test_evaluation_design_2():
-    evaluation_metrics = run_evaluation_design_2()
-    loaded_metrics = load_evaluation_design_2()
+    evaluation_metrics = run_evaluation_design_2()[1].to_numpy().squeeze()
+    loaded_metrics = load_evaluation_design_2().to_numpy().squeeze()
     for i in range(len(loaded_metrics)):
         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=1e-04)
 
@@ -458,8 +449,8 @@ def load_evaluation_design_3():
 
 
 def test_evaluation_design_3():
-    evaluation_metrics = run_evaluation_design_3()
-    loaded_metrics = load_evaluation_design_3()
+    evaluation_metrics = run_evaluation_design_3()[1].to_numpy().squeeze()
+    loaded_metrics = load_evaluation_design_3().to_numpy().squeeze()
     for i in range(len(loaded_metrics)):
         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=1e-04)
 
@@ -497,8 +488,8 @@ def load_evaluation_design_1_P2X():
 
 
 def test_evaluation_design_1_P2X():
-    evaluation_metrics = run_evaluation_design_1_P2X()
-    loaded_metrics = load_evaluation_design_1_P2X()
+    evaluation_metrics = run_evaluation_design_1_P2X()[1].to_numpy().squeeze()
+    loaded_metrics = load_evaluation_design_1_P2X().to_numpy().squeeze()
     for i in range(len(loaded_metrics)):
         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=1e-04)
 
@@ -536,8 +527,8 @@ def load_evaluation_design_2_P2X():
 
 
 def test_evaluation_design_2_P2X():
-    evaluation_metrics = run_evaluation_design_2_P2X()
-    loaded_metrics = load_evaluation_design_2_P2X()
+    evaluation_metrics = run_evaluation_design_2_P2X()[1].to_numpy().squeeze()
+    loaded_metrics = load_evaluation_design_2_P2X().to_numpy().squeeze()
     for i in range(len(loaded_metrics)):
         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=1e-04)
 
@@ -574,8 +565,8 @@ def load_evaluation_design_3_P2X():
 
 
 def test_evaluation_design_3_P2X():
-    evaluation_metrics = run_evaluation_design_3_P2X()
-    loaded_metrics = load_evaluation_design_3_P2X()
+    evaluation_metrics = run_evaluation_design_3_P2X()[1].to_numpy().squeeze()
+    loaded_metrics = load_evaluation_design_3_P2X().to_numpy().squeeze()
     for i in range(len(loaded_metrics)):
         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=1e-04)
 
@@ -615,8 +606,8 @@ def load_evaluation_PPA():
 
 
 def test_evaluation_PPA():
-    evaluation_metrics = run_evaluation_PPA()
-    loaded_metrics = load_evaluation_PPA()
+    evaluation_metrics = run_evaluation_PPA()[1].to_numpy().squeeze()
+    loaded_metrics = load_evaluation_PPA().to_numpy().squeeze()
     for i in range(len(loaded_metrics)):
         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=1e-04)
 
@@ -655,8 +646,8 @@ def load_evaluation_PPA2():
 
 
 def test_evaluation_PPA2():
-    evaluation_metrics = run_evaluation_PPA2()
-    loaded_metrics = load_evaluation_PPA2()
+    evaluation_metrics = run_evaluation_PPA2()[1].to_numpy().squeeze()
+    loaded_metrics = load_evaluation_PPA2().to_numpy().squeeze()
     for i in range(len(loaded_metrics)):
         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=1e-04)
 
@@ -696,8 +687,8 @@ def load_evaluation_constant_load():
 
 
 def test_evaluation_constant_load():
-    evaluation_metrics = run_evaluation_constant_load()
-    loaded_metrics = load_evaluation_constant_load()
+    evaluation_metrics = run_evaluation_constant_load()[1].to_numpy().squeeze()
+    loaded_metrics = load_evaluation_constant_load().to_numpy().squeeze()
     for i in range(len(loaded_metrics)):
         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=1e-04)
 
@@ -735,8 +726,8 @@ def load_evaluation_P2X_bidirectional():
 
 
 def test_evaluation_P2X_bidirectional():
-    evaluation_metrics = run_evaluation_P2X_bidirectional()
-    loaded_metrics = load_evaluation_P2X_bidirectional()
+    evaluation_metrics = run_evaluation_P2X_bidirectional()[1].to_numpy().squeeze()
+    loaded_metrics = load_evaluation_P2X_bidirectional().to_numpy().squeeze()
     for i in range(len(loaded_metrics)):
         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=3e-04)
 
@@ -774,8 +765,8 @@ def load_evaluation_BM():
 
 
 def test_evaluation_BM():
-    evaluation_metrics = run_evaluation_BM()
-    loaded_metrics = load_evaluation_BM()
+    evaluation_metrics = run_evaluation_BM()[1].to_numpy().squeeze()
+    loaded_metrics = load_evaluation_BM().to_numpy().squeeze()
     for i in range(len(loaded_metrics)):
         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=6e-03)
 
@@ -813,8 +804,8 @@ def load_evaluation_HiFiEMS():
 
 
 def test_evaluation_HiFiEMS():
-    evaluation_metrics = run_evaluation_HiFiEMS()
-    loaded_metrics = load_evaluation_HiFiEMS()
+    evaluation_metrics = run_evaluation_HiFiEMS()[1].to_numpy().squeeze()
+    loaded_metrics = load_evaluation_HiFiEMS().to_numpy().squeeze()
     for i in range(len(loaded_metrics)):
         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i])
 
@@ -852,9 +843,8 @@ def load_evaluation_SolarX():
 
 
 def test_evaluation_SolarX():
-    evaluation_metrics = run_evaluation_SolarX()
-    loaded_metrics = load_evaluation_SolarX()
-
+    evaluation_metrics = run_evaluation_SolarX()[1].to_numpy().squeeze()
+    loaded_metrics = load_evaluation_SolarX().to_numpy().squeeze()
     for i in range(len(loaded_metrics)):
         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=3e-03)
 

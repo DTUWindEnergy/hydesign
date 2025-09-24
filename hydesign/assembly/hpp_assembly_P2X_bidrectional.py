@@ -237,7 +237,6 @@ class hpp_model_P2X_bidirectional(hpp_model_P2X):
             "CAPEX [MEuro]",
             "OPEX [MEuro]",
             "penalty lifetime [MEuro]",
-            "AEP [GWh]",
             "annual_Power2Grid [GWh]",
             "GUF",
             "annual_H2 [tons]",
@@ -259,6 +258,7 @@ class hpp_model_P2X_bidirectional(hpp_model_P2X):
             "Break-even H2 price [Euro/kg]",
             "Break-even PPA price [Euro/MWh]",
             "Capacity factor wind [-]",
+            "AEP [GWh]",
         ]
 
         self.list_vars = [
@@ -404,6 +404,10 @@ class hpp_model_P2X_bidirectional(hpp_model_P2X):
                 prob.get_val("wind_t").mean() / p_rated / Nwt
             )  # Capacity factor of wind only
 
+        AEP = (
+            (prob["wind_t"].mean() + prob["solar_t"].mean()) * 1e-3 * 24 * 365
+        )  # Annual energy production [MWh]
+
         outputs = np.hstack(
             [
                 prob["NPV_over_CAPEX"],
@@ -415,7 +419,6 @@ class hpp_model_P2X_bidirectional(hpp_model_P2X):
                 prob["CAPEX"] / 1e6,
                 prob["OPEX"] / 1e6,
                 prob["penalty_lifetime"] / 1e6,  # 9
-                prob["mean_AEP"] / 1e3,  # [GWh]
                 prob["mean_Power2Grid"] / 1e3,  # GWh
                 # Grid Utilization factor
                 prob["mean_AEP"] / (self.sim_pars["G_MW"] * 365 * 24),
@@ -438,6 +441,7 @@ class hpp_model_P2X_bidirectional(hpp_model_P2X):
                 prob["break_even_H2_price"],  # 29
                 prob["break_even_PPA_price"],  # 30
                 cf_wind,
+                AEP,
             ]
         )
         self.outputs = outputs

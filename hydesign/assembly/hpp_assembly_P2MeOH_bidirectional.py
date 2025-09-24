@@ -294,7 +294,7 @@ class hpp_model_P2MeOH_bidirectional(hpp_base):
             "CAPEX",
             "OPEX",
             "penalty lifetime",
-            "mean_AEP",
+            "Mean Annual Electricity Sold [GWh]",
             "mean_Power2Grid",
             "GUF",
             "annual_green_MeOH",
@@ -319,6 +319,7 @@ class hpp_model_P2MeOH_bidirectional(hpp_base):
             "break_even_PPA_price",
             "break_even_green_MeOH_price",
             "cf_wind",
+            "AEP [GWh]",
         ]
 
         self.list_vars = [
@@ -442,7 +443,6 @@ class hpp_model_P2MeOH_bidirectional(hpp_base):
         hh = (d / 2) + clearance
         wind_MW = Nwt * p_rated
         Awpp = wind_MW / wind_MW_per_km2
-        # Awpp = Awpp + 1e-10*(Awpp==0)
         E_batt_MWh_t = b_E_h * P_batt_MW
 
         # pass design variables
@@ -451,17 +451,12 @@ class hpp_model_P2MeOH_bidirectional(hpp_base):
         prob.set_val("p_rated", p_rated)
         prob.set_val("Nwt", Nwt)
         prob.set_val("Awpp", Awpp)
-        # Apvp = solar_MW * self.sim_pars['land_use_per_solar_MW']
-        # prob.set_val('Apvp', Apvp)
 
         prob.set_val("surface_tilt", surface_tilt)
         prob.set_val("surface_azimuth", surface_azimuth)
         prob.set_val("DC_AC_ratio", DC_AC_ratio)
         prob.set_val("solar_MW", solar_MW)
         prob.set_val("P_SOEC_MW", P_SOEC_MW)
-        # prob.set_val('P_heater_MW', P_heater_MW)
-        # prob.set_val('P_DAC_MW', P_DAC_MW)
-        # prob.set_val('P_reactor_MW', P_reactor_MW)
         prob.set_val("m_MeOH_tank_max_kg", m_MeOH_tank_max_kg)
 
         prob.set_val("P_batt_MW", P_batt_MW)
@@ -483,56 +478,56 @@ class hpp_model_P2MeOH_bidirectional(hpp_base):
             cf_wind = (
                 prob.get_val("wpp.wind_t").mean() / p_rated / Nwt
             )  # Capacity factor of wind only
-
-        outputs = np.hstack(
-            [
-                prob["NPV_over_CAPEX"],
-                prob["NPV"] / 1e6,
-                prob["IRR"],
-                prob["LCOE"],
-                prob["LCOgreenMeOH"],
-                prob["LCOgridMeOH"],
-                prob["Revenue"] / 1e6,
-                prob["CAPEX"] / 1e6,
-                prob["OPEX"] / 1e6,
-                prob["penalty_lifetime"] / 1e6,
-                prob["mean_AEP"] / 1e3,  # [GWh]
-                prob["mean_Power2Grid"] / 1e3,  # GWh
-                prob["mean_Power2Grid"]
-                / (self.sim_pars["hpp_grid_connection"] * 365 * 24),
-                prob["annual_green_MeOH"] / 1e3,  # in tons
-                prob["annual_grid_MeOH"] / 1e3,  # in tons
-                prob["annual_P_SOEC_green"] / 1e3,  # in GWh
-                prob["annual_P_purch_grid"] / 1e3,  # in GWh
-                self.sim_pars["hpp_grid_connection"],
-                wind_MW,
-                solar_MW,
-                P_SOEC_MW,
-                # P_heater_MW,
-                P_SOEC_MW
-                * self.sim_pars["psi_DAC_MWhkg"]
-                * self.sim_pars["M_CO2"]
-                * eff_cor
-                / (3 * self.sim_pars["M_H2"] * self.sim_pars["lhv"]),
-                P_SOEC_MW
-                * self.sim_pars["w_comp_reactor_MWhkg"]
-                * self.sim_pars["MeOH_yield"]
-                * self.sim_pars["M_CH3OH"]
-                * eff_cor
-                / (3 * self.sim_pars["M_H2"] * self.sim_pars["lhv"]),
-                m_MeOH_tank_max_kg,
-                E_batt_MWh_t,
-                P_batt_MW,
-                prob["total_curtailment"] / 1e3,  # [GWh]
-                Awpp,
-                prob.get_val("shared_cost.Apvp"),
-                d,
-                hh,
-                prob["break_even_PPA_price"],
-                prob["break_even_green_MeOH_price"],
-                cf_wind,
-            ]
-        )
+        AEP = (
+            (prob["wind_t"].mean() + prob["solar_t"].mean()) * 1e-3 * 24 * 365
+        )  # Annual energy production [MWh]
+        outputs = [
+            prob["NPV_over_CAPEX"],
+            prob["NPV"] / 1e6,
+            prob["IRR"],
+            prob["LCOE"],
+            prob["LCOgreenMeOH"],
+            prob["LCOgridMeOH"],
+            prob["Revenue"] / 1e6,
+            prob["CAPEX"] / 1e6,
+            prob["OPEX"] / 1e6,
+            prob["penalty_lifetime"] / 1e6,
+            np.mean(prob["P_HPP_t"]) * 24 * 365 / 1e3,  # [GWh]
+            prob["mean_Power2Grid"] / 1e3,  # GWh
+            prob["mean_Power2Grid"] / (self.sim_pars["hpp_grid_connection"] * 365 * 24),
+            prob["annual_green_MeOH"] / 1e3,  # in tons
+            prob["annual_grid_MeOH"] / 1e3,  # in tons
+            prob["annual_P_SOEC_green"] / 1e3,  # in GWh
+            prob["annual_P_purch_grid"] / 1e3,  # in GWh
+            self.sim_pars["hpp_grid_connection"],
+            wind_MW,
+            solar_MW,
+            P_SOEC_MW,
+            # P_heater_MW,
+            P_SOEC_MW
+            * self.sim_pars["psi_DAC_MWhkg"]
+            * self.sim_pars["M_CO2"]
+            * eff_cor
+            / (3 * self.sim_pars["M_H2"] * self.sim_pars["lhv"]),
+            P_SOEC_MW
+            * self.sim_pars["w_comp_reactor_MWhkg"]
+            * self.sim_pars["MeOH_yield"]
+            * self.sim_pars["M_CH3OH"]
+            * eff_cor
+            / (3 * self.sim_pars["M_H2"] * self.sim_pars["lhv"]),
+            m_MeOH_tank_max_kg,
+            E_batt_MWh_t,
+            P_batt_MW,
+            prob["total_curtailment"] / 1e3,  # [GWh]
+            Awpp,
+            prob.get_val("shared_cost.Apvp"),
+            d,
+            hh,
+            prob["break_even_PPA_price"],
+            prob["break_even_green_MeOH_price"],
+            cf_wind,
+            AEP,
+        ]
         self.outputs = outputs
         return outputs
 
