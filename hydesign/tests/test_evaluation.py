@@ -9,6 +9,7 @@ from hydesign.assembly.hpp_assembly_constantoutput import hpp_model_constant_out
 from hydesign.assembly.hpp_assembly_hifi_dems import hpp_model as hpp_model_hifi_ems
 from hydesign.assembly.hpp_assembly_P2X import hpp_model_P2X
 from hydesign.assembly.hpp_assembly_P2X_bidrectional import hpp_model_P2X_bidirectional
+from hydesign.assembly.hpp_assembly_P2X_OSsolvers import hpp_model_P2X_OSsolvers
 from hydesign.assembly.hpp_assembly_solarX import hpp_model_solarX
 from hydesign.assembly.hpp_pywake_p2x import hpp_model as hpp_model_pywake
 from hydesign.examples import examples_filepath
@@ -27,7 +28,15 @@ def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
     sim_pars_fn = examples_filepath + ex_site["sim_pars_fn"].values[0]
     H2_demand_fn = examples_filepath + ex_site["H2_demand_col"].values[0]
 
-    if case in ["base", "p2x", "p2x_bidirectional", "ppa", "constant_output", "bm"]:
+    if case in [
+        "base",
+        "p2x",
+        "p2x_bidirectional",
+        "ppa",
+        "constant_output",
+        "bm",
+        "p2x_OSsolvers",
+    ]:
         output_df = pd.read_csv(tfp + out_name, index_col=0, sep=";")
         clearance = output_df.loc["clearance [m]", design_name]
         sp = output_df.loc["sp [W/m2]", design_name]
@@ -167,6 +176,22 @@ def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
 
     elif case == "p2x":
         hpp = hpp_model_P2X(
+            latitude=latitude,
+            longitude=longitude,
+            altitude=altitude,
+            max_num_batteries_allowed=10,
+            work_dir="./",
+            sim_pars_fn=sim_pars_fn,
+            input_ts_fn=input_ts_fn,
+            H2_demand_fn=H2_demand_fn,
+        )
+
+        ptg_MW = output_df.loc["ptg_MW [MW]", "Design 1"]
+        HSS_kg = output_df.loc["HSS_kg [kg]", "Design 1"]
+        x.extend([ptg_MW, HSS_kg])
+
+    elif case == "p2x_OSsolvers":
+        hpp = hpp_model_P2X_OSsolvers(
             latitude=latitude,
             longitude=longitude,
             altitude=altitude,
@@ -879,6 +904,45 @@ def load_evaluation_PyWake():
         design_name="Design 1",
         case="PyWake",
     )
+
+
+# ------------------------------------------------------------------------------------------------
+# design 1_P2X_OSsolvers
+
+
+def run_evaluation_design_1_P2X_OSsolvers():
+    return run_evaluation(
+        out_name="Evaluation_test_P2X_OSsolvers.csv",
+        name="France_good_wind",
+        design_name="Design 1",
+        case="p2x_OSsolvers",
+        tmp_name="test_eval_design_1_P2X_OSsolvers",
+    )
+
+
+def update_test_design_1_P2X_OSsolvers():
+    update_test(
+        out_name="Evaluation_test_P2X_OSsolvers.csv",
+        name="France_good_wind",
+        design_name="Design 1",
+        case="p2x_OSsolvers",
+        tmp_name="test_eval_design_1_P2X_OSsolvers",
+    )
+
+
+def load_evaluation_design_1_P2X_OSsolvers():
+    return load_evaluation(
+        out_name="Evaluation_test_P2X_OSsolvers.csv",
+        design_name="Design 1",
+        case="p2x_OSsolvers",
+    )
+
+
+def test_evaluation_design_1_P2X_OSsolvers():
+    evaluation_metrics = run_evaluation_design_1_P2X_OSsolvers()[1].to_numpy().squeeze()
+    loaded_metrics = load_evaluation_design_1_P2X_OSsolvers().to_numpy().squeeze()
+    for i in range(len(loaded_metrics)):
+        np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=1e-04)
 
 
 # def test_evaluation_PyWake():
