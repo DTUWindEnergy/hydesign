@@ -884,6 +884,42 @@ def load_evaluation_PyWake():
         case="PyWake",
     )
 
+# design 1_P2X_pyomo
+
+
+def run_evaluation_design_1_P2X_pyomo():
+    return run_evaluation(
+        out_name="Evaluation_test_P2X_pyomo.csv",
+        name="France_good_wind",
+        design_name="Design 1",
+        case="p2x_pyomo",
+        tmp_name="test_eval_design_1_P2X",
+    )
+
+
+def update_test_design_1_P2X_pyomo():
+    update_test(
+        out_name="Evaluation_test_P2X_pyomo.csv",
+        name="France_good_wind",
+        design_name="Design 1",
+        case="p2x_pyomo",
+        tmp_name="test_eval_design_1_P2X",
+    )
+
+
+def load_evaluation_design_1_P2X_pyomo():
+    return load_evaluation(
+        out_name="Evaluation_test_P2X_pyomo.csv",
+        design_name="Design 1",
+        case="p2x_pyomo",
+    )
+
+
+def test_evaluation_design_1_P2X_pyomo():
+    evaluation_metrics = run_evaluation_design_1_P2X_pyomo()
+    loaded_metrics = load_evaluation_design_1_P2X_pyomo()
+    for i in range(len(loaded_metrics)):
+        np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=1e-04)
 
 # def test_evaluation_PyWake():
 # evaluation_metrics = run_evaluation_PyWake()

@@ -13,7 +13,6 @@ import openmdao.api as om
 # import yaml
 import pyomo.environ as pyo
 from pyomo.environ import SolverFactory
-SolverFactory('cbc').available()
 
 # import xarray as xr
 from docplex.mp.model import Model
@@ -385,7 +384,7 @@ def ems_pyomo_P2X(
     peak_hr_quantile = 0.9,
     cost_of_battery_P_fluct_in_peak_price_ratio = 0.5, #[0, 0.8]. For higher values might cause errors
     n_full_power_hours_expected_per_day_at_peak_price = 3,  
-    batch_size = 62,
+    batch_size = 48,
     electrolyzer_eff_curve_type='production',
     ):
     
@@ -660,6 +659,8 @@ def ems_pyomo_parts_P2X(
         f_rule=[-1e4/storage_eff, -epsilon/storage_eff, epsilon*storage_eff, 1e4*storage_eff],
         pw_constr_type="EQ",
         pw_repn="CC",
+        warn_domain_coverage=False,
+        unbounded_domain_var=False,
     )
 
     # Caclulating electrolyzer efficiency as a function of load (piecewise linear approximation)
@@ -685,7 +686,7 @@ def ems_pyomo_parts_P2X(
         pw_pts=H2_curve_x,
         f_rule=H2_curve_y,
         pw_constr_type="EQ",
-        pw_repn="DLOG"
+        pw_repn="DLOG",
     )
 
 
@@ -756,7 +757,9 @@ def ems_pyomo_parts_P2X(
     )
 
 
-    opt = pyo.SolverFactory("cbc")
+    #opt = pyo.SolverFactory('scip', executable=r"C:\Program Files\SCIPOptSuite_9.2.3\bin\scip.exe")
+    #opt = pyo.SolverFactory('cbc', executable=r"C:\Users\s223344\AppData\Local\anaconda3\envs\hydesign\Library\bin\cbc.exe")
+    opt = pyo.SolverFactory('glpk')
     results = opt.solve(model, tee=True)
     
     P_HPP_ts_df = pd.Series(

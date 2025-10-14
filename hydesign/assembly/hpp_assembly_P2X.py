@@ -10,7 +10,7 @@ from hydesign.costs.costs import ptg_cost_comp as ptg_cost
 from hydesign.costs.costs import pvp_cost_comp as pvp_cost
 from hydesign.costs.costs import shared_cost_comp as shared_cost
 from hydesign.costs.costs import wpp_cost_comp as wpp_cost
-from hydesign.ems.ems_P2X_pyomo import ems_P2X_pyomo as ems  # , ems_long_term_operation
+from hydesign.ems.ems_P2X import ems_P2X_comp as ems  # , ems_long_term_operation
 from hydesign.finance.finance_P2X import finance_P2X_comp as finance_P2X
 from hydesign.pv.pv import pvp_comp as pvp  # , pvp_with_degradation
 from hydesign.weather.weather import ABL_comp as ABL
