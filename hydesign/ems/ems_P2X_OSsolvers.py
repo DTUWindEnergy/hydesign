@@ -1,6 +1,7 @@
 # basic libraries
 import numpy as np
 import pandas as pd
+import pyomo.environ as pyo
 from docplex.mp.model import Model
 
 from hydesign.ems.ems import expand_to_lifetime, split_in_batch
@@ -536,335 +537,6 @@ def ems_OSsolvers_P2X(
     )
 
 
-# def ems_OSsolvers_parts_P2X(
-#     wind_ts,
-#     solar_ts,
-#     price_ts,
-#     P_batt_MW,
-#     E_batt_MWh_t,
-#     hpp_grid_connection,
-#     battery_depth_of_discharge,
-#     charge_efficiency,
-#     price_H2,
-#     ptg_MW,
-#     HSS_kg,
-#     storage_eff,
-#     hhv,
-#     m_H2_demand_ts,
-#     H2_storage_t,
-#     penalty_factor_H2,
-#     eff_curve,
-#     min_power_standby,
-#     load_min_penalty_factor=1e6,
-#     peak_hr_quantile=0.9,
-#     cost_of_battery_P_fluct_in_peak_price_ratio=0.5,  # [0, 0.8]. For higher values might cause errors
-#     n_full_power_hours_expected_per_day_at_peak_price=3,
-#     electrolyzer_eff_curve_type="production",
-# ):
-#     """EMS solver implemented in OSsolvers
-
-#     Parameters
-#     ----------
-#     wind_ts : WPP power time series
-#     solar_ts : PVP power time series
-#     price_ts : price time series
-#     P_batt_MW : battery power
-#     E_batt_MWh_t : battery energy capacity time series
-#     H2_storage_t : hydrogen storgae capacity time series
-#     hpp_grid_connection : grid connection
-#     battery_depth_of_discharge : battery depth of discharge
-#     charge_efficiency : battery charge efficiency
-#     peak_hr_quantile : quantile of price time series to define peak price hours
-#     cost_of_battery_P_fluct_in_peak_price_ratio : cost of battery power fluctuations computed as a peak price ratio
-#     n_full_power_hours_expected_per_day_at_peak_price : Penalty occurs if number of full power hours expected per day at peak price are not reached
-#     price_H2: Price of Hydrogen
-#     ptg_MW: Electrolyzer power capacity
-#     HSS_kg: Hydrogen storage capacity
-#     storage_eff: Compressor efficiency for hydrogen storage
-#     hhv: High heat value
-#     m_H2_demand_ts: Hydrogen demand times series
-#     penalty_factor_H2: Penalty on not meeting hydrogen demand in an hour
-
-#     Returns
-#     -------
-#     P_HPP_ts: HPP power time series
-#     P_curtailment_ts: HPP curtailed power time series
-#     P_charge_discharge_ts: Battery charge/discharge power time series
-#     E_SOC_ts: Battery energy SOC time series
-#     penalty_ts: penalty time series for not reaching expected energy production at peak hours
-#     P_ptg_ts: Electrolyzer power consumption time series
-#     P_ptg_SB_ts: Electrolyzer standby mode power consumption time series
-#     m_H2_ts: Hydrogen production time series
-#     m_H2_offtake_ts: Hydrogen offtake time series
-#     LoS_H2_ts: Level of Hydrogen storage time series
-
-#     """
-
-#     # Penalties
-#     N_t = len(price_ts.index)
-#     N_days = N_t / 24
-#     e_peak_day_expected = (
-#         n_full_power_hours_expected_per_day_at_peak_price * hpp_grid_connection
-#     )
-#     e_peak_period_expected = e_peak_day_expected * N_days
-#     price_peak = np.quantile(price_ts.values, peak_hr_quantile)
-#     peak_hours_index = np.where(price_ts >= price_peak)[0]
-
-#     price_ts_to_max = price_peak - price_ts
-#     price_ts_to_max.loc[price_ts_to_max < 0] = 0
-#     price_ts_to_max.iloc[:-1] = (
-#         0.5 * price_ts_to_max.iloc[:-1].values + 0.5 * price_ts_to_max.iloc[1:].values
-#     )
-
-#     mdl = Model(name="EMS")
-#     mdl.context.cplex_parameters.threads = 1
-#     # CPLEX parameter pg 87 Emphasize feasibility over optimality
-#     mdl.context.cplex_parameters.emphasis.mip = 1
-
-#     time = price_ts.index
-#     # time set with an additional time slot for the last soc
-#     SOCtime = time.append(pd.Index([time[-1] + pd.Timedelta("1hour")]))
-
-#     # Variables definition
-#     P_HPP_t = mdl.continuous_var_dict(
-#         time, lb=0, ub=hpp_grid_connection, name="HPP power output"
-#     )
-#     P_curtailment_t = mdl.continuous_var_dict(time, lb=0, name="Curtailment")
-
-#     # Power charge/discharge from battery
-#     P_charge_discharge = mdl.continuous_var_dict(
-#         time,
-#         lb=-P_batt_MW / charge_efficiency,
-#         ub=P_batt_MW * charge_efficiency,
-#         name="Battery power",
-#     )
-#     # Battery energy level, energy stored
-#     E_SOC_t = mdl.continuous_var_dict(SOCtime, lb=0, name="Energy level")
-
-#     # Hydrogen storgae level
-#     LoS_H2_t = mdl.continuous_var_dict(SOCtime, lb=0, name="Hydrogen storage level")
-
-#     # Power to gas plant power consumption, produced hydrogen, electrolyzer efficiency
-#     P_ptg_t = mdl.continuous_var_dict(
-#         time,
-#         lb=min_power_standby * ptg_MW,
-#         ub=ptg_MW,
-#         name="Power to gas plant consumption",
-#     )
-
-#     m_H2_t = mdl.continuous_var_dict(time, lb=0, name="Produced hydrogen")
-#     m_H2_offtake_t = mdl.continuous_var_dict(time, lb=0, name="Hydrogen offtake")
-
-#     penalty = mdl.continuous_var(name="penalty", lb=-1e12)
-#     e_penalty = mdl.continuous_var(name="e_penalty", lb=-1e12)
-
-#     # Piecewise function for "absolute value" function
-#     fabs = mdl.piecewise(-1, [(0, 0)], 1)
-
-#     # Constraints
-#     mdl.add_constraint(
-#         e_penalty
-#         == (
-#             e_peak_period_expected - mdl.sum(P_HPP_t[time[i]] for i in peak_hours_index)
-#         )
-#     )
-#     # Piecewise function for "only positive" function
-#     f1 = mdl.piecewise(0, [(0, 0)], 1)
-
-#     mdl.add_constraint(
-#         penalty
-#         == price_peak * f1(e_penalty)
-#         + mdl.sum(
-#             penalty_factor_H2 * (m_H2_demand_ts[t] - m_H2_offtake_t[t]) for t in time
-#         )
-#     )
-
-#     # Intitial and end SOC
-#     mdl.add_constraint(E_SOC_t[SOCtime[0]] == 0.5 * E_batt_MWh_t[time[0]])
-#     # SOC at the end of the year has to be equal to SOC at the beginning of the year
-#     mdl.add_constraint(E_SOC_t[SOCtime[-1]] == 0.5 * E_batt_MWh_t[time[0]])
-
-#     # Intitial and end LoS_H2
-#     mdl.add_constraint(LoS_H2_t[SOCtime[0]] == 0)
-#     mdl.add_constraint(LoS_H2_t[SOCtime[-1]] == 0)
-
-#     # piecewise linear representation of battery charge vs dischrage effciency
-#     f2 = mdl.piecewise(charge_efficiency, [(0, 0)], 1 / charge_efficiency)
-
-#     # piecewise linear representation of H2 storage vs offtake effciency
-#     f3 = mdl.piecewise(1 / storage_eff, [(0, 0)], storage_eff)
-
-#     # Caclulating electrolyzer efficiency as a function of load (piecewise linear approximation)
-#     if electrolyzer_eff_curve_type == "production":
-#         H2_curve_list = [(load * ptg_MW, H2 * ptg_MW) for load, H2 in eff_curve]
-#     elif electrolyzer_eff_curve_type == "efficiency":
-#         H2_curve_list = [
-#             (load * ptg_MW, load * ptg_MW * efficiency / hhv * 1000)
-#             for load, efficiency in eff_curve
-#         ]
-#     else:
-#         raise ValueError(
-#             f'electrolyzer_eff_curve_type is: "{electrolyzer_eff_curve_type}". Available options are ["production", "efficiency"]'
-#         )
-
-#     H2_prod = mdl.piecewise(0, H2_curve_list, 0)
-
-#     # # Piecewise linear representation of standby mode operation of electrolyzer
-#     # f5 = mdl.piecewise(0, [(-1,0), (0, min_power_standby * ptg_MW), (1,0)], 0)
-
-#     mdl.maximize(
-#         # revenues and OPEX
-#         mdl.sum(price_ts[t] * P_HPP_t[t] + price_H2 * m_H2_offtake_t[t] for t in time)
-#         - penalty  # Add cost for rapid charge-discharge for limiting the battery life use
-#         - mdl.sum(
-#             fabs(P_charge_discharge[t + pd.Timedelta("1hour")] - P_charge_discharge[t])
-#             * cost_of_battery_P_fluct_in_peak_price_ratio
-#             * price_ts_to_max[t]
-#             for t in time[:-1]
-#         )
-#     )
-
-#     for t in time:
-#         # Time index for successive time step
-#         tt = t + pd.Timedelta("1hour")
-#         # Delta_t of 1 hour
-#         dt = 1
-
-#         # Only one variable for battery
-#         mdl.add_constraint(
-#             P_HPP_t[t]
-#             == wind_ts[t]
-#             + solar_ts[t]
-#             - P_curtailment_t[t]
-#             + P_charge_discharge[t]
-#             - P_ptg_t[t]
-#         )
-
-#         # charge/dischrage equation
-#         mdl.add_constraint(E_SOC_t[tt] == E_SOC_t[t] - f2(P_charge_discharge[t]) * dt)
-
-#         # Hydrogen storgae equation
-#         mdl.add_constraint(
-#             LoS_H2_t[tt] == LoS_H2_t[t] + f3(m_H2_t[t] - m_H2_offtake_t[t])
-#         )
-
-#         # Constraining battery energy level to minimum battery level
-#         mdl.add_constraint(
-#             E_SOC_t[t] >= (1 - battery_depth_of_discharge) * E_batt_MWh_t[t]
-#         )
-
-#         # Constraining battery energy level to maximum battery level
-#         mdl.add_constraint(E_SOC_t[t] <= E_batt_MWh_t[t])
-
-#         # Battery charge/discharge within its power rating
-#         mdl.add_constraint(P_charge_discharge[t] <= P_batt_MW * charge_efficiency)
-#         mdl.add_constraint(P_charge_discharge[t] >= -P_batt_MW / charge_efficiency)
-
-#         # Constraining hydrogen offtake as per the demand time series and level of storage
-#         mdl.add_constraint(LoS_H2_t[t] <= H2_storage_t[t])
-#         mdl.add_constraint(m_H2_offtake_t[t] <= m_H2_demand_ts[t])
-
-#         # constraint to maintain standby power when electrolyzer is not producing H2
-#         # Big M method to define the mode of operation of electrolyzer, M = 1e5
-#         # mdl.add_constraint(P_ptg_t[t] <= 1e5*(1-y_t[t]))
-#         # mdl.add_constraint(P_ptg_t[t] >= 1e-6*(1-y_t[t]))
-#         # mdl.add_constraint(P_ptg_SB_t[t] == y_t[t] * min_power_standby * ptg_MW)
-#         # mdl.add_constraint(penalty_SB[t]>=(1-y_t[t])-P_ptg_t[t]/1e5)
-
-#         # mdl.add_constraint( m_H2_offtake_t[t] <= LoS_H2_t[t])
-#         # when the H2 offtake is infinite, there is no storage, then H2_offtake is same as H2_produced
-#         if H2_storage_t[t] == 0:
-#             m_H2_offtake_t[t] = m_H2_t[t]
-
-#         # Calculating Hydrogen production with electrolyzer efficiency curve
-#         # mdl.add_constraint(m_H2_t[t] == PEM(P_ptg_t[t])* storage_eff / hhv * 1000)
-
-#         # Calculating Hydrogen production with HPC
-#         mdl.add_constraint(m_H2_t[t] == H2_prod(P_ptg_t[t]))
-
-#     # Solving the problem
-#     sol = mdl.solve(log_output=False)
-#     # log_output=True)
-
-#     # print(mdl.export_to_string())
-#     # sol.display()
-
-#     P_HPP_ts_df = pd.DataFrame.from_dict(
-#         sol.get_value_dict(P_HPP_t), orient="index"
-#     ).loc[:, 0]
-#     P_curtailment_ts_df = pd.DataFrame.from_dict(
-#         sol.get_value_dict(P_curtailment_t), orient="index"
-#     ).loc[:, 0]
-#     P_charge_discharge_ts_df = pd.DataFrame.from_dict(
-#         sol.get_value_dict(P_charge_discharge), orient="index"
-#     ).loc[:, 0]
-#     E_SOC_ts_df = pd.DataFrame.from_dict(
-#         sol.get_value_dict(E_SOC_t), orient="index"
-#     ).loc[:, 0]
-#     P_ptg_ts_df = pd.DataFrame.from_dict(
-#         sol.get_value_dict(P_ptg_t), orient="index"
-#     ).loc[:, 0]
-#     m_H2_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(m_H2_t), orient="index").loc[
-#         :, 0
-#     ]
-#     LoS_H2_ts_df = pd.DataFrame.from_dict(
-#         sol.get_value_dict(LoS_H2_t), orient="index"
-#     ).loc[:, 0]
-#     m_H2_offtake_ts_df = pd.DataFrame.from_dict(
-#         sol.get_value_dict(m_H2_offtake_t), orient="index"
-#     ).loc[:, 0]
-
-#     # make a time series like P_HPP with a constant penalty
-#     penalty_2 = sol.get_value(penalty)
-#     penalty_ts = np.ones(N_t) * (penalty_2 / N_t)
-
-#     mdl.end()
-
-#     # Cplex sometimes returns missing values :O
-#     P_HPP_ts = P_HPP_ts_df.reindex(time, fill_value=0).values
-#     P_curtailment_ts = P_curtailment_ts_df.reindex(time, fill_value=0).values
-#     P_charge_discharge_ts = P_charge_discharge_ts_df.reindex(time, fill_value=0).values
-#     E_SOC_ts = E_SOC_ts_df.reindex(SOCtime, fill_value=0).values
-#     P_ptg_ts = P_ptg_ts_df.reindex(time, fill_value=0).values
-#     m_H2_ts = m_H2_ts_df.reindex(time, fill_value=0).values
-#     LoS_H2_ts = LoS_H2_ts_df.reindex(time, fill_value=0).values
-#     m_H2_offtake_ts = m_H2_offtake_ts_df.reindex(time, fill_value=0).values
-
-#     if len(P_HPP_ts_df) < len(wind_ts):
-#         # print('recomputing p_hpp')
-#         P_HPP_ts = (
-#             wind_ts.values
-#             + solar_ts.values
-#             + -P_curtailment_ts
-#             + P_charge_discharge_ts
-#             - P_ptg_ts
-#         )
-#     P_ptg_SB_ts = np.zeros_like(P_ptg_ts)
-#     for t in range(N_t):
-#         if abs(P_ptg_ts[t] - min_power_standby * ptg_MW) < 1e-6:
-#             P_ptg_SB_ts[t] = min_power_standby * ptg_MW
-#             P_ptg_ts[t] = 0
-#             m_H2_ts[t] = 0
-
-#     return (
-#         P_HPP_ts,
-#         P_curtailment_ts,
-#         P_charge_discharge_ts,
-#         P_ptg_ts,
-#         P_ptg_SB_ts,
-#         E_SOC_ts,
-#         m_H2_ts,
-#         m_H2_offtake_ts,
-#         LoS_H2_ts,
-#         penalty_ts,
-#     )
-
-
-# Patch: OR-Tools version with robustness fixes:
-# - ensures (0,0) breakpoint exists for electrolyzer piecewise
-# - relaxes battery sign binary to continuous in [0,1] (LP)
-# - returns LoS_H2_ts trimmed to length N_t (as previously fixed)
-
 import numpy as np
 import pandas as pd
 from ortools.linear_solver import pywraplp
@@ -1208,23 +880,6 @@ def ems_ortools_parts_P2X(
     )
 
 
-import numpy as np
-import pandas as pd
-from pyomo.environ import (
-    ConcreteModel,
-    Constraint,
-    NonNegativeReals,
-    Objective,
-    Piecewise,
-    RangeSet,
-    Reals,
-    SolverFactory,
-    Var,
-    maximize,
-    value,
-)
-
-
 def ems_pyomo_parts_P2X(
     wind_ts,
     solar_ts,
@@ -1244,548 +899,196 @@ def ems_pyomo_parts_P2X(
     penalty_factor_H2,
     eff_curve,
     min_power_standby,
-    load_min_penalty_factor=1e6,
-    peak_hr_quantile=0.9,
-    cost_of_battery_P_fluct_in_peak_price_ratio=0.5,
-    n_full_power_hours_expected_per_day_at_peak_price=3,
-    electrolyzer_eff_curve_type="production",
-    debug=False,
+    load_min_penalty_factor,
+    peak_hr_quantile,
+    cost_of_battery_P_fluct_in_peak_price_ratio,
+    n_full_power_hours_expected_per_day_at_peak_price,
+    electrolyzer_eff_curve_type,
 ):
-    """
-    Pyomo batched EMS part (HiGHS). Fixed electrolyzer mapping using Piecewise indexed over time.
-    Returns same tuple as original; LoS_H2_ts trimmed to length N_t.
-    """
+    """EMS solver implemented in pyomo
 
-    # Index/time setup
-    time = list(price_ts.index)
-    N_t = len(time)
-    SOCtime = time + [time[-1] + pd.Timedelta("1hour")]
+    Parameters
+    ----------
+    wind_ts : WPP power time series
+    solar_ts : PVP power time series
+    price_ts : price time series
+    P_batt_MW : battery power
+    E_batt_MWh_t : battery energy capacity time series
+    H2_storage_t : hydrogen storgae capacity time series
+    hpp_grid_connection : grid connection
+    battery_depth_of_discharge : battery depth of discharge
+    charge_efficiency : battery charge efficiency
+    peak_hr_quantile : quantile of price time series to define peak price hours
+    cost_of_battery_P_fluct_in_peak_price_ratio : cost of battery power fluctuations computed as a peak price ratio
+    n_full_power_hours_expected_per_day_at_peak_price : Penalty occurs if number of full power hours expected per day at peak price are not reached
+    price_H2: Price of Hydrogen
+    ptg_MW: Electrolyzer power capacity
+    HSS_kg: Hydrogen storage capacity
+    storage_eff: Compressor efficiency for hydrogen storage
+    ptg_deg: Electrolyzer rate of degradation annually
+    hhv: High heat value
+    m_H2_demand_ts: Hydrogen demand times series
+    penalty_factor_H2: Penalty on not meeting hydrogen demand in an hour
 
-    N_days = N_t / 24.0
+    Returns
+    -------
+    P_HPP_ts: HPP power time series
+    P_curtailment_ts: HPP curtailed power time series
+    P_charge_discharge_ts: Battery charge/discharge power time series
+    E_SOC_ts: Battery energy SOC time series
+    penalty_ts: penalty time series for not reaching expected energy production at peak hours
+    P_ptg_ts: Electrolyzer power consumption time series
+    P_ptg_SB_ts: Electrolyzer standby mode power consumption time series
+    m_H2_ts: Hydrogen production time series
+    m_H2_offtake_ts: Hydrogen offtake time series
+    LoS_H2_ts: Level of Hydrogen storage time series
+
+    """
+    N_t = len(price_ts.index)
+    N_days = N_t / 24
     e_peak_day_expected = (
         n_full_power_hours_expected_per_day_at_peak_price * hpp_grid_connection
     )
     e_peak_period_expected = e_peak_day_expected * N_days
     price_peak = np.quantile(price_ts.values, peak_hr_quantile)
-    peak_hours_index = [i for i, t in enumerate(time) if price_ts.iloc[i] >= price_peak]
-
-    # prepare smoothed price_to_max like original
-    price_ts_to_max = price_peak - price_ts
-    price_ts_to_max[price_ts_to_max < 0] = 0.0
-    if len(price_ts_to_max) >= 2:
-        for i in range(len(price_ts_to_max) - 1):
-            price_ts_to_max.iloc[i] = (
-                0.5 * price_ts_to_max.iloc[i] + 0.5 * price_ts_to_max.iloc[i + 1]
-            )
-
-    model = ConcreteModel()
-    model.T = RangeSet(0, N_t - 1)
-    model.Tsoc = RangeSet(0, N_t)
-
-    idx_to_time = {i: time[i] for i in range(N_t)}
-
-    # Variables
-    model.P_HPP = Var(model.T, bounds=(0, hpp_grid_connection), within=Reals)
-    model.P_curtail = Var(model.T, bounds=(0, None), within=NonNegativeReals)
-
-    model.P_ch = Var(
-        model.T, bounds=(0, P_batt_MW * charge_efficiency), within=NonNegativeReals
-    )
-    model.P_dis = Var(
-        model.T, bounds=(0, P_batt_MW / charge_efficiency), within=NonNegativeReals
-    )
-    model.P_batt_net = Var(model.T, within=Reals)
-
-    model.E_SOC = Var(
-        model.Tsoc, bounds=(0, float(max(E_batt_MWh_t))), within=NonNegativeReals
-    )
-    model.LoS_H2 = Var(
-        model.Tsoc,
-        bounds=(0, float(max(H2_storage_t) if len(H2_storage_t) > 0 else 0.0)),
-        within=NonNegativeReals,
-    )
-
-    # Electrolyzer vars
-    # Keep same lb/ub as original (standby lb included)
-    model.P_ptg = Var(
-        model.T, bounds=(min_power_standby * ptg_MW, ptg_MW), within=Reals
-    )
-    model.m_H2 = Var(model.T, bounds=(0, None), within=NonNegativeReals)
-    model.m_H2_offtake = Var(model.T, bounds=(0, None), within=NonNegativeReals)
-
-    # Penalty variables
-    model.e_penalty = Var(within=Reals)
-    model.e_pen_pos = Var(within=NonNegativeReals)
-
-    # abs fluctuation variables (N_t-1 of them)
-    if N_t >= 2:
-        model.abs_batt_fluct = Var(RangeSet(0, N_t - 2), within=NonNegativeReals)
-
-    # Link battery net variable
-    def _link_batt_net(m, t):
-        return m.P_batt_net[t] == m.P_ch[t] - m.P_dis[t]
-
-    model.link_batt_net = Constraint(model.T, rule=_link_batt_net)
-
-    # HPP power balance
-    def _hpp_balance(m, t):
-        ts = idx_to_time[t]
-        return (
-            m.P_HPP[t]
-            == wind_ts.loc[ts]
-            + solar_ts.loc[ts]
-            - m.P_curtail[t]
-            + m.P_batt_net[t]
-            - m.P_ptg[t]
-        )
-
-    model.hpp_balance = Constraint(model.T, rule=_hpp_balance)
-
-    # Battery SOC update
-    def _soc_update(m, t):
-        return (
-            m.E_SOC[t + 1]
-            == m.E_SOC[t]
-            + (m.P_ch[t] * charge_efficiency - m.P_dis[t] / charge_efficiency) * 1.0
-        )
-
-    model.soc_update = Constraint(model.T, rule=_soc_update)
-
-    # SOC bounds per time
-    def _soc_min(m, t):
-        ts = idx_to_time[t]
-        return m.E_SOC[t] >= (1 - battery_depth_of_discharge) * E_batt_MWh_t.loc[ts]
-
-    model.soc_min = Constraint(model.T, rule=_soc_min)
-
-    def _soc_max(m, t):
-        ts = idx_to_time[t]
-        return m.E_SOC[t] <= E_batt_MWh_t.loc[ts]
-
-    model.soc_max = Constraint(model.T, rule=_soc_max)
-
-    # SOC initial & final (like original)
-    model.soc_initial = Constraint(
-        expr=model.E_SOC[0] == 0.5 * E_batt_MWh_t.loc[idx_to_time[0]]
-    )
-    model.soc_final = Constraint(
-        expr=model.E_SOC[N_t] == 0.5 * E_batt_MWh_t.loc[idx_to_time[0]]
-    )
-
-    # H2 LoS update
-    def _h2_update(m, t):
-        return m.LoS_H2[t + 1] == m.LoS_H2[t] + (
-            m.m_H2[t] * storage_eff - m.m_H2_offtake[t] / storage_eff
-        )
-
-    model.h2_update = Constraint(model.T, rule=_h2_update)
-
-    model.h2_initial = Constraint(expr=model.LoS_H2[0] == 0)
-    model.h2_final = Constraint(expr=model.LoS_H2[N_t] == 0)
-
-    def _h2_storage_bound(m, t):
-        ts = idx_to_time[t]
-        return m.LoS_H2[t] <= H2_storage_t.loc[ts]
-
-    model.h2_storage_bound = Constraint(model.T, rule=_h2_storage_bound)
-
-    def _h2_offtake_limit(m, t):
-        ts = idx_to_time[t]
-        return m.m_H2_offtake[t] <= m_H2_demand_ts.loc[ts]
-
-    model.h2_offtake_limit = Constraint(model.T, rule=_h2_offtake_limit)
-
-    # If no H2 storage at time t, set offtake == production (same logic as original)
-    for t in range(N_t):
-        ts = idx_to_time[t]
-        if H2_storage_t.loc[ts] == 0:
-            setattr(
-                model,
-                f"h2_no_storage_link_{t}",
-                Constraint(expr=model.m_H2_offtake[t] == model.m_H2[t]),
-            )
-
-    # Build piecewise production curve exactly like original intent
-    if electrolyzer_eff_curve_type == "production":
-        # expect eff_curve entries: (load_fraction, production_at_that_fraction)
-        # original CPLEX used (load*ptg_MW, H2*ptg_MW)
-        H2_curve_list = [(load * ptg_MW, H2 * ptg_MW) for load, H2 in eff_curve]
-    elif electrolyzer_eff_curve_type == "efficiency":
-        # original CPLEX used ((load*ptg_MW), load*ptg_MW*eff/hhv*1000)
-        H2_curve_list = [
-            (load * ptg_MW, load * ptg_MW * efficiency / hhv * 1000)
-            for load, efficiency in eff_curve
-        ]
-    else:
-        raise ValueError(
-            f'electrolyzer_eff_curve_type is: "{electrolyzer_eff_curve_type}". Available options are ["production", "efficiency"]'
-        )
-
-    H2_curve_list = sorted(H2_curve_list, key=lambda x: x[0])
-    xs = [float(pt) for pt, out in H2_curve_list]
-    ys = [float(out) for pt, out in H2_curve_list]
-
-    # Sanity: ensure monotonic increasing xs (required by Piecewise)
-    if any(xs[i + 1] <= xs[i] for i in range(len(xs) - 1)):
-        raise ValueError(
-            "electrolyzer eff_curve must have strictly increasing x (power) knots"
-        )
-
-    # Use Pyomo Piecewise indexed by model.T
-    # map input: P_ptg[t] -> output: m_H2[t]
-    # Piecewise signature: Piecewise(index=..., input=..., output=..., pw_pts=..., pw_repn='SOS2')
-    # NOTE: pyomo Piecewise requires separate component creation; using the module-level Piecewise call below.
-    Piecewise(
-        model,
-        model.m_H2,  # output var (dependent)
-        model.P_ptg,  # input var (independent)
-        pw_pts=xs,
-        pw_constr_type="EQ",  # enforce equality m_H2 == piecewise(P_ptg)
-        pw_repn="SOS2",
-        index=model.T,
-        pw_values=ys,
-    )
-
-    # e_penalty def
-    def _e_penalty_def(m):
-        return m.e_penalty == e_peak_period_expected - sum(
-            m.P_HPP[i] for i in peak_hours_index
-        )
-
-    model.e_penalty_def = Constraint(rule=_e_penalty_def)
-
-    model.e_pen_pos_def1 = Constraint(expr=model.e_pen_pos >= model.e_penalty)
-    model.e_pen_pos_def2 = Constraint(expr=model.e_pen_pos >= 0)
-
-    # Battery fluct absolute constraints
-    if N_t >= 2:
-        for t in range(N_t - 1):
-            model.add_component(
-                f"abs_up_{t}",
-                Constraint(
-                    expr=model.abs_batt_fluct[t]
-                    >= model.P_batt_net[t + 1] - model.P_batt_net[t]
-                ),
-            )
-            model.add_component(
-                f"abs_down_{t}",
-                Constraint(
-                    expr=model.abs_batt_fluct[t]
-                    >= -(model.P_batt_net[t + 1] - model.P_batt_net[t])
-                ),
-            )
-
-    # Conservative: ensure offtake <= LoS (helps feasibility)
-    def _offtake_vs_los(m, t):
-        return m.m_H2_offtake[t] <= m.LoS_H2[t]
-
-    model.offtake_vs_los = Constraint(model.T, rule=_offtake_vs_los)
-
-    # Objective
-    def _penalty_h2_component(m):
-        return penalty_factor_H2 * sum(
-            (m_H2_demand_ts.loc[idx_to_time[t]] - m.m_H2_offtake[t]) for t in range(N_t)
-        )
-
-    if N_t >= 2:
-        fluct_cost = sum(
-            model.abs_batt_fluct[t]
-            * cost_of_battery_P_fluct_in_peak_price_ratio
-            * price_ts_to_max.iloc[t]
-            for t in range(N_t - 1)
-        )
-    else:
-        fluct_cost = 0.0
-
-    revenue = sum(
-        price_ts.loc[idx_to_time[t]] * model.P_HPP[t] + price_H2 * model.m_H2_offtake[t]
-        for t in range(N_t)
-    )
-    penalty_expr = price_peak * model.e_pen_pos + _penalty_h2_component(model)
-
-    model.obj = Objective(expr=revenue - penalty_expr - fluct_cost, sense=maximize)
-
-    # Initialize vars to reasonable values
-    for t in range(N_t + 1):
-        model.E_SOC[t].value = 0.5 * E_batt_MWh_t.loc[idx_to_time[0]]
-        model.LoS_H2[t].value = 0.0
-
-    for t in range(N_t):
-        model.P_ptg[t].value = min_power_standby * ptg_MW
-        model.P_ch[t].value = 0.0
-        model.P_dis[t].value = 0.0
-        model.P_batt_net[t].value = 0.0
-
-    # Solve with HiGHS
-    solver = SolverFactory("highs")
-    res = solver.solve(model, tee=False)
-
-    # Check status (raise helpful error if not OK)
-    if (not hasattr(res, "solver") or res.solver.status != "ok") and (
-        not hasattr(res, "Solver") or getattr(res, "Solver", None) is None
-    ):
-        # Pyomo solver result object shapes vary by version. Use conservative check:
-        # if the results object indicates failure, raise with message
-        # but continue if solver produced a feasible solution.
-        pass  # don't raise here; we'll still extract values below
-
-    # Extract results
-    P_HPP_ts = np.zeros(N_t)
-    P_curtail_ts = np.zeros(N_t)
-    P_charge_discharge_ts = np.zeros(N_t)
-    P_ptg_ts = np.zeros(N_t)
-    P_ptg_SB_ts = np.zeros(N_t)
-    E_SOC_ts = np.zeros(N_t + 1)
-    m_H2_ts = np.zeros(N_t)
-    m_H2_offtake_ts = np.zeros(N_t)
-    LoS_H2_ts = np.zeros(N_t + 1)
-
-    for t in range(N_t):
-        P_HPP_ts[t] = value(model.P_HPP[t])
-        P_curtail_ts[t] = value(model.P_curtail[t])
-        P_charge_discharge_ts[t] = value(model.P_batt_net[t])
-        P_ptg_ts[t] = value(model.P_ptg[t])
-        m_H2_ts[t] = value(model.m_H2[t])
-        m_H2_offtake_ts[t] = value(model.m_H2_offtake[t])
-        LoS_H2_ts[t] = value(model.LoS_H2[t])
-        E_SOC_ts[t] = value(model.E_SOC[t])
-
-    # final soc & LoS
-    E_SOC_ts[-1] = value(model.E_SOC[N_t])
-    LoS_H2_ts[-1] = value(model.LoS_H2[N_t])
-
-    # Penalty distribution
-    penalty_val = value(price_peak * model.e_pen_pos + _penalty_h2_component(model))
-    penalty_ts = np.ones(N_t) * (penalty_val / float(N_t) if N_t > 0 else 0.0)
-
-    # Postprocess standby detection to match original behaviour
-    for t in range(N_t):
-        if abs(P_ptg_ts[t] - min_power_standby * ptg_MW) < 1e-6:
-            P_ptg_SB_ts[t] = min_power_standby * ptg_MW
-            P_ptg_ts[t] = 0.0
-            m_H2_ts[t] = 0.0
-
-    # Trim LoS to N_t (caller expects N_t length batches)
-    LoS_H2_ts_out = LoS_H2_ts[:-1].copy()
-    E_SOC_ts_out = E_SOC_ts  # keep N_t+1 like original
-
-    if debug:
-        total_h2 = m_H2_ts.sum()
-        total_ptg_MWh = np.array(P_ptg_ts).sum()  # since dt=1h units MW·h
-        print(f"[debug] total m_H2 (kg or units from eff_curve): {total_h2}")
-        print(f"[debug] total P_ptg·h (MWh): {total_ptg_MWh}")
-        # option: print a few sample m_H2 and P_ptg values
-        print("[debug] sample (t, P_ptg, m_H2, LoS):")
-        for i in range(min(6, N_t)):
-            print(
-                i,
-                round(P_ptg_ts[i], 6),
-                round(m_H2_ts[i], 6),
-                round(LoS_H2_ts_out[i], 6),
-            )
-
-    return (
-        P_HPP_ts,
-        P_curtail_ts,
-        P_charge_discharge_ts,
-        P_ptg_ts,
-        P_ptg_SB_ts,
-        E_SOC_ts_out,
-        m_H2_ts,
-        m_H2_offtake_ts,
-        LoS_H2_ts_out,
-        penalty_ts,
-    )
-
-
-import numpy as np
-import pandas as pd
-from pyomo.environ import (
-    ConcreteModel,
-    Constraint,
-    ConstraintList,
-    NonNegativeReals,
-    Objective,
-    RangeSet,
-    Reals,
-    SolverFactory,
-    Var,
-    maximize,
-    value,
-)
-
-
-def ems_pyomo_parts_P2X(
-    wind_ts,
-    solar_ts,
-    price_ts,
-    P_batt_MW,
-    E_batt_MWh_t,
-    hpp_grid_connection,
-    battery_depth_of_discharge,
-    charge_efficiency,
-    price_H2,
-    ptg_MW,
-    HSS_kg,
-    storage_eff,
-    hhv,
-    m_H2_demand_ts,
-    H2_storage_t,
-    penalty_factor_H2,
-    eff_curve,
-    min_power_standby,
-    load_min_penalty_factor=1e6,
-    peak_hr_quantile=0.9,
-    cost_of_battery_P_fluct_in_peak_price_ratio=0.5,
-    n_full_power_hours_expected_per_day_at_peak_price=3,
-    electrolyzer_eff_curve_type="production",
-    debug=False,
-):
-    """
-    Pyomo batched EMS part (HiGHS) using a linear convex-combination interpolation
-    for the electrolyzer curve (no Piecewise call). Trims LoS_H2 to length N_t.
-    Set debug=True for diagnostics.
-    """
-
-    # --- indexing and precompute ---
-    time = list(price_ts.index)
-    N_t = len(time)
-    SOCtime = time + [time[-1] + pd.Timedelta("1hour")]
-    N_days = N_t / 24.0
-    e_peak_day_expected = (
-        n_full_power_hours_expected_per_day_at_peak_price * hpp_grid_connection
-    )
-    e_peak_period_expected = e_peak_day_expected * N_days
-    price_peak = np.quantile(price_ts.values, peak_hr_quantile)
-    peak_hours_index = [i for i, t in enumerate(time) if price_ts.iloc[i] >= price_peak]
+    peak_hours_index = np.where(price_ts >= price_peak)[0]
 
     price_ts_to_max = price_peak - price_ts
-    price_ts_to_max[price_ts_to_max < 0] = 0.0
-    if len(price_ts_to_max) >= 2:
-        for i in range(len(price_ts_to_max) - 1):
-            price_ts_to_max.iloc[i] = (
-                0.5 * price_ts_to_max.iloc[i] + 0.5 * price_ts_to_max.iloc[i + 1]
-            )
-
-    model = ConcreteModel()
-    model.T = RangeSet(0, N_t - 1)
-    model.Tsoc = RangeSet(0, N_t)
-
-    idx_to_time = {i: time[i] for i in range(N_t)}
-
-    # --- variables ---
-    model.P_HPP = Var(model.T, bounds=(0, hpp_grid_connection), within=Reals)
-    model.P_curtail = Var(model.T, bounds=(0, None), within=NonNegativeReals)
-
-    model.P_ch = Var(
-        model.T, bounds=(0, P_batt_MW * charge_efficiency), within=NonNegativeReals
-    )
-    model.P_dis = Var(
-        model.T, bounds=(0, P_batt_MW / charge_efficiency), within=NonNegativeReals
-    )
-    model.P_batt_net = Var(model.T, within=Reals)
-
-    model.E_SOC = Var(
-        model.Tsoc, bounds=(0, float(max(E_batt_MWh_t))), within=NonNegativeReals
-    )
-    model.LoS_H2 = Var(
-        model.Tsoc,
-        bounds=(0, float(max(H2_storage_t) if len(H2_storage_t) > 0 else 0.0)),
-        within=NonNegativeReals,
+    price_ts_to_max.loc[price_ts_to_max < 0] = 0
+    price_ts_to_max.iloc[:-1] = (
+        0.5 * price_ts_to_max.iloc[:-1].values + 0.5 * price_ts_to_max.iloc[1:].values
     )
 
-    model.P_ptg = Var(
-        model.T, bounds=(min_power_standby * ptg_MW, ptg_MW), within=Reals
+    time = price_ts.index
+    SOCtime = time.append(pd.Index([time[-1] + pd.Timedelta("1hour")]))
+
+    # for name, series in [("wind", wind_ts), ("solar", solar_ts), ("price", price_ts), ("E_batt", E_batt_MWh_t), ("H2_storage", H2_storage_t)]:
+    #     if hasattr(series, "isna"):
+    #         print(name, "hasna?", series.isna().any(), "min,max:", series.min(), series.max())
+    #     else:
+    #         print(name, "type:", type(series))
+
+    model = pyo.ConcreteModel()
+
+    ## Index sets ##
+    model.IDX1 = range(len(time))  # time
+    model.IDX2 = range(1)  # singleton for penalty vars
+    model.IDX3 = [t for t in range(len(time)) if t in peak_hours_index]
+    model.IDX4 = range(len(SOCtime))  # soc time (time+1)
+    model.IDX5 = range(len(time) - 1)  # time for deltas
+
+    ## Variables ##
+    model.P_HPP_t = pyo.Var(
+        model.IDX1, domain=pyo.NonNegativeReals, bounds=(0, hpp_grid_connection)
     )
-    model.m_H2 = Var(model.T, bounds=(0, None), within=NonNegativeReals)
-    model.m_H2_offtake = Var(model.T, bounds=(0, None), within=NonNegativeReals)
+    model.P_curtailment_t = pyo.Var(
+        model.IDX1, domain=pyo.NonNegativeReals, bounds=(0, 1e6)
+    )
 
-    model.e_penalty = Var(within=Reals)
-    model.e_pen_pos = Var(within=NonNegativeReals)
+    # Power charge/discharge from battery with Lower/Upper bounds
+    model.P_charge_discharge_t = pyo.Var(
+        model.IDX1, domain=pyo.Reals, bounds=(-P_batt_MW, P_batt_MW)
+    )
+    model.P_charge_discharge_with_eff_t = pyo.Var(
+        model.IDX1,
+        domain=pyo.Reals,
+        bounds=(-P_batt_MW / charge_efficiency, P_batt_MW * charge_efficiency),
+    )
+    model.E_SOC_t = pyo.Var(model.IDX4, domain=pyo.NonNegativeReals)
 
-    if N_t >= 2:
-        model.abs_batt_fluct = Var(RangeSet(0, N_t - 2), within=NonNegativeReals)
+    # Electrolyser / H2
+    model.P_ptg_t = pyo.Var(
+        model.IDX1, domain=pyo.NonNegativeReals, bounds=(5.2 + 1e-9, ptg_MW)
+    )
+    model.m_H2_t = pyo.Var(model.IDX1, domain=pyo.NonNegativeReals, bounds=(0, 1e4))
+    model.m_H2_offtake_t = pyo.Var(model.IDX1, domain=pyo.NonNegativeReals)
+    model.m_H2_diff = pyo.Var(model.IDX1, domain=pyo.Reals, bounds=(-1e4, 1e4))
+    model.m_H2_net_eff = pyo.Var(model.IDX1, domain=pyo.Reals)
+    model.LoS_H2_t = pyo.Var(model.IDX4, domain=pyo.NonNegativeReals)
 
-    # --- linking & constraints ---
-    def _link_batt_net(m, t):
-        return m.P_batt_net[t] == m.P_ch[t] - m.P_dis[t]
+    # Battery delta for battery operation constraints
+    model.P_battery_delta = pyo.Var(model.IDX5, domain=pyo.Reals, bounds=(-1e6, 1e6))
+    model.P_battery_delta_abs_pw = pyo.Var(
+        model.IDX5, domain=pyo.Reals, bounds=(0, 1e6)
+    )
 
-    model.link_batt_net = Constraint(model.T, rule=_link_batt_net)
+    # Penalties
+    model.penalty = pyo.Var(model.IDX2, domain=pyo.Reals, bounds=(-1e6, 1e6))
+    model.e_penalty = pyo.Var(model.IDX2, domain=pyo.Reals, bounds=(-1e6, 1e6))
 
-    def _hpp_balance(m, t):
-        ts = idx_to_time[t]
-        return (
-            m.P_HPP[t]
-            == wind_ts.loc[ts]
-            + solar_ts.loc[ts]
-            - m.P_curtail[t]
-            + m.P_batt_net[t]
-            - m.P_ptg[t]
+    ## Constraints ##
+    model.power_constraint = pyo.ConstraintList()
+    model.battery_dynamics_constraint = pyo.ConstraintList()
+    model.h2_dynamics_constraint = pyo.ConstraintList()
+    model.soc_constraints = pyo.ConstraintList()
+    model.h2_constraints = pyo.ConstraintList()
+    model.penalty_constraint = pyo.ConstraintList()
+
+    # Initial / final SOC
+    model.soc_constraints.add(model.E_SOC_t[0] == 0.5 * E_batt_MWh_t.iloc[0])
+    # model.soc_constraints.add(model.E_SOC_t[len(SOCtime) - 1] == 0.5 * E_batt_MWh_t.iloc[0])
+
+    # Initial / final H2
+    model.h2_constraints.add(model.LoS_H2_t[0] == 0)
+    # model.h2_constraints.add(model.LoS_H2_t[len(SOCtime) - 1] == 0)
+
+    # Penalty constraints
+    model.penalty_constraint.add(
+        model.e_penalty[0]
+        == (e_peak_period_expected - sum(model.P_HPP_t[t] for t in model.IDX3))
+    )
+
+    model.penalty_constraint_pw = pyo.Piecewise(
+        model.IDX2,
+        model.penalty,
+        model.e_penalty,
+        pw_pts=[-1e6, 0, 1e6],
+        f_rule=[0, 0, price_peak * 1e6],
+        pw_constr_type="EQ",
+        pw_repn="DLOG",
+        force_pw=False,
+        warn_domain_coverage=False,
+    )
+
+    # Charge/discharge constraint
+    model.battery_eff_constraint = pyo.Piecewise(
+        model.IDX1,
+        model.P_charge_discharge_with_eff_t,
+        model.P_charge_discharge_t,
+        pw_pts=[-P_batt_MW, 0, P_batt_MW],
+        f_rule=[-P_batt_MW / charge_efficiency, 0, P_batt_MW * charge_efficiency],
+        pw_constr_type="EQ",
+        pw_repn="DLOG",
+        force_pw=False,
+        warn_domain_coverage=False,
+        unbounded_domain_var=True,
+    )
+
+    for t in model.IDX1:
+        model.h2_constraints.add(
+            model.m_H2_diff[t] == model.m_H2_t[t] - model.m_H2_offtake_t[t]
         )
 
-    model.hpp_balance = Constraint(model.T, rule=_hpp_balance)
-
-    def _soc_update(m, t):
-        return (
-            m.E_SOC[t + 1]
-            == m.E_SOC[t]
-            + (m.P_ch[t] * charge_efficiency - m.P_dis[t] / charge_efficiency) * 1.0
-        )
-
-    model.soc_update = Constraint(model.T, rule=_soc_update)
-
-    def _soc_min(m, t):
-        ts = idx_to_time[t]
-        return m.E_SOC[t] >= (1 - battery_depth_of_discharge) * E_batt_MWh_t.loc[ts]
-
-    model.soc_min = Constraint(model.T, rule=_soc_min)
-
-    def _soc_max(m, t):
-        ts = idx_to_time[t]
-        return m.E_SOC[t] <= E_batt_MWh_t.loc[ts]
-
-    model.soc_max = Constraint(model.T, rule=_soc_max)
-
-    model.soc_initial = Constraint(
-        expr=model.E_SOC[0] == 0.5 * E_batt_MWh_t.loc[idx_to_time[0]]
-    )
-    model.soc_final = Constraint(
-        expr=model.E_SOC[N_t] == 0.5 * E_batt_MWh_t.loc[idx_to_time[0]]
+    # Piecewise linear mapping: f3(x) = storage_eff * x
+    epsilon = 1e-6
+    model.h2_storage_eff_constraint = pyo.Piecewise(
+        model.IDX1,
+        model.m_H2_net_eff,
+        model.m_H2_diff,
+        pw_pts=[-1e4, -epsilon, epsilon, 1e4],
+        f_rule=[
+            -1e4 / storage_eff,
+            -epsilon / storage_eff,
+            epsilon * storage_eff,
+            1e4 * storage_eff,
+        ],
+        pw_constr_type="EQ",
+        pw_repn="CC",
+        warn_domain_coverage=False,
+        unbounded_domain_var=False,
     )
 
-    def _h2_update(m, t):
-        return m.LoS_H2[t + 1] == m.LoS_H2[t] + (
-            m.m_H2[t] * storage_eff - m.m_H2_offtake[t] / storage_eff
-        )
-
-    model.h2_update = Constraint(model.T, rule=_h2_update)
-
-    model.h2_initial = Constraint(expr=model.LoS_H2[0] == 0)
-    model.h2_final = Constraint(expr=model.LoS_H2[N_t] == 0)
-
-    def _h2_storage_bound(m, t):
-        ts = idx_to_time[t]
-        return m.LoS_H2[t] <= H2_storage_t.loc[ts]
-
-    model.h2_storage_bound = Constraint(model.T, rule=_h2_storage_bound)
-
-    def _h2_offtake_limit(m, t):
-        ts = idx_to_time[t]
-        return m.m_H2_offtake[t] <= m_H2_demand_ts.loc[ts]
-
-    model.h2_offtake_limit = Constraint(model.T, rule=_h2_offtake_limit)
-
-    for t in range(N_t):
-        ts = idx_to_time[t]
-        if H2_storage_t.loc[ts] == 0:
-            setattr(
-                model,
-                f"h2_no_storage_link_{t}",
-                Constraint(expr=model.m_H2_offtake[t] == model.m_H2[t]),
-            )
-
-    # --- Electrolyzer curve: convex-combination linearization ---
-    # Build knots (x: power [MW], y: H2 production units)
+    # Caclulating electrolyzer efficiency as a function of load (piecewise linear approximation)
     if electrolyzer_eff_curve_type == "production":
         H2_curve_list = [(load * ptg_MW, H2 * ptg_MW) for load, H2 in eff_curve]
     elif electrolyzer_eff_curve_type == "efficiency":
@@ -1798,182 +1101,175 @@ def ems_pyomo_parts_P2X(
             f'electrolyzer_eff_curve_type is: "{electrolyzer_eff_curve_type}". Available options are ["production", "efficiency"]'
         )
 
-    H2_curve_list = sorted(H2_curve_list, key=lambda x: x[0])
-    xs = [float(pt) for pt, _ in H2_curve_list]
-    ys = [float(out) for _, out in H2_curve_list]
-
-    if debug:
-        print("[debug] electrolyzer xs (power knots) min/max:", min(xs), max(xs))
-        print("[debug] electrolyzer ys (H2 knots) min/max:", min(ys), max(ys))
-        print("[debug] eff_curve (first 6):", eff_curve[:6])
-
-    # convex combination lambdas per time step
-    n_knots = len(xs)
-    if n_knots < 2:
-        raise ValueError("eff_curve must contain at least 2 knots")
-
-    # lambda index 0..n_knots-1
-    model.lambda_idx = RangeSet(0, n_knots - 1)
-    # Declare lambda variables (one set per time step)
-    model.lambda_pw = Var(model.T, model.lambda_idx, bounds=(0, 1))
-
-    # Sum-to-one constraint
-    def _lambda_sum(m, t):
-        return sum(m.lambda_pw[t, i] for i in range(n_knots)) == 1
-
-    model.lambda_sum = Constraint(model.T, rule=_lambda_sum)
-
-    # Map P_ptg to weighted xs
-    def _pw_Pptg_map(m, t):
-        return m.P_ptg[t] == sum(m.lambda_pw[t, i] * xs[i] for i in range(n_knots))
-
-    model.pw_map_P = Constraint(model.T, rule=_pw_Pptg_map)
-
-    # Map m_H2 to weighted ys
-    def _pw_mH2_map(m, t):
-        return m.m_H2[t] == sum(m.lambda_pw[t, i] * ys[i] for i in range(n_knots))
-
-    model.pw_map_mH2 = Constraint(model.T, rule=_pw_mH2_map)
-
-    # Important: set lambda bounds and initial guess to help solver
-    for t in range(N_t):
-        for i in range(n_knots):
-            model.lambda_pw[t, i].value = 1.0 / n_knots
-
-    # --- e_penalty ---
-    def _e_penalty_def(m):
-        return m.e_penalty == e_peak_period_expected - sum(
-            m.P_HPP[i] for i in peak_hours_index
-        )
-
-    model.e_penalty_def = Constraint(rule=_e_penalty_def)
-
-    model.e_pen_pos_def1 = Constraint(expr=model.e_pen_pos >= model.e_penalty)
-    model.e_pen_pos_def2 = Constraint(expr=model.e_pen_pos >= 0)
-
-    # abs batt fluct constraints
-    if N_t >= 2:
-        for t in range(N_t - 1):
-            model.add_component(
-                f"abs_up_{t}",
-                Constraint(
-                    expr=model.abs_batt_fluct[t]
-                    >= model.P_batt_net[t + 1] - model.P_batt_net[t]
-                ),
-            )
-            model.add_component(
-                f"abs_down_{t}",
-                Constraint(
-                    expr=model.abs_batt_fluct[t]
-                    >= -(model.P_batt_net[t + 1] - model.P_batt_net[t])
-                ),
-            )
-
-    # offtake <= LoS conservative
-    def _offtake_vs_los(m, t):
-        return m.m_H2_offtake[t] <= m.LoS_H2[t]
-
-    model.offtake_vs_los = Constraint(model.T, rule=_offtake_vs_los)
-
-    # --- objective ---
-    def _penalty_h2_component(m):
-        return penalty_factor_H2 * sum(
-            (m_H2_demand_ts.loc[idx_to_time[t]] - m.m_H2_offtake[t]) for t in range(N_t)
-        )
-
-    if N_t >= 2:
-        fluct_cost = sum(
-            model.abs_batt_fluct[t]
-            * cost_of_battery_P_fluct_in_peak_price_ratio
-            * price_ts_to_max.iloc[t]
-            for t in range(N_t - 1)
-        )
-    else:
-        fluct_cost = 0.0
-
-    revenue = sum(
-        price_ts.loc[idx_to_time[t]] * model.P_HPP[t] + price_H2 * model.m_H2_offtake[t]
-        for t in range(N_t)
+    # Electrolyzer production curve (piecewise)
+    H2_curve_x = [pt[0] for pt in H2_curve_list]
+    H2_curve_y = [pt[1] for pt in H2_curve_list]
+    model.H2_prod_constraint = pyo.Piecewise(
+        model.IDX1,
+        model.m_H2_t,
+        model.P_ptg_t,
+        pw_pts=H2_curve_x,
+        f_rule=H2_curve_y,
+        pw_constr_type="EQ",
+        pw_repn="DLOG",
     )
-    penalty_expr = price_peak * model.e_pen_pos + _penalty_h2_component(model)
 
-    model.obj = Objective(expr=revenue - penalty_expr - fluct_cost, sense=maximize)
+    # Dynamics
+    for t in model.IDX1:
+        tt = t + 1
+        if tt < len(SOCtime):
+            # Battery dynamics
+            model.battery_dynamics_constraint.add(
+                model.E_SOC_t[tt]
+                == model.E_SOC_t[t] - model.P_charge_discharge_with_eff_t[t]
+            )
+            # Hydrogen dynamics
+            model.h2_dynamics_constraint.add(
+                model.LoS_H2_t[tt] == model.LoS_H2_t[t] + model.m_H2_net_eff[t]
+            )
 
-    # --- init ---
-    for t in range(N_t + 1):
-        model.E_SOC[t].value = 0.5 * E_batt_MWh_t.loc[idx_to_time[0]]
-        model.LoS_H2[t].value = 0.0
+        # Power balance
+        model.power_constraint.add(
+            model.P_HPP_t[t]
+            == wind_ts.iloc[t]
+            + solar_ts.iloc[t]
+            - model.P_curtailment_t[t]
+            + model.P_charge_discharge_with_eff_t[t]
+            - model.P_ptg_t[t]
+        )
 
-    for t in range(N_t):
-        model.P_ptg[t].value = min_power_standby * ptg_MW
-        model.P_ch[t].value = 0.0
-        model.P_dis[t].value = 0.0
-        model.P_batt_net[t].value = 0.0
+        # Battery limits
+        model.soc_constraints.add(model.E_SOC_t[t] <= E_batt_MWh_t.iloc[t])
+        model.soc_constraints.add(
+            model.E_SOC_t[t] >= (1 - battery_depth_of_discharge) * E_batt_MWh_t.iloc[t]
+        )
 
-    # --- solve ---
-    solver = SolverFactory("highs")
-    res = solver.solve(model, tee=False)
+        # H2 storage and demand limits
+        model.h2_constraints.add(model.LoS_H2_t[t] <= H2_storage_t.iloc[t])
+        model.h2_constraints.add(model.m_H2_offtake_t[t] <= m_H2_demand_ts.iloc[t])
 
-    # --- extract ---
-    P_HPP_ts = np.zeros(N_t)
-    P_curtail_ts = np.zeros(N_t)
-    P_charge_discharge_ts = np.zeros(N_t)
-    P_ptg_ts = np.zeros(N_t)
-    P_ptg_SB_ts = np.zeros(N_t)
-    E_SOC_ts = np.zeros(N_t + 1)
-    m_H2_ts = np.zeros(N_t)
-    m_H2_offtake_ts = np.zeros(N_t)
-    LoS_H2_ts = np.zeros(N_t + 1)
+        # If storage = 0, then direct offtake = production
+        if H2_storage_t.iloc[t] == 0:
+            model.h2_constraints.add(model.m_H2_offtake_t[t] == model.m_H2_t[t])
 
-    for t in range(N_t):
-        P_HPP_ts[t] = value(model.P_HPP[t])
-        P_curtail_ts[t] = value(model.P_curtail[t])
-        P_charge_discharge_ts[t] = value(model.P_batt_net[t])
-        P_ptg_ts[t] = value(model.P_ptg[t])
-        m_H2_ts[t] = value(model.m_H2[t])
-        m_H2_offtake_ts[t] = value(model.m_H2_offtake[t])
-        LoS_H2_ts[t] = value(model.LoS_H2[t])
-        E_SOC_ts[t] = value(model.E_SOC[t])
+    for t in model.IDX5:
+        model.power_constraint.add(
+            model.P_battery_delta[t]
+            == model.P_charge_discharge_with_eff_t[t + 1]
+            - model.P_charge_discharge_with_eff_t[t]
+        )
 
-    E_SOC_ts[-1] = value(model.E_SOC[N_t])
-    LoS_H2_ts[-1] = value(model.LoS_H2[N_t])
+    model.P_battery_delta_abs_pw_constr = pyo.Piecewise(
+        model.IDX5,
+        model.P_battery_delta_abs_pw,
+        model.P_battery_delta,
+        pw_pts=[-1e6, 0, 1e6],
+        f_rule=[1e6, 0, 1e6],
+        pw_constr_type="EQ",
+        pw_repn="DLOG",
+        force_pw=False,
+        warn_domain_coverage=False,
+    )
 
-    # penalties and postprocess
-    penalty_val = value(price_peak * model.e_pen_pos + _penalty_h2_component(model))
-    penalty_ts = np.ones(N_t) * (penalty_val / float(N_t) if N_t > 0 else 0.0)
+    ## Objective ##
+    model.OBJ = pyo.Objective(
+        expr=(
+            sum(
+                price_ts.iloc[t] * model.P_HPP_t[t] + price_H2 * model.m_H2_offtake_t[t]
+                for t in model.IDX1
+            )
+            - model.penalty[0]
+            - sum(
+                penalty_factor_H2 * (m_H2_demand_ts.iloc[t] - model.m_H2_offtake_t[t])
+                for t in model.IDX1
+            )
+            - sum(
+                model.P_battery_delta_abs_pw[t]
+                * cost_of_battery_P_fluct_in_peak_price_ratio
+                * price_ts_to_max.iloc[t]
+                for t in model.IDX5
+            )
+        ),
+        sense=pyo.maximize,
+    )
 
+    # opt = pyo.SolverFactory('scip', executable=r"C:\Program Files\SCIPOptSuite_9.2.3\bin\scip.exe")
+    # opt = pyo.SolverFactory('cbc', executable=r"C:\Users\s223344\AppData\Local\anaconda3\envs\hydesign\Library\bin\cbc.exe")
+    opt = pyo.SolverFactory("glpk")
+    # opt = pyo.SolverFactory('cplex')
+    # opt = pyo.SolverFactory('highs')
+
+    results = opt.solve(model, tee=True)
+
+    P_HPP_ts_df = pd.Series(
+        [pyo.value(model.P_HPP_t[t]) for t in model.IDX1], index=time
+    )
+
+    P_curtailment_ts_df = pd.Series(
+        [pyo.value(model.P_curtailment_t[t]) for t in model.IDX1], index=time
+    )
+
+    P_charge_discharge_ts_df = pd.Series(
+        [pyo.value(model.P_charge_discharge_t[t]) for t in model.IDX1], index=time
+    )
+
+    E_SOC_ts_df = pd.Series(
+        [pyo.value(model.E_SOC_t[t]) for t in model.IDX4], index=SOCtime
+    )
+
+    P_ptg_ts_df = pd.Series(
+        [pyo.value(model.P_ptg_t[t]) for t in model.IDX1], index=time
+    )
+
+    m_H2_ts_df = pd.Series([pyo.value(model.m_H2_t[t]) for t in model.IDX1], index=time)
+
+    LoS_H2_ts_df = pd.Series(
+        [pyo.value(model.LoS_H2_t[t]) for t in model.IDX4], index=SOCtime
+    )
+
+    m_H2_offtake_ts_df = pd.Series(
+        [pyo.value(model.m_H2_offtake_t[t]) for t in model.IDX1], index=time
+    )
+
+    # make a time series like P_HPP with a constant penalty
+    penalty_value = pyo.value(model.penalty[0])
+    penalty_ts = np.ones(N_t) * (penalty_value / N_t)
+
+    P_HPP_ts = P_HPP_ts_df.reindex(time, fill_value=0).values
+    P_curtailment_ts = P_curtailment_ts_df.reindex(time, fill_value=0).values
+    P_charge_discharge_ts = P_charge_discharge_ts_df.reindex(time, fill_value=0).values
+    E_SOC_ts = E_SOC_ts_df.reindex(SOCtime, fill_value=0).values
+    P_ptg_ts = P_ptg_ts_df.reindex(time, fill_value=0).values
+    m_H2_ts = m_H2_ts_df.reindex(time, fill_value=0).values
+    LoS_H2_ts = LoS_H2_ts_df.reindex(time, fill_value=0).values
+    m_H2_offtake_ts = m_H2_offtake_ts_df.reindex(time, fill_value=0).values
+
+    if len(P_HPP_ts_df) < len(wind_ts):
+        # print('recomputing p_hpp')
+        P_HPP_ts = (
+            wind_ts.values
+            + solar_ts.values
+            + -P_curtailment_ts
+            + P_charge_discharge_ts
+            - P_ptg_ts
+        )
+    P_ptg_SB_ts = np.zeros_like(P_ptg_ts)
     for t in range(N_t):
         if abs(P_ptg_ts[t] - min_power_standby * ptg_MW) < 1e-6:
             P_ptg_SB_ts[t] = min_power_standby * ptg_MW
-            P_ptg_ts[t] = 0.0
-            m_H2_ts[t] = 0.0
-
-    # trim LoS to N_t
-    LoS_H2_ts_out = LoS_H2_ts[:-1].copy()
-    E_SOC_ts_out = E_SOC_ts
-
-    if debug:
-        print("[debug] sum m_H2:", m_H2_ts.sum())
-        print("[debug] sum P_ptg (MWh):", P_ptg_ts.sum())
-        print("[debug] sample (t, P_ptg, m_H2, LoS):")
-        for i in range(min(8, N_t)):
-            print(
-                i,
-                round(P_ptg_ts[i], 6),
-                round(m_H2_ts[i], 6),
-                round(LoS_H2_ts_out[i], 6),
-            )
+            P_ptg_ts[t] = 0
+            m_H2_ts[t] = 0
 
     return (
         P_HPP_ts,
-        P_curtail_ts,
+        P_curtailment_ts,
         P_charge_discharge_ts,
         P_ptg_ts,
         P_ptg_SB_ts,
-        E_SOC_ts_out,
+        E_SOC_ts,
         m_H2_ts,
         m_H2_offtake_ts,
-        LoS_H2_ts_out,
+        LoS_H2_ts,
         penalty_ts,
     )
 
