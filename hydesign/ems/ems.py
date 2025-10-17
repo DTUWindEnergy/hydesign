@@ -117,7 +117,7 @@ class ems:
         # print(WSPr_df.head())
 
         ems_core_params = {
-            "technology": "base",
+            "technology": {"wind", "solar", "battery"},
             "ems_solver": "cplex",
             "wind_ts": WSPr_df.wind_t,
             "solar_ts": WSPr_df.solar_t,

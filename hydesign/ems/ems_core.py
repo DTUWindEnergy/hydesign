@@ -7,14 +7,14 @@ import numpy as np
 # from numpy import newaxis as na
 import pandas as pd
 import pyomo.environ as pyo
+from docplex.mp.constants import ComparisonType
 
 # import xarray as xr
 from docplex.mp.model import Model
 
 
 def ems_core(**kwargs):
-
-    technology = kwargs.get("technology", "base")
+    technology = kwargs.get("technology", {"wind", "solar", "battery"})
     ems_solver = kwargs.get("ems_solver", "cplex")
 
     if ems_solver == "cplex":
@@ -26,25 +26,81 @@ def ems_core(**kwargs):
 
     #
     in_ems = {}
+    out_ems = {}
     in_ems_batch = {}
     out_ems_batch = {}
-    ems_core_base = EMSCoreBase()
+    ems_core_wind = EMSCoreWind(**kwargs)
+    ems_core_solar = EMSCoreSolar(**kwargs)
+    ems_core_battery = EMSCoreBattery(**kwargs)
+
+    in_ems.update(ems_core_wind.variables_shared)
 
     #
-    if technology == "base":
-        in_ems.update(ems_core_base.inputs(**kwargs))
+
+    if "wind" in technology:
+        in_ems.update(ems_core_wind.inputs(**kwargs))
+
+    if "solar" in technology:
+        in_ems.update(ems_core_solar.inputs(**kwargs))
+
+    if "battery" in technology:
+        in_ems.update(ems_core_battery.inputs(**kwargs))
 
     for ib, batch in enumerate(in_ems["batches"]):
+        # if "wind" in technology:
+        #     in_ems_batch.update(ems_core_wind.inputs_batch(batch=batch, **kwargs))
 
-        in_ems_batch.update(ems_core_base.inputs_batch(batch=batch, **kwargs))
+        # if "solar" in technology:
+        #     in_ems_batch.update(ems_core_solar.inputs_batch(batch=batch, **kwargs))
+        # if "battery" in technology:
+        #     in_ems_batch.update(ems_core_battery.inputs_batch(batch=batch, **kwargs))
 
-        out_ems_batch.update(ems_batch(**in_ems_batch))
+        ## cplex share
+        mdl = Model(name="EMS")
+        mdl.context.cplex_parameters.threads = 1
+        # CPLEX parameter pg 87 Emphasize feasibility over optimality
+        mdl.context.cplex_parameters.emphasis.mip = 1
+        # mdl.context.cplex_parameters.timelimit = 1e-2
+        # mdl.context.cplex_parameters.mip.limits.strongit = 3
+        # mdl.context.cplex_parameters.mip.strategy.search = 1 #  branch and cut strategy; disable dynamic
+
+        # cpx = mdl.get_cplex()
+        # cpx.parameters.mip.tolerances.integrality.set(0)
+        # cpx.parameters.simplex.tolerances.markowitz.set(0.999)
+        # cpx.parameters.simplex.tolerances.optimality.set(1e-6)#1e-9)
+        # cpx.parameters.simplex.tolerances.feasibility.set(1e-5)#1e-9)
+        # cpx.parameters.mip.pool.intensity.set(2)
+        # cpx.parameters.mip.pool.absgap.set(1e75)
+        # cpx.parameters.mip.pool.relgap.set(1e75)
+        # cpx.parameters.mip.limits.populate.set(50)
+
+        ems_core_wind.cplex(mdl, batch, **kwargs)
+        ems_core_solar.cplex(mdl, batch, **kwargs)
+        ems_core_battery.cplex(mdl, batch, **kwargs)
+
+        # out_ems_batch.update(ems_core_wind.cplex(mdl, batch, **kwargs))
+        # out_ems_batch.update()
+        out_ems_batch.update(ems_core_battery.cplex_optimize(mdl))
 
         # print(inputs_parts_params['P_HPP_ts'])
 
-        out_ems = ems_core_base.outputs_batch(batch=batch, **out_ems_batch)
+        if "wind" in technology:
+            out_ems.update(ems_core_wind.outputs_batch(batch=batch, **out_ems_batch))
 
-    ems_core_base.final_process(**out_ems)
+        if "solar" in technology:
+            out_ems.update(ems_core_solar.outputs_batch(batch=batch, **out_ems_batch))
+
+        if "battery" in technology:
+            out_ems.update(ems_core_battery.outputs_batch(batch=batch, **out_ems_batch))
+
+    if "wind" in technology:
+        ems_core_wind.final_process(**out_ems)
+
+    if "solar" in technology:
+        ems_core_solar.final_process(**out_ems)
+
+    if "battery" in technology:
+        ems_core_battery.final_process(**out_ems)
 
     return out_ems
 
@@ -59,28 +115,120 @@ class EMSCoreInterface(ABC):
       - final_process
     """
 
-    @abstractmethod
+    def __init__(self, **kwargs):
+
+        self.wind_ts = kwargs["wind_ts"]
+
+        self.solar_ts = kwargs["solar_ts"]
+
+        self.hpp_grid_connection = kwargs.get("hpp_grid_connection", 0)
+        self.price_ts = kwargs["price_ts"]
+        self.peak_hr_quantile = kwargs.get("peak_hr_quantile", 0.9)
+        self.n_full_power_hours_expected_per_day_at_peak_price = kwargs.get(
+            "n_full_power_hours_expected_per_day_at_peak_price", 1
+        )
+        self.batch_size = kwargs.get("batch_size", 110)
+        # split in batches
+        n_ts = len(self.price_ts)
+        self.n_ts = n_ts
+        batches_all = split_in_batch(list(range(n_ts)), self.batch_size)
+        self.batches = batches_all
+
+        self.P_HPP_ts = np.zeros(n_ts)
+        self.P_curtailment_ts = np.zeros(n_ts)
+        self.penalty_ts = np.zeros(n_ts)
+
+        self.variables_shared = {
+            "hpp_grid_connection": self.hpp_grid_connection,
+            "price_ts": self.price_ts,
+            "peak_hr_quantile": self.peak_hr_quantile,
+            "n_full_power_hours_expected_per_day_at_peak_price": self.n_full_power_hours_expected_per_day_at_peak_price,
+            "batch_size": self.batch_size,
+            "batches": self.batches,
+        }
+
     def inputs(self, **kwargs) -> Dict[str, Any]:
         """Prepare and return the initial inputs / allocated arrays and meta values."""
-        raise NotImplementedError
+        return {}
 
-    @abstractmethod
-    def inputs_batch(self, batch: Iterable[int], **kwargs) -> Dict[str, Any]:
-        """Return kwargs updated for a specific batch (sliced time series, etc.)."""
-        raise NotImplementedError
-
-    @abstractmethod
     def outputs_batch(self, batch: Iterable[int], **kwargs) -> Dict[str, Any]:
+        """Merge batch outputs back into global arrays stored in kwargs and return kwargs."""
+        return {}
+
+    def cplex(self, mdl, **kwargs) -> Dict[str, Any]:
         """Merge batch outputs back into global arrays stored in kwargs and return kwargs."""
         raise NotImplementedError
 
-    @abstractmethod
+    # def pyomo(self, batch: Iterable[int], **kwargs) -> Dict[str, Any]:
+    #     """Merge batch outputs back into global arrays stored in kwargs and return kwargs."""
+    #     raise NotImplementedError
+
+    # def ortools(self, batch: Iterable[int], **kwargs) -> Dict[str, Any]:
+    #     """Merge batch outputs back into global arrays stored in kwargs and return kwargs."""
+    #     raise NotImplementedError
+
     def final_process(self, **kwargs) -> Dict[str, Any]:
         """Final adjustments to outputs (e.g. wrap-around SOC)."""
-        raise NotImplementedError
+        pass
+
+    def update_constraint_rhs(self, mdl, constraint_name, added_value):
+        constr = mdl.get_constraint_by_name(constraint_name)
+        if constr is None:
+            raise ValueError(f"Constraint '{constraint_name}' not found in the model.")
+
+        lhs_expr = constr.lhs
+        rhs_value = constr.rhs
+        ct_type = constr.sense
+
+        # Remove old constraint
+        mdl.remove_constraint(constr)
+
+        # Add new constraint with updated RHS
+        if ct_type == ComparisonType.EQ:
+            mdl.add_constraint(
+                lhs_expr == rhs_value + added_value, ctname=constraint_name
+            )
+        elif ct_type == ComparisonType.LE:
+            mdl.add_constraint(
+                lhs_expr <= rhs_value + added_value, ctname=constraint_name
+            )
+        elif ct_type == ComparisonType.GE:
+            mdl.add_constraint(
+                lhs_expr >= rhs_value + added_value, ctname=constraint_name
+            )
+        else:
+            raise ValueError(f"Unknown constraint sense: {ct_type}")
+
+    def add_to_objective(self, mdl, addition_expr):
+        """
+        Add a new expression to the current model objective.
+
+        Parameters
+        ----------
+        mdl : docplex.mp.model.Model
+            The CPLEX model.
+        addition_expr : docplex expression
+            Expression to add to the existing objective.
+
+        Returns
+        -------
+        None (updates model in-place)
+        """
+        # Get the existing objective expression and sense
+        old_obj = mdl.objective_expr
+        sense = mdl.objective_sense
+
+        # Remove old objective
+        mdl.remove_objective()
+
+        # Add new objective: old + addition
+        if sense.name.lower() == "maximize":
+            mdl.maximize(old_obj + addition_expr)
+        else:
+            mdl.minimize(old_obj + addition_expr)
 
 
-class EMSCoreBase(EMSCoreInterface):
+class EMSCoreWind(EMSCoreInterface):
     """
     Concrete EMS core implementation based on original EMSCoreBase code.
     Methods follow the original logic but are instance methods.
@@ -88,93 +236,135 @@ class EMSCoreBase(EMSCoreInterface):
 
     def inputs(self, **kwargs) -> Dict[str, Any]:
         wind_ts = kwargs.get("wind_ts", None)
-        solar_ts = kwargs.get("solar_ts", None)
-        price_ts = kwargs.get("price_ts", None)
-        P_batt_MW = kwargs.get("P_batt_MW", 0)
-        E_batt_MWh_t = kwargs.get("E_batt_MWh_t", None)
-        hpp_grid_connection = kwargs.get("hpp_grid_connection", 0)
-        battery_depth_of_discharge = kwargs.get("battery_depth_of_discharge", 1.0)
-        charge_efficiency = kwargs.get("charge_efficiency", 1.0)
-        peak_hr_quantile = kwargs.get("peak_hr_quantile", 0.9)
-        cost_of_battery_P_fluct_in_peak_price_ratio = kwargs.get(
-            "cost_of_battery_P_fluct_in_peak_price_ratio", 0
-        )
-        n_full_power_hours_expected_per_day_at_peak_price = kwargs.get(
-            "n_full_power_hours_expected_per_day_at_peak_price", 1
-        )
-        batch_size = kwargs.get("batch_size", 110)
-
-        # safety checks and length detection
-        if wind_ts is None:
-            raise ValueError("wind_ts must be provided to inputs()")
-        n_ts = len(wind_ts)
-
-        # split in batches
-        batches_all = split_in_batch(list(range(n_ts)), batch_size)
-        batches = batches_all
-
-        # allocate arrays
-        self.P_HPP_ts = np.zeros(n_ts)
-        self.P_curtailment_ts = np.zeros(n_ts)
-        self.P_charge_discharge_ts = np.zeros(n_ts)
-        self.E_SOC_ts = np.zeros(n_ts + 1)
-        self.penalty_ts = np.zeros(n_ts)
 
         # return everything as a dictionary
         return {
             "wind_ts": wind_ts,
-            "solar_ts": solar_ts,
-            "price_ts": price_ts,
-            "P_batt_MW": P_batt_MW,
-            "E_batt_MWh_t": E_batt_MWh_t,
-            "hpp_grid_connection": hpp_grid_connection,
-            "battery_depth_of_discharge": battery_depth_of_discharge,
-            "charge_efficiency": charge_efficiency,
-            "peak_hr_quantile": peak_hr_quantile,
-            "cost_of_battery_P_fluct_in_peak_price_ratio": cost_of_battery_P_fluct_in_peak_price_ratio,
-            "n_full_power_hours_expected_per_day_at_peak_price": n_full_power_hours_expected_per_day_at_peak_price,
-            "batch_size": batch_size,
-            "batches": batches,
         }
 
-    def inputs_batch(self, batch: Iterable[int], **kwargs) -> Dict[str, Any]:
+    def outputs_batch(self, batch: Iterable[int], **kwargs) -> Dict[str, Any]:
         """
-        Select the batch slices and extend kwargs with the selected batch slices.
-        Expects pandas-like objects supporting .iloc if provided,
-        otherwise will attempt numpy/sequence indexing.
+        Merge batch outputs back into the global arrays stored in kwargs.
+        Expects batch outputs to be present in kwargs with suffix '_batch'.
+        """
+        # convert batch to numpy array of indices for safe indexing
+        batch_idx = np.asarray(list(batch), dtype=int)
+
+        # Write back the batch results into global arrays
+        self.P_HPP_ts[batch_idx] = kwargs["P_HPP_ts_batch"]
+        self.P_curtailment_ts[batch_idx] = kwargs["P_curtailment_ts_batch"]
+        self.penalty_ts[batch_idx] = kwargs.get("penalty_batch")
+
+        return {
+            "P_HPP_ts": self.P_HPP_ts,
+            "P_curtailment_ts": self.P_curtailment_ts,
+            "penalty_ts": self.penalty_ts,
+        }
+
+    def cplex(self, mdl, batch, **kwargs) -> Dict[str, Any]:
+        """EMS solver implemented in cplex
+
+        Parameters
+        ----------
+        wind_ts : WPP power time series
+        solar_ts : PVP power time series
+        price_ts : price time series
+        P_batt_MW : battery power
+        E_batt_MWh_t : battery energy capacity time series
+        hpp_grid_connection : grid connection
+        battery_depth_of_discharge : battery depth of discharge
+        charge_efficiency : battery charge efficiency
+        peak_hr_quantile : quantile of price time series to define peak price hours
+        cost_of_battery_P_fluct_in_peak_price_ratio : cost of battery power fluctuations computed as a peak price ratio
+        n_full_power_hours_expected_per_day_at_peak_price : Penalty occurs if number of full power hours expected per day at peak price are not reached
+
+        Returns
+        -------
+        P_HPP_ts: HPP power time series
+        P_curtailment_ts: HPP curtailed power time series
+        P_charge_discharge_ts: Battery charge/discharge power time series
+        E_SOC_ts: Battery energy SOC time series
+        penalty_ts: penalty time series for not reaching expected energy production at peak hours
+        """
+        wind_ts = self.wind_ts.iloc[batch]
+
+        return {}
+
+
+class EMSCoreSolar(EMSCoreInterface):
+    """
+    Concrete EMS core implementation based on original EMSCoreBase code.
+    Methods follow the original logic but are instance methods.
+    """
+
+    def inputs(self, **kwargs) -> Dict[str, Any]:
+        price_ts = kwargs.get("price_ts", None)
+        solar_ts = kwargs.get("solar_ts", None)
+
+        # return everything as a dictionary
+        return {
+            "price_ts": price_ts,
+            "solar_ts": solar_ts,
+        }
+
+    def cplex(self, mdl, batch, **kwargs) -> Dict[str, Any]:
+        """EMS solver implemented in cplex
+
+        Parameters
+        ----------
+        wind_ts : WPP power time series
+        solar_ts : PVP power time series
+        price_ts : price time series
+        P_batt_MW : battery power
+        E_batt_MWh_t : battery energy capacity time series
+        hpp_grid_connection : grid connection
+        battery_depth_of_discharge : battery depth of discharge
+        charge_efficiency : battery charge efficiency
+        peak_hr_quantile : quantile of price time series to define peak price hours
+        cost_of_battery_P_fluct_in_peak_price_ratio : cost of battery power fluctuations computed as a peak price ratio
+        n_full_power_hours_expected_per_day_at_peak_price : Penalty occurs if number of full power hours expected per day at peak price are not reached
+
+        Returns
+        -------
+        P_HPP_ts: HPP power time series
+        P_curtailment_ts: HPP curtailed power time series
+        P_charge_discharge_ts: Battery charge/discharge power time series
+        E_SOC_ts: Battery energy SOC time series
+        penalty_ts: penalty time series for not reaching expected energy production at peak hours
         """
 
-        # If user passed pre-sliced arrays, preserve them, else index into them
-        def _safe_iloc(obj, idx):
-            if obj is None:
-                return None
-            # pandas Series/DataFrame have .iloc
-            if hasattr(obj, "iloc"):
-                return obj.iloc[idx]
-            # numpy arrays / lists
-            try:
-                return np.asarray(obj)[idx]
-            except Exception:
-                # fallback: return original (best-effort)
-                return obj
+        solar_ts = self.solar_ts.iloc[batch]
 
-        wind_ts_sel = _safe_iloc(kwargs.get("wind_ts"), batch)
-        solar_ts_sel = _safe_iloc(kwargs.get("solar_ts"), batch)
-        price_ts_sel = _safe_iloc(kwargs.get("price_ts"), batch)
-        E_batt_MWh_t_sel = _safe_iloc(kwargs.get("E_batt_MWh_t"), batch)
+        return {}
 
-        # Extend the kwargs dictionary with the selected batch slices
-        extended_kwargs = kwargs.copy()  # avoid modifying original dict
-        extended_kwargs.update(
-            {
-                "wind_ts_sel": wind_ts_sel,
-                "solar_ts_sel": solar_ts_sel,
-                "price_ts_sel": price_ts_sel,
-                "E_batt_MWh_t_sel": E_batt_MWh_t_sel,
-            }
+
+class EMSCoreBattery(EMSCoreInterface):
+    """
+    Concrete EMS core implementation based on original EMSCoreBase code.
+    Methods follow the original logic but are instance methods.
+    """
+
+    def inputs(self, **kwargs) -> Dict[str, Any]:
+        P_batt_MW = kwargs.get("P_batt_MW", 0)
+        E_batt_MWh_t = kwargs.get("E_batt_MWh_t", None)
+        battery_depth_of_discharge = kwargs.get("battery_depth_of_discharge", 1.0)
+        charge_efficiency = kwargs.get("charge_efficiency", 1.0)
+        cost_of_battery_P_fluct_in_peak_price_ratio = kwargs.get(
+            "cost_of_battery_P_fluct_in_peak_price_ratio", 0
         )
 
-        return extended_kwargs
+        # allocate arrays
+        self.P_charge_discharge_ts = np.zeros(self.n_ts)
+        self.E_SOC_ts = np.zeros(self.n_ts + 1)
+
+        # return everything as a dictionary
+        return {
+            "P_batt_MW": P_batt_MW,
+            "E_batt_MWh_t": E_batt_MWh_t,
+            "battery_depth_of_discharge": battery_depth_of_discharge,
+            "charge_efficiency": charge_efficiency,
+            "cost_of_battery_P_fluct_in_peak_price_ratio": cost_of_battery_P_fluct_in_peak_price_ratio,
+        }
 
     def outputs_batch(self, batch: Iterable[int], **kwargs) -> Dict[str, Any]:
         """
@@ -191,19 +381,13 @@ class EMSCoreBase(EMSCoreInterface):
         batch_idx = np.asarray(list(batch), dtype=int)
 
         # Write back the batch results into global arrays
-        self.P_HPP_ts[batch_idx] = kwargs["P_HPP_ts_batch"]
-        self.P_curtailment_ts[batch_idx] = kwargs["P_curtailment_ts_batch"]
         self.P_charge_discharge_ts[batch_idx] = kwargs["P_charge_discharge_ts_batch"]
         E_SOC_ts_batch = kwargs.get("E_SOC_ts_batch")
         self.E_SOC_ts[batch_idx] = np.asarray(E_SOC_ts_batch)[:-1]
-        self.penalty_ts[batch_idx] = kwargs.get("penalty_batch")
 
         return {
-            "P_HPP_ts": self.P_HPP_ts,
-            "P_curtailment_ts": self.P_curtailment_ts,
             "P_charge_discharge_ts": self.P_charge_discharge_ts,
             "E_SOC_ts": self.E_SOC_ts,
-            "penalty_ts": self.penalty_ts,
         }
 
     def final_process(self, **kwargs) -> Dict[str, Any]:
@@ -213,6 +397,229 @@ class EMSCoreBase(EMSCoreInterface):
         # set last SOC element equal to initial SOC.
         kwargs["E_SOC_ts"][-1] = kwargs["E_SOC_ts"][0]
         return kwargs
+
+    def cplex(self, mdl, batch, **kwargs) -> Dict[str, Any]:
+        """ """
+        self.wind_ts_batch = self.wind_ts.iloc[batch]
+        self.price_ts_batch = self.price_ts.iloc[batch]
+        self.solar_ts_batch = self.solar_ts.iloc[batch]
+        self.E_batt_MWh_t = kwargs["E_batt_MWh_t"].iloc[batch]
+
+        self.P_batt_MW = kwargs["P_batt_MW"]
+        # self.hpp_grid_connection = kwargs["hpp_grid_connection"]
+        self.battery_depth_of_discharge = kwargs["battery_depth_of_discharge"]
+        self.charge_efficiency = kwargs["charge_efficiency"]
+        self.peak_hr_quantile = kwargs["peak_hr_quantile"]
+        self.cost_of_battery_P_fluct_in_peak_price_ratio = kwargs[
+            "cost_of_battery_P_fluct_in_peak_price_ratio"
+        ]
+        self.n_full_power_hours_expected_per_day_at_peak_price = kwargs[
+            "n_full_power_hours_expected_per_day_at_peak_price"
+        ]
+
+        # Penalties
+        self.N_t = len(self.price_ts_batch.index)
+        self.N_days = self.N_t / 24
+        self.e_peak_day_expected = (
+            self.n_full_power_hours_expected_per_day_at_peak_price
+            * self.hpp_grid_connection
+        )
+        self.e_peak_period_expected = self.e_peak_day_expected * self.N_days
+        self.price_peak = np.quantile(self.price_ts_batch.values, self.peak_hr_quantile)
+        self.peak_hours_index = np.where(self.price_ts_batch.values >= self.price_peak)[
+            0
+        ]
+
+        price_ts_to_max = self.price_peak - self.price_ts_batch
+        price_ts_to_max.loc[price_ts_to_max < 0] = 0
+        price_ts_to_max.iloc[:-1] = (
+            0.5 * price_ts_to_max.iloc[:-1].values
+            + 0.5 * price_ts_to_max.iloc[1:].values
+        )
+
+        self.price_ts_batch_to_max = price_ts_to_max
+
+        self.time = self.price_ts_batch.index
+        # time set with an additional time slot for the last soc
+        self.SOCtime = self.time.append(
+            pd.Index([self.time[-1] + pd.Timedelta("1hour")])
+        )
+
+        # Variables definition
+        self.P_HPP_t = mdl.continuous_var_dict(
+            self.time, lb=0, ub=self.hpp_grid_connection, name="HPP power output"
+        )
+        self.P_curtailment_t = mdl.continuous_var_dict(
+            self.time, lb=0, name="Curtailment"
+        )
+
+        # Power charge/discharge from battery
+        # Lower bound as large negative number in order to allow the variable to
+        # have either positive or negative values
+        self.P_charge_discharge = mdl.continuous_var_dict(
+            self.time,
+            lb=-self.P_batt_MW / self.charge_efficiency,
+            ub=self.P_batt_MW * self.charge_efficiency,
+            name="Battery power",
+        )
+        # Battery energy level, energy stored
+        self.E_SOC_t = mdl.continuous_var_dict(
+            self.SOCtime,
+            lb=0,
+            name="Energy level",  # ub=E_batt_MWh_t.max(),
+        )
+
+        self.penalty = mdl.continuous_var(name="penalty", lb=-1e12)
+        self.e_penalty = mdl.continuous_var(name="e_penalty", lb=-1e12)
+
+        # Constraints
+        mdl.add_constraint(
+            self.e_penalty
+            == (
+                self.e_peak_period_expected
+                - mdl.sum(self.P_HPP_t[self.time[i]] for i in self.peak_hours_index)
+            )
+        )
+        # Piecewise function for "only positive" function
+        self.f1 = mdl.piecewise(0, [(0, 0)], 1)
+        mdl.add_constraint(self.penalty == self.price_peak * self.f1(self.e_penalty))
+
+        # Intitial and end SOC
+        mdl.add_constraint(
+            self.E_SOC_t[self.SOCtime[0]] == 0.5 * self.E_batt_MWh_t[self.time[0]]
+        )
+
+        # SOC at the end of the year has to be equal to SOC at the beginning of the year
+        mdl.add_constraint(
+            self.E_SOC_t[self.SOCtime[-1]] == 0.5 * self.E_batt_MWh_t[self.time[0]]
+        )
+
+        # pircewise linear representation of charge vs dischrage effciency
+        self.f2 = mdl.piecewise(
+            self.charge_efficiency, [(0, 0)], 1 / self.charge_efficiency
+        )
+
+        for t in self.time:
+            # Time index for successive time step
+            tt = t + pd.Timedelta("1hour")
+            # Delta_t of 1 hour
+            dt = 1
+
+            # Only one variable for battery
+            mdl.add_constraint(
+                self.P_HPP_t[t]
+                == self.wind_ts_batch[t]
+                + self.solar_ts_batch[t]
+                + -self.P_curtailment_t[t]
+                + self.P_charge_discharge[t]
+            )
+
+            # charge/dischrage equation
+            mdl.add_constraint(
+                self.E_SOC_t[tt]
+                == self.E_SOC_t[t] - self.f2(self.P_charge_discharge[t]) * dt
+            )
+
+            # Constraining battery energy level to minimum battery level
+            mdl.add_constraint(
+                self.E_SOC_t[t]
+                >= (1 - self.battery_depth_of_discharge) * self.E_batt_MWh_t[t]
+            )
+
+            # Constraining battery energy level to maximum battery level
+            mdl.add_constraint(self.E_SOC_t[t] <= self.E_batt_MWh_t[t])
+
+            # Battery charge/discharge within its power rating
+            mdl.add_constraint(
+                self.P_charge_discharge[t] <= self.P_batt_MW * self.charge_efficiency
+            )
+            mdl.add_constraint(
+                self.P_charge_discharge[t] >= -self.P_batt_MW / self.charge_efficiency
+            )
+
+    def cplex_optimize(self, mdl):
+        # Piecewise function for "absolute value" function
+        self.fabs = mdl.piecewise(-1, [(0, 0)], 1)
+
+        mdl.maximize(
+            0
+            # revenues and OPEX
+            # mdl.sum(price_ts[t] * P_HPP_t[t] for t in time)
+            # - penalty  # Add cost for rapid charge-discharge for limiting the battery life use
+        )
+
+        electricity_income = mdl.sum(
+            self.price_ts_batch[t] * self.P_HPP_t[t] for t in self.time
+        )
+        self.add_to_objective(mdl, addition_expr=electricity_income)
+
+        penalty_grid = self.penalty
+        self.add_to_objective(mdl, addition_expr=penalty_grid)
+
+        battery_penalty = -mdl.sum(
+            self.fabs(
+                self.P_charge_discharge[t + pd.Timedelta("1hour")]
+                - self.P_charge_discharge[t]
+            )
+            * self.cost_of_battery_P_fluct_in_peak_price_ratio
+            * self.price_ts_batch_to_max[t]
+            for t in self.time[:-1]
+        )
+
+        self.add_to_objective(mdl, addition_expr=battery_penalty)
+        # Solving the problem
+        sol = mdl.solve(log_output=False)
+        # log_output=True)
+
+        # print(mdl.export_to_string())
+        # sol.display()
+
+        P_HPP_ts_df = pd.DataFrame.from_dict(
+            sol.get_value_dict(self.P_HPP_t), orient="index"
+        ).loc[:, 0]
+
+        P_curtailment_ts_df = pd.DataFrame.from_dict(
+            sol.get_value_dict(self.P_curtailment_t), orient="index"
+        ).loc[:, 0]
+
+        P_charge_discharge_ts_df = pd.DataFrame.from_dict(
+            sol.get_value_dict(self.P_charge_discharge), orient="index"
+        ).loc[:, 0]
+
+        E_SOC_ts_df = pd.DataFrame.from_dict(
+            sol.get_value_dict(self.E_SOC_t), orient="index"
+        ).loc[:, 0]
+
+        # make a time series like P_HPP with a constant penalty
+        penalty_2 = sol.get_value(self.penalty)
+        penalty_ts = np.ones(self.N_t) * (penalty_2 / self.N_t)
+
+        mdl.end()
+
+        # Cplex sometimes returns missing values :O
+        P_HPP_ts = P_HPP_ts_df.reindex(self.time, fill_value=0).values
+        P_curtailment_ts = P_curtailment_ts_df.reindex(self.time, fill_value=0).values
+        P_charge_discharge_ts = P_charge_discharge_ts_df.reindex(
+            self.time, fill_value=0
+        ).values
+        E_SOC_ts = E_SOC_ts_df.reindex(self.SOCtime, fill_value=0).values
+
+        if len(P_HPP_ts_df) < len(self.wind_ts_batch):
+            # print('recomputing p_hpp')
+            P_HPP_ts = (
+                self.wind_ts_batch.values
+                + self.solar_ts_batch.values
+                - P_curtailment_ts
+                + P_charge_discharge_ts
+            )
+
+        return {
+            "P_HPP_ts_batch": P_HPP_ts,
+            "P_curtailment_ts_batch": P_curtailment_ts,
+            "P_charge_discharge_ts_batch": P_charge_discharge_ts,
+            "E_SOC_ts_batch": E_SOC_ts,
+            "penalty_batch": penalty_ts,
+        }
 
 
 def ems_cplex_parts(**kwargs):
@@ -311,7 +718,9 @@ def ems_cplex_parts(**kwargs):
     )
     # Battery energy level, energy stored
     E_SOC_t = mdl.continuous_var_dict(
-        SOCtime, lb=0, name="Energy level"  # ub=E_batt_MWh_t.max(),
+        SOCtime,
+        lb=0,
+        name="Energy level",  # ub=E_batt_MWh_t.max(),
     )
 
     penalty = mdl.continuous_var(name="penalty", lb=-1e12)
@@ -591,7 +1000,6 @@ def ems_Pyomo_parts(
     dt = 1
 
     for t in range(0, len(time)):
-
         # Constraining battery energy level to maximum battery level
         mdl.battery_energy_constraint.add(mdl.E_SOC_t[t] <= E_batt_MWh_t.iloc[t])
         # Constraining battery energy level to minimum battery level
@@ -611,7 +1019,6 @@ def ems_Pyomo_parts(
 
     # Battery dynamics with efficiency charge =! discharge
     for t in range(1, len(time)):
-
         mdl.battery_dynamics_constraint.add(
             mdl.E_SOC_t[t]
             == mdl.E_SOC_t[t - 1] - mdl.P_charge_discharge_with_eff_t[t] * dt
@@ -647,9 +1054,8 @@ def ems_Pyomo_parts(
 
     # Objective Function ##
     mdl.OBJ = pyo.Objective(
-        expr=
         # revenues and OPEX
-        sum(price_ts.iloc[t] * mdl.P_HPP_t[t] for t in mdl.IDX1)
+        expr=sum(price_ts.iloc[t] * mdl.P_HPP_t[t] for t in mdl.IDX1)
         - mdl.penalty[0]
         + -sum(
             mdl.P_battery_delta_abs_pw[t]
@@ -920,7 +1326,6 @@ def ems_cplex_constantoutput(
     load_min=3,
     load_min_penalty_factor=1e6,
 ):
-
     # split in batches, ussually a week
     batches_all = split_in_batch(list(range(len(wind_ts))), batch_size)
     # Make sure the last batch is not smaller than the others
@@ -1081,7 +1486,9 @@ def ems_cplex_parts_constantoutput(
     )
     # Battery energy level, energy stored
     E_SOC_t = mdl.continuous_var_dict(
-        SOCtime, lb=0, name="Energy level"  # ub=E_batt_MWh_t.max(),
+        SOCtime,
+        lb=0,
+        name="Energy level",  # ub=E_batt_MWh_t.max(),
     )
 
     P_constant = mdl.continuous_var_dict(
