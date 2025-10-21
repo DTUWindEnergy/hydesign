@@ -36,7 +36,7 @@ class EMSCoreBattery(EMSCoreInterface):
         kwargs["E_SOC_ts"][-1] = kwargs["E_SOC_ts"][0]
         return kwargs
 
-    def cplex_init(self, batch, **kwargs) -> Dict[str, Any]:
+    def solver_init(self, batch, **kwargs) -> Dict[str, Any]:
         """ """
         self.price_ts_batch = self.price_ts.iloc[batch]
         self.E_batt_MWh_t_batch = self.E_batt_MWh_t.iloc[batch]
@@ -180,16 +180,153 @@ class EMSCoreBattery(EMSCoreInterface):
         ).values
         E_SOC_ts_batch = E_SOC_ts_df.reindex(self.SOCtime_batch, fill_value=0).values
 
-        # if len(P_HPP_ts_df) < len(self.wind_ts_batch):
-        #     # print('recomputing p_hpp')
-        #     P_HPP_ts_batch = (
-        #         self.wind_ts_batch.values
-        #         + self.solar_ts_batch.values
-        #         - P_curtailment_ts_batch
-        #         + P_charge_discharge_ts_batch
-        #     )
-
         batch = self.batch
+
+        self.P_charge_discharge_ts[batch] = P_charge_discharge_ts_batch
+        self.E_SOC_ts[batch] = E_SOC_ts_batch[:-1]
+
+    def ortools_var_constraints(self, solver):
+        """
+        EMS solver implemented with OR-Tools linear solver.
+        Returns:
+            P_HPP_ts, P_curtailment_ts, P_charge_discharge_ts, E_SOC_ts, penalty_ts
+        """
+        time_batch = self.time_batch
+        N_t_batch = self.N_t_batch
+        SOCtime_batch = self.SOCtime_batch
+
+        # Variables
+
+        # Decompose battery power into discharge and charge parts (both >=0)
+        # Bounds chosen to reflect original asymmetric bounds:
+        # original ub for P (positive) = P_batt_MW * self.charge_efficiency
+        # original lb for P (negative) = - P_batt_MW / self.charge_efficiency
+        P_dis_batch = {
+            t: solver.NumVar(
+                0.0, float(self.P_batt_MW * self.charge_efficiency), f"P_dis_{i}"
+            )
+            for i, t in enumerate(time_batch)
+        }
+        P_ch_batch = {
+            t: solver.NumVar(
+                0.0, float(self.P_batt_MW / self.charge_efficiency), f"P_ch_{i}"
+            )
+            for i, t in enumerate(time_batch)
+        }
+
+        # SOC variables for each hour plus final hour
+        E_SOC_batch = {
+            t: solver.NumVar(0.0, float(self.E_batt_MWh_t_batch.max()), f"E_SOC_{i}")
+            for i, t in enumerate(SOCtime_batch)
+        }
+
+        # delta variables for absolute battery power change cost
+        delta = {}
+        for i in range(N_t_batch - 1):
+            t = time_batch[i]
+            delta[t] = solver.NumVar(0.0, solver.infinity(), f"delta_{i}")
+
+        # Constraints
+        # initial and final SOC equal to 0.5 * E_batt at first time (same as original)
+        solver.Add(
+            E_SOC_batch[SOCtime_batch[0]]
+            == 0.5 * float(self.E_batt_MWh_t_batch.loc[time_batch[0]])
+        )
+        solver.Add(
+            E_SOC_batch[SOCtime_batch[-1]]
+            == 0.5 * float(self.E_batt_MWh_t_batch.loc[time_batch[0]])
+        )
+
+        # Per-time constraints
+        for i, t in enumerate(time_batch):
+            tt = time_batch[i] + pd.Timedelta("1hour")
+            dt = 1.0
+
+            self.update_constraint_rhs_ortools(
+                solver,
+                constraint_name=f"P_HPP_t_balance{t}",
+                addition_expr=P_dis_batch[t],
+            )  # - P_ch_batch[t])
+            self.update_constraint_rhs_ortools(
+                solver,
+                constraint_name=f"P_HPP_t_balance{t}",
+                addition_expr=P_ch_batch[t],
+                coeff=-1,
+            )
+
+            # SOC transition with asymmetric efficiency:
+            # E_SOC_next == E_SOC - (1/eff)*P_dis*dt + eff*P_ch*dt
+            solver.Add(
+                E_SOC_batch[tt]
+                == E_SOC_batch[t]
+                - (1.0 / float(self.charge_efficiency)) * P_dis_batch[t] * dt
+                + float(self.charge_efficiency) * P_ch_batch[t] * dt
+            )
+
+            # SOC bounds for time t
+            min_SOC_batch = (1.0 - float(self.battery_depth_of_discharge)) * float(
+                self.E_batt_MWh_t_batch.loc[t]
+            )
+            max_SOC_batch = float(self.E_batt_MWh_t_batch.loc[t])
+            solver.Add(E_SOC_batch[t] >= min_SOC_batch)
+            solver.Add(E_SOC_batch[t] <= max_SOC_batch)
+
+            # delta constraints for absolute differences
+            if i < N_t_batch - 1:
+                t_next = time_batch[i + 1]
+                diff_expr_batch = (P_dis_batch[t_next] - P_ch_batch[t_next]) - (
+                    P_dis_batch[t] - P_ch_batch[t]
+                )
+                solver.Add(delta[t] >= diff_expr_batch)
+                solver.Add(delta[t] >= -diff_expr_batch)
+
+        # SOC bounds for final SOC node (redundant but included to match original)
+        last_t = SOCtime_batch[-1]
+        solver.Add(
+            E_SOC_batch[last_t] <= float(self.E_batt_MWh_t_batch.loc[time_batch[-1]])
+        )
+        solver.Add(
+            E_SOC_batch[last_t]
+            >= (1.0 - float(self.battery_depth_of_discharge))
+            * float(self.E_batt_MWh_t_batch.loc[time_batch[-1]])
+        )
+
+        self.delta = delta
+        self.P_dis_batch = P_dis_batch
+        self.P_ch_batch = P_ch_batch
+        self.E_SOC_batch = E_SOC_batch
+
+    def ortools_objective(self, solver):
+        objective = solver.Objective()
+
+        # battery fluctuation cost
+        for i in range(self.N_t_batch - 1):
+            t = self.time_batch[i]
+            coef = -float(
+                self.cost_of_battery_P_fluct_in_peak_price_ratio
+                * self.price_ts_to_max_batch.loc[t]
+            )
+            objective.SetCoefficient(self.delta[t], coef)
+
+        objective.SetMaximization()
+
+    def ortools_outputs(self):
+        batch = self.batch
+        time_batch = self.time_batch
+        SOCtime_batch = self.SOCtime_batch
+        P_dis_batch = self.P_dis_batch
+        P_ch_batch = self.P_ch_batch
+        E_SOC_batch = self.E_SOC_batch
+
+        P_charge_discharge_ts_batch = np.array(
+            [
+                (P_dis_batch[t].solution_value() - P_ch_batch[t].solution_value())
+                for t in time_batch
+            ]
+        )
+        E_SOC_ts_batch = np.array(
+            [E_SOC_batch[t].solution_value() for t in SOCtime_batch]
+        )
 
         self.P_charge_discharge_ts[batch] = P_charge_discharge_ts_batch
         self.E_SOC_ts[batch] = E_SOC_ts_batch[:-1]

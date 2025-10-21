@@ -55,10 +55,22 @@ class EMSCoreInterface(ABC):
     #     """Merge batch outputs back into global arrays stored in kwargs and return kwargs."""
     #     raise NotImplementedError
 
+    def cplex_var_constraints(self, solver):
+        pass
+
     def cplex_opjective(self, mdl):
         pass
 
     def cplex_outputs(self, sol):
+        pass
+
+    def ortools_var_constraints(self, solver):
+        pass
+
+    def ortools_objective(self, solver):
+        pass
+
+    def ortools_outputs(self, sol):
         pass
 
     def final_process(self, **kwargs) -> Dict[str, Any]:
@@ -125,6 +137,23 @@ class EMSCoreInterface(ABC):
             mdl.maximize(old_obj + addition_expr)
         else:
             mdl.minimize(old_obj + addition_expr)
+
+    def update_constraint_rhs_ortools(
+        self, solver, constraint_name, addition_expr: float, coeff: float = 1
+    ):
+        """
+        Add a numeric 'addition_expr' to the RHS of the named equality constraint.
+        This function shifts the constraint's bounds (lb and ub) by addition_expr.
+        """
+        target = None
+        for c in solver.constraints():
+            if c.name() == constraint_name:
+                target = c
+                break
+        if target is None:
+            raise KeyError("constraint not found")
+
+        target.SetCoefficient(addition_expr, -coeff)
 
 
 def ems_cplex_parts(**kwargs):
