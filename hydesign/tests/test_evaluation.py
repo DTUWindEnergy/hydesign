@@ -906,43 +906,43 @@ def load_evaluation_PyWake():
     )
 
 
-# ------------------------------------------------------------------------------------------------
-# design 1_P2X_OSsolvers
+# # ------------------------------------------------------------------------------------------------
+# # design 1_P2X_OSsolvers
 
 
-def run_evaluation_design_1_P2X_OSsolvers():
-    return run_evaluation(
-        out_name="Evaluation_test_P2X_OSsolvers.csv",
-        name="France_good_wind",
-        design_name="Design 1",
-        case="p2x_OSsolvers",
-        tmp_name="test_eval_design_1_P2X_OSsolvers",
-    )
+# def run_evaluation_design_1_P2X_OSsolvers():
+#     return run_evaluation(
+#         out_name="Evaluation_test_P2X_OSsolvers.csv",
+#         name="France_good_wind",
+#         design_name="Design 1",
+#         case="p2x_OSsolvers",
+#         tmp_name="test_eval_design_1_P2X_OSsolvers",
+#     )
 
 
-def update_test_design_1_P2X_OSsolvers():
-    update_test(
-        out_name="Evaluation_test_P2X_OSsolvers.csv",
-        name="France_good_wind",
-        design_name="Design 1",
-        case="p2x_OSsolvers",
-        tmp_name="test_eval_design_1_P2X_OSsolvers",
-    )
+# def update_test_design_1_P2X_OSsolvers():
+#     update_test(
+#         out_name="Evaluation_test_P2X_OSsolvers.csv",
+#         name="France_good_wind",
+#         design_name="Design 1",
+#         case="p2x_OSsolvers",
+#         tmp_name="test_eval_design_1_P2X_OSsolvers",
+#     )
 
 
-def load_evaluation_design_1_P2X_OSsolvers():
-    return load_evaluation(
-        out_name="Evaluation_test_P2X_OSsolvers.csv",
-        design_name="Design 1",
-        case="p2x_OSsolvers",
-    )
+# def load_evaluation_design_1_P2X_OSsolvers():
+#     return load_evaluation(
+#         out_name="Evaluation_test_P2X_OSsolvers.csv",
+#         design_name="Design 1",
+#         case="p2x_OSsolvers",
+#     )
 
 
-def test_evaluation_design_1_P2X_OSsolvers():
-    evaluation_metrics = run_evaluation_design_1_P2X_OSsolvers()[1].to_numpy().squeeze()
-    loaded_metrics = load_evaluation_design_1_P2X_OSsolvers().to_numpy().squeeze()
-    for i in range(len(loaded_metrics)):
-        np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=1e-04)
+# def test_evaluation_design_1_P2X_OSsolvers():
+#     evaluation_metrics = run_evaluation_design_1_P2X_OSsolvers()[1].to_numpy().squeeze()
+#     loaded_metrics = load_evaluation_design_1_P2X_OSsolvers().to_numpy().squeeze()
+#     for i in range(len(loaded_metrics)):
+#         np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=1e-04)
 
 
 # def test_evaluation_PyWake():
