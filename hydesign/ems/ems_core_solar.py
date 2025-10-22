@@ -41,7 +41,7 @@ class EMSCoreSolar(EMSCoreInterface):
                 added_value=+self.solar_ts_batch[t],
             )
 
-    def ortools_var_constraints(self, solver) -> Dict[str, Any]:
+    def ortools_constraints(self, solver) -> Dict[str, Any]:
         """ """
         solar_ts_batch = {
             t: solver.NumVar(

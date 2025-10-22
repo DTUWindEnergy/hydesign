@@ -92,9 +92,12 @@ def ems_core(**kwargs):
             sol = mdl.solve(log_output=False)
 
             ems_core_defaults.cplex_outputs(sol)
-            ems_core_wind.cplex_outputs(sol)
-            ems_core_solar.cplex_outputs(sol)
-            ems_core_battery.cplex_outputs(sol)
+            if "wind" in technology:
+                ems_core_wind.cplex_outputs(sol)
+            if "solar" in technology:
+                ems_core_solar.cplex_outputs(sol)
+            if "battery" in technology:
+                ems_core_battery.cplex_outputs(sol)
 
             # update ems outputs
             out_ems = ems_core_defaults.get_final_outputs()
@@ -124,15 +127,15 @@ def ems_core(**kwargs):
                 # ----------
             # vars and constraints
 
-            ems_core_defaults.ortools_var_constraints(solver)
+            ems_core_defaults.ortools_variables(solver)
             if "wind" in technology:
-                ems_core_wind.ortools_var_constraints(solver)
+                ems_core_wind.ortools_variables(solver)
 
             if "solar" in technology:
-                ems_core_solar.ortools_var_constraints(solver)
+                ems_core_solar.ortools_variables(solver)
 
             if "battery" in technology:
-                ems_core_battery.ortools_var_constraints(solver)
+                ems_core_battery.ortools_variables(solver)
 
             ems_core_defaults.ortools_objective(solver)
             if "wind" in technology:
@@ -144,6 +147,16 @@ def ems_core(**kwargs):
             if "battery" in technology:
                 ems_core_battery.ortools_objective(solver)
 
+            ems_core_defaults.ortools_constraints(solver)
+            if "wind" in technology:
+                ems_core_wind.ortools_constraints(solver)
+
+            if "solar" in technology:
+                ems_core_solar.ortools_constraints(solver)
+
+            if "battery" in technology:
+                ems_core_battery.ortools_constraints(solver)
+
             # ------------
             # Solve
             result_status = solver.Solve()
@@ -153,6 +166,12 @@ def ems_core(**kwargs):
                 )
 
             ems_core_defaults.ortools_outputs()
+            if "wind" in technology:
+                ems_core_wind.ortools_outputs()
+            if "solar" in technology:
+                ems_core_solar.ortools_outputs()
+            if "battery" in technology:
+                ems_core_battery.ortools_outputs()
 
             # update ems outputs
             out_ems = ems_core_defaults.get_final_outputs()
@@ -319,7 +338,7 @@ class EMSCoreDefaults(EMSCoreInterface):
             "penalty_ts": self.penalty_ts,
         }
 
-    def ortools_var_constraints(self, solver):
+    def ortools_variables(self, solver):
         """
         EMS solver implemented with OR-Tools linear solver.
         Returns:
@@ -327,9 +346,6 @@ class EMSCoreDefaults(EMSCoreInterface):
         """
 
         time_batch = self.time_batch
-        N_t_batch = self.N_t_batch
-        e_peak_period_expected_batch = self.e_peak_period_expected_batch
-        peak_hours_index_batch = self.peak_hours_index_batch
         hpp_grid_connection = self.hpp_grid_connection
 
         # Variables
@@ -352,12 +368,36 @@ class EMSCoreDefaults(EMSCoreInterface):
             0.0, solver.infinity(), "p_nonneg"
         )  # represents max(0, e_penalty)
 
+        self.P_HPP_batch = P_HPP_batch
+        self.p_nonneg_batch = p_nonneg_batch
+        self.P_curtail_batch = P_curtail_batch
+        self.e_penalty_batch = e_penalty_batch
+
+    def ortools_constraints(self, solver):
+        """
+        EMS solver implemented with OR-Tools linear solver.
+        Returns:
+            P_HPP_ts, P_curtailment_ts, P_charge_discharge_ts, E_SOC_ts, penalty_ts
+        """
+
+        time_batch = self.time_batch
+        N_t_batch = self.N_t_batch
+        e_peak_period_expected_batch = self.e_peak_period_expected_batch
+        peak_hours_index_batch = self.peak_hours_index_batch
+        hpp_grid_connection = self.hpp_grid_connection
+
+        P_HPP_batch = self.P_HPP_batch
+        p_nonneg_batch = self.p_nonneg_batch
+        P_curtail_batch = self.P_curtail_batch
+        e_penalty_batch = self.e_penalty_batch
+
         # delta variables for absolute battery power change cost
         delta = {}
         for i in range(N_t_batch - 1):
             t = time_batch[i]
             delta[t] = solver.NumVar(0.0, solver.infinity(), f"delta_{i}")
 
+        self.delta = delta
         # Constraints
 
         # e_penalty == e_peak_period_expected - sum(P_HPP over peak hours)
@@ -378,11 +418,6 @@ class EMSCoreDefaults(EMSCoreInterface):
             solver.Add(
                 P_HPP_batch[t] == -P_curtail_batch[t], name=f"P_HPP_t_balance{t}"
             )
-
-        self.P_HPP_batch = P_HPP_batch
-        self.p_nonneg_batch = p_nonneg_batch
-        self.delta = delta
-        self.P_curtail_t_batch = P_curtail_batch
 
     def ortools_objective(self, solver):
         # ------------
@@ -405,7 +440,7 @@ class EMSCoreDefaults(EMSCoreInterface):
         price_peak_batch = self.price_peak_batch
         p_nonneg_batch = self.p_nonneg_batch
         P_HPP_batch = self.P_HPP_batch
-        P_curtail_batch = self.P_curtail_t_batch
+        P_curtail_batch = self.P_curtail_batch
 
         # extract results
         P_HPP_ts_batch = np.array([P_HPP_batch[t].solution_value() for t in time_batch])

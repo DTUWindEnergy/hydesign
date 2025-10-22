@@ -187,14 +187,13 @@ class EMSCoreBattery(EMSCoreInterface):
         self.P_charge_discharge_ts[batch] = P_charge_discharge_ts_batch
         self.E_SOC_ts[batch] = E_SOC_ts_batch[:-1]
 
-    def ortools_var_constraints(self, solver):
+    def ortools_variables(self, solver):
         """
         EMS solver implemented with OR-Tools linear solver.
         Returns:
             P_HPP_ts, P_curtailment_ts, P_charge_discharge_ts, E_SOC_ts, penalty_ts
         """
         time_batch = self.time_batch
-        N_t_batch = self.N_t_batch
         SOCtime_batch = self.SOCtime_batch
 
         # Variables
@@ -222,11 +221,32 @@ class EMSCoreBattery(EMSCoreInterface):
             for i, t in enumerate(SOCtime_batch)
         }
 
-        # delta variables for absolute battery power change cost
         delta = {}
-        for i in range(N_t_batch - 1):
+        for i in range(self.N_t_batch - 1):
             t = time_batch[i]
             delta[t] = solver.NumVar(0.0, solver.infinity(), f"delta_{i}")
+
+        self.delta = delta
+
+        self.P_dis_batch = P_dis_batch
+        self.P_ch_batch = P_ch_batch
+        self.E_SOC_batch = E_SOC_batch
+
+    def ortools_constraints(self, solver):
+        """
+        EMS solver implemented with OR-Tools linear solver.
+        Returns:
+            P_HPP_ts, P_curtailment_ts, P_charge_discharge_ts, E_SOC_ts, penalty_ts
+        """
+        time_batch = self.time_batch
+        N_t_batch = self.N_t_batch
+        SOCtime_batch = self.SOCtime_batch
+        E_SOC_batch = self.E_SOC_batch
+        P_dis_batch = self.P_dis_batch
+        P_ch_batch = self.P_ch_batch
+
+        # delta variables for absolute battery power change cost
+        delta = self.delta
 
         # Constraints
         # initial and final SOC equal to 0.5 * E_batt at first time (same as original)
@@ -292,13 +312,6 @@ class EMSCoreBattery(EMSCoreInterface):
             >= (1.0 - float(self.battery_depth_of_discharge))
             * float(self.E_batt_MWh_t_batch.loc[time_batch[-1]])
         )
-
-        solver.Add(E_SOC_batch[SOCtime_batch[-2]] == 40)
-
-        self.delta = delta
-        self.P_dis_batch = P_dis_batch
-        self.P_ch_batch = P_ch_batch
-        self.E_SOC_batch = E_SOC_batch
 
     def ortools_objective(self, solver):
         objective = solver.Objective()

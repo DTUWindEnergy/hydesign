@@ -33,7 +33,7 @@ class EMSCoreWind(EMSCoreInterface):
                 added_value=+self.wind_ts_batch[t],
             )
 
-    def ortools_var_constraints(self, solver, **kwargs) -> Dict[str, Any]:
+    def ortools_constraints(self, solver, **kwargs) -> Dict[str, Any]:
         """ """
         wind_ts_batch = {
             t: solver.NumVar(

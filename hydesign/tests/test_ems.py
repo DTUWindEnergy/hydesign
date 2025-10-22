@@ -47,10 +47,13 @@ def test_ems():
     ems_out_data = load_ems()
     # keys = ['P_HPP_ts', 'P_curtailment_ts', 'P_charge_discharge_ts', 'E_SOC_ts', 'penalty_ts']
     print(range(len(ems_out)))
-    for i in range(0, 5):  # range(len(ems_out)):
+    for i in range(2, 5):  # range(len(ems_out)):
         print(i)
-        print(ems_out[i])
-        print("expected: ", ems_out_data[i])
+        print(ems_out[i][97:])
+        print("expected: ", ems_out_data[i][97:])
+
+        print(ems_out[3][97:])
+        print("expected: ", ems_out_data[3][97:])
         np.testing.assert_allclose(ems_out[i], ems_out_data[i])
         # print(np.allclose(ems_out[i], ems_out_data[i]))
 

@@ -66,13 +66,16 @@ class EMSCoreInterface(ABC):
     def cplex_outputs(self, sol):
         pass
 
-    def ortools_var_constraints(self, solver):
+    def ortools_variables(self, solver):
+        pass
+
+    def ortools_constraints(self, solver):
         pass
 
     def ortools_objective(self, solver):
         pass
 
-    def ortools_outputs(self, sol):
+    def ortools_outputs(self):
         pass
 
     def final_process(self, **kwargs) -> Dict[str, Any]:
