@@ -48,16 +48,16 @@ def ems_core(**kwargs):
             mdl.context.cplex_parameters.threads = 1
             mdl.context.cplex_parameters.emphasis.mip = 1
 
-            ems_core_defaults.solver_init(mdl, batch, **kwargs)
+            ems_core_defaults.solver_init(batch, **kwargs)
 
             if "wind" in technology:
-                ems_core_wind.solver_init(mdl, batch, **kwargs)
+                ems_core_wind.solver_init(batch, **kwargs)
 
             if "solar" in technology:
-                ems_core_solar.solver_init(mdl, batch, **kwargs)
+                ems_core_solar.solver_init(batch, **kwargs)
 
             if "battery" in technology:
-                ems_core_battery.solver_init(mdl, batch, **kwargs)
+                ems_core_battery.solver_init(batch, **kwargs)
 
             ems_core_defaults.cplex_var_constraints(mdl, batch, **kwargs)
             if "wind" in technology:

@@ -10,7 +10,8 @@ import pickle
 
 import numpy as np
 
-from hydesign.ems.ems import ems_cplex, operation_solar_batt_deg
+from hydesign.ems.ems import operation_solar_batt_deg
+from hydesign.ems.ems_core import ems_core
 from hydesign.tests.test_files import tfp
 
 
@@ -18,7 +19,7 @@ from hydesign.tests.test_files import tfp
 def run_ems():
     with open(tfp + "ems_input_ems.pickle", "rb") as f:
         input_ems = pickle.load(f)
-    ems_out = ems_cplex(**input_ems)
+    ems_out = ems_core(**input_ems)
     return ems_out
 
 
