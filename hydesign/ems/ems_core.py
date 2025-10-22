@@ -48,39 +48,47 @@ def ems_core(**kwargs):
             mdl.context.cplex_parameters.threads = 1
             mdl.context.cplex_parameters.emphasis.mip = 1
 
+            # init
             ems_core_defaults.solver_init(batch, **kwargs)
-
             if "wind" in technology:
                 ems_core_wind.solver_init(batch, **kwargs)
-
             if "solar" in technology:
                 ems_core_solar.solver_init(batch, **kwargs)
-
             if "battery" in technology:
                 ems_core_battery.solver_init(batch, **kwargs)
 
-            ems_core_defaults.cplex_var_constraints(mdl, **kwargs)
+            # variables
+            ems_core_defaults.cplex_variables(mdl)
             if "wind" in technology:
-                ems_core_wind.cplex_var_constraints(mdl, **kwargs)
+                ems_core_wind.cplex_variables(mdl)
 
             if "solar" in technology:
-                ems_core_solar.cplex_var_constraints(mdl, **kwargs)
+                ems_core_solar.cplex_variables(mdl)
 
             if "battery" in technology:
-                ems_core_battery.cplex_var_constraints(mdl, **kwargs)
+                ems_core_battery.cplex_variables(mdl)
 
-            # out_ems_batch.update(ems_core_wind.cplex(mdl, batch, **kwargs))
-            # out_ems_batch.update()
+            # objective
             ems_core_defaults.cplex_opjective(mdl)
             if "wind" in technology:
                 ems_core_wind.cplex_opjective(mdl)
-
             if "solar" in technology:
                 ems_core_solar.cplex_opjective(mdl)
-
             if "battery" in technology:
                 ems_core_battery.cplex_opjective(mdl)
 
+            # Constraints
+            ems_core_defaults.cplex_constraints(mdl)
+            if "wind" in technology:
+                ems_core_wind.cplex_constraints(mdl)
+
+            if "solar" in technology:
+                ems_core_solar.cplex_constraints(mdl)
+
+            if "battery" in technology:
+                ems_core_battery.cplex_constraints(mdl)
+
+            # Solve
             sol = mdl.solve(log_output=False)
 
             ems_core_defaults.cplex_outputs(sol)
@@ -218,7 +226,7 @@ class EMSCoreDefaults(EMSCoreInterface):
 
         self.time_batch = self.price_ts_batch.index
 
-    def cplex_var_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
+    def cplex_variables(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
         # Variables definition
         self.P_HPP_t_batch = mdl.continuous_var_dict(
@@ -231,6 +239,8 @@ class EMSCoreDefaults(EMSCoreInterface):
         self.penalty_batch = mdl.continuous_var(name="penalty", lb=-1e12)
         self.e_penalty_batch = mdl.continuous_var(name="e_penalty", lb=-1e12)
 
+    def cplex_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
+        """ """
         # Constraints
         mdl.add_constraint(
             self.e_penalty_batch

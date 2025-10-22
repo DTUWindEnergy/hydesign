@@ -24,7 +24,7 @@ class EMSCoreWind(EMSCoreInterface):
 
         self.time_batch = self.price_ts_batch.index
 
-    def cplex_var_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
+    def cplex_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
         for t in self.time_batch:
             self.update_constraint_rhs(

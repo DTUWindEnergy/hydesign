@@ -54,8 +54,10 @@ class EMSCoreInterface(ABC):
     # def ortools(self, batch: Iterable[int], **kwargs) -> Dict[str, Any]:
     #     """Merge batch outputs back into global arrays stored in kwargs and return kwargs."""
     #     raise NotImplementedError
+    def cplex_variables(self, mdl):
+        pass
 
-    def cplex_var_constraints(self, solver):
+    def cplex_constraints(self, mdl):
         pass
 
     def cplex_opjective(self, mdl):

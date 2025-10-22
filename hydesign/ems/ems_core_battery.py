@@ -72,7 +72,7 @@ class EMSCoreBattery(EMSCoreInterface):
             pd.Index([self.time_batch[-1] + pd.Timedelta("1hour")])
         )
 
-    def cplex_var_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
+    def cplex_variables(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
 
         # Power charge/discharge from battery
@@ -91,6 +91,8 @@ class EMSCoreBattery(EMSCoreInterface):
             name="Energy level",  # ub=E_batt_MWh_t.max(),
         )
 
+    def cplex_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
+        """ """
         # Intitial and end SOC
         mdl.add_constraint(
             self.E_SOC_t_batch[self.SOCtime_batch[0]]
