@@ -31,7 +31,7 @@ class EMSCoreSolar(EMSCoreInterface):
             pd.Index([self.time_batch[-1] + pd.Timedelta("1hour")])
         )
 
-    def cplex_var_constraints(self, mdl, batch, **kwargs) -> Dict[str, Any]:
+    def cplex_var_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
 
         for t in self.time_batch:

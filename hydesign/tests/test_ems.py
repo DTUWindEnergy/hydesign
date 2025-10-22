@@ -19,7 +19,14 @@ from hydesign.tests.test_files import tfp
 def run_ems():
     with open(tfp + "ems_input_ems.pickle", "rb") as f:
         input_ems = pickle.load(f)
-    ems_out = ems_core(**input_ems)
+    outputs_ems_core = ems_core(**input_ems)
+    ems_out = (
+        outputs_ems_core["P_HPP_ts"],
+        outputs_ems_core["P_curtailment_ts"],
+        outputs_ems_core["P_charge_discharge_ts"],
+        outputs_ems_core["E_SOC_ts"],
+        outputs_ems_core["penalty_ts"],
+    )
     return ems_out
 
 
@@ -39,7 +46,11 @@ def test_ems():
     ems_out = run_ems()
     ems_out_data = load_ems()
     # keys = ['P_HPP_ts', 'P_curtailment_ts', 'P_charge_discharge_ts', 'E_SOC_ts', 'penalty_ts']
-    for i in range(len(ems_out)):
+    print(range(len(ems_out)))
+    for i in range(0, 5):  # range(len(ems_out)):
+        print(i)
+        print(ems_out[i])
+        print("expected: ", ems_out_data[i])
         np.testing.assert_allclose(ems_out[i], ems_out_data[i])
         # print(np.allclose(ems_out[i], ems_out_data[i]))
 

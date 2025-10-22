@@ -72,7 +72,7 @@ class EMSCoreBattery(EMSCoreInterface):
             pd.Index([self.time_batch[-1] + pd.Timedelta("1hour")])
         )
 
-    def cplex_var_constraints(self, mdl, batch, **kwargs) -> Dict[str, Any]:
+    def cplex_var_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
 
         # Power charge/discharge from battery
@@ -290,6 +290,8 @@ class EMSCoreBattery(EMSCoreInterface):
             >= (1.0 - float(self.battery_depth_of_discharge))
             * float(self.E_batt_MWh_t_batch.loc[time_batch[-1]])
         )
+
+        solver.Add(E_SOC_batch[SOCtime_batch[-2]] == 40)
 
         self.delta = delta
         self.P_dis_batch = P_dis_batch

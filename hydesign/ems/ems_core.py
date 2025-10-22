@@ -39,7 +39,7 @@ def ems_core(**kwargs):
 
     batches = ems_core_defaults.batches
 
-    ems_solver = "ortools"
+    ems_solver = "cplex"
 
     if ems_solver == "cplex":
         for ib, batch in enumerate(batches):
@@ -59,15 +59,15 @@ def ems_core(**kwargs):
             if "battery" in technology:
                 ems_core_battery.solver_init(batch, **kwargs)
 
-            ems_core_defaults.cplex_var_constraints(mdl, batch, **kwargs)
+            ems_core_defaults.cplex_var_constraints(mdl, **kwargs)
             if "wind" in technology:
-                ems_core_wind.cplex_var_constraints(mdl, batch, **kwargs)
+                ems_core_wind.cplex_var_constraints(mdl, **kwargs)
 
             if "solar" in technology:
-                ems_core_solar.cplex_var_constraints(mdl, batch, **kwargs)
+                ems_core_solar.cplex_var_constraints(mdl, **kwargs)
 
             if "battery" in technology:
-                ems_core_battery.cplex_var_constraints(mdl, batch, **kwargs)
+                ems_core_battery.cplex_var_constraints(mdl, **kwargs)
 
             # out_ems_batch.update(ems_core_wind.cplex(mdl, batch, **kwargs))
             # out_ems_batch.update()
@@ -218,7 +218,7 @@ class EMSCoreDefaults(EMSCoreInterface):
 
         self.time_batch = self.price_ts_batch.index
 
-    def cplex_var_constraints(self, mdl, batch, **kwargs) -> Dict[str, Any]:
+    def cplex_var_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
         # Variables definition
         self.P_HPP_t_batch = mdl.continuous_var_dict(
