@@ -21,9 +21,10 @@ class EMSCoreBattery(EMSCoreInterface):
         # self.hpp_grid_connection = kwargs["hpp_grid_connection"]
         self.battery_depth_of_discharge = kwargs["battery_depth_of_discharge"]
         self.charge_efficiency = kwargs["charge_efficiency"]
-        self.cost_of_battery_P_fluct_in_peak_price_ratio = kwargs[
-            "cost_of_battery_P_fluct_in_peak_price_ratio"
-        ]
+        self.cost_of_battery_P_fluct_in_peak_price_ratio = kwargs.get(
+            "cost_of_battery_P_fluct_in_peak_price_ratio", 0.5
+        )
+
         self.E_batt_MWh_t = kwargs["E_batt_MWh_t"]
         self.P_charge_discharge_ts = np.zeros(self.n_ts)
         self.E_SOC_ts = np.zeros(self.n_ts + 1)
@@ -34,7 +35,7 @@ class EMSCoreBattery(EMSCoreInterface):
         """
         # set last SOC element equal to initial SOC.
         kwargs["E_SOC_ts"][-1] = kwargs["E_SOC_ts"][0]
-        return kwargs
+        # return kwargs
 
     def solver_init(self, batch, **kwargs) -> Dict[str, Any]:
         """ """
@@ -349,6 +350,10 @@ class EMSCoreBattery(EMSCoreInterface):
         self.E_SOC_ts[batch] = E_SOC_ts_batch[:-1]
 
     def get_final_outputs(self):
+        # self.E_SOC_ts[99] = 40 # 50
+        # self.P_charge_discharge_ts[98] = 19.6 # 9.8
+
+        # self.P_charge_discharge_ts[99] = 9.8 #  19.6
         return {
             "P_charge_discharge_ts": self.P_charge_discharge_ts,
             "E_SOC_ts": self.E_SOC_ts,

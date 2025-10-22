@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 import numpy as np
 
-from .ems_core_helpers import EMSCoreInterface
+from hydesign.ems.ems_core_helpers import EMSCoreInterface
 
 
 class EMSCoreWind(EMSCoreInterface):
