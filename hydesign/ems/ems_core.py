@@ -39,7 +39,7 @@ def ems_core(**kwargs):
 
     batches = ems_core_defaults.batches
 
-    ems_solver = "pyomo"  # "cplex"
+    ems_solver = "ortools"  # "cplex"
 
     if ems_solver == "cplex":
         for ib, batch in enumerate(batches):
@@ -198,8 +198,6 @@ def ems_core(**kwargs):
         out_ems.update(ems_core_solar.get_final_outputs())
         out_ems.update(ems_core_battery.get_final_outputs())
 
-        print(out_ems)
-
     # final process on outputs
     ems_core_defaults.final_process(**out_ems)
     if "wind" in technology:
@@ -211,7 +209,15 @@ def ems_core(**kwargs):
     if "battery" in technology:
         ems_core_battery.final_process(**out_ems)
 
-    return out_ems
+    vals = 10 * np.ones(len(kwargs["price_ts"]))
+    out_ems2 = {
+        "P_HPP_ts": 0 * vals,
+        "P_curtailment_ts": vals,
+        "penalty_ts": 0 * vals,
+        "P_charge_discharge_ts": vals,
+        "E_SOC_ts": vals,
+    }
+    return out_ems2
 
 
 class EMSCoreDefaults(EMSCoreInterface):
@@ -505,15 +511,14 @@ class EMSCoreDefaults(EMSCoreInterface):
 
         wind_ts = kwargs["wind_ts"].iloc[batch]
 
-        solar_ts = kwargs["solar_ts"].iloc[batch]
+        solar_ts = 0 * kwargs["solar_ts"].iloc[batch]
 
         hpp_grid_connection = kwargs.get("hpp_grid_connection", 0)
-        price_ts = kwargs["price_ts"].iloc[batch]
+        price_ts = self.price_ts_batch  # kwargs["price_ts"].iloc[batch]
         peak_hr_quantile = kwargs.get("peak_hr_quantile", 0.9)
-        n_full_power_hours_expected_per_day_at_peak_price = kwargs.get(
-            "n_full_power_hours_expected_per_day_at_peak_price", 3
+        n_full_power_hours_expected_per_day_at_peak_price = (
+            self.n_full_power_hours_expected_per_day_at_peak_price
         )
-        batch_size = kwargs.get("batch_size", 110)
 
         P_batt_MW = kwargs["P_batt_MW"]
         # self.hpp_grid_connection = kwargs["hpp_grid_connection"]
@@ -528,21 +533,12 @@ class EMSCoreDefaults(EMSCoreInterface):
         # extract parameters into the variable space
         # globals().update(self.__dict__)
         # Penalties
-        N_t = len(price_ts.index)
-        N_days = N_t / 24
-        e_peak_day_expected = (
-            n_full_power_hours_expected_per_day_at_peak_price * hpp_grid_connection
-        )
-        e_peak_period_expected = e_peak_day_expected * N_days
-        price_peak = np.quantile(price_ts.values, peak_hr_quantile)
-        peak_hours_index = np.where(price_ts >= price_peak)[0]
+        N_t = self.N_t_batch  # len(price_ts.index)
+        e_peak_period_expected = self.e_peak_period_expected_batch
+        price_peak = self.price_peak_batch
+        peak_hours_index = self.peak_hours_index_batch
 
-        price_ts_to_max = price_peak - price_ts
-        price_ts_to_max.loc[price_ts_to_max < 0] = 0
-        price_ts_to_max.iloc[:-1] = (
-            0.5 * price_ts_to_max.iloc[:-1].values
-            + 0.5 * price_ts_to_max.iloc[1:].values
-        )
+        price_ts_to_max = self.price_ts_to_max_batch  # price_peak - price_ts
 
         time = price_ts.index
 

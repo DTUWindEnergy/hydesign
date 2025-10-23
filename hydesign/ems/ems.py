@@ -143,8 +143,6 @@ class ems:
             outputs_ems_core["penalty_ts"],
         )
 
-        print(P_HPP_ts)
-
         # Extend (by repeating them and stacking) all variable to full lifetime
         outputs = {}
         outputs["wind_t_ext"] = expand_to_lifetime(
