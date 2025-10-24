@@ -57,3 +57,11 @@ class EMSCoreSolar(EMSCoreInterface):
                 constraint_name=f"P_HPP_t_balance{t}",
                 addition_expr=solar_ts_batch[t],
             )
+
+    def pyomo_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
+        """ """
+        for t in range(0, len(self.time_batch)):
+            # solar
+            self.update_constraint_rhs_pyomo(
+                mdl, "power_constraint", added_value=self.solar_ts_batch.iloc[t], idx=t
+            )

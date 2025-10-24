@@ -23,13 +23,6 @@ def ems_core(**kwargs):
     technology = kwargs.get("technology", {"wind", "solar", "battery"})
     ems_solver = kwargs.get("ems_solver", "cplex")
 
-    # if ems_solver == "cplex":
-    #     ems_batch = ems_cplex_parts
-    # elif ems_solver == "pyomo":
-    #     ems_batch = ems_Pyomo_parts
-    # elif ems_solver == "ortools":
-    #     ems_batch = ems_ortools_parts
-
     #
     out_ems = {}
     ems_core_defaults = EMSCoreDefaults(**kwargs)
@@ -186,75 +179,71 @@ def ems_core(**kwargs):
 
             # init
             ems_core_defaults.solver_init(batch, **kwargs)
-            # if "wind" in technology:
-            #     ems_core_wind.solver_init(batch, **kwargs)
-            # if "solar" in technology:
-            #     ems_core_solar.solver_init(batch, **kwargs)
-            # if "battery" in technology:
-            #     ems_core_battery.solver_init(batch, **kwargs)
+            if "wind" in technology:
+                ems_core_wind.solver_init(batch, **kwargs)
+            if "solar" in technology:
+                ems_core_solar.solver_init(batch, **kwargs)
+            if "battery" in technology:
+                ems_core_battery.solver_init(batch, **kwargs)
 
             # variables
             ems_core_defaults.pyomo_variables(mdl, **kwargs)
-            # if "wind" in technology:
-            #     ems_core_wind.cplex_variables(mdl)
-
-            # if "solar" in technology:
-            #     ems_core_solar.cplex_variables(mdl)
-
-            # if "battery" in technology:
-            #     ems_core_battery.cplex_variables(mdl)
+            if "wind" in technology:
+                ems_core_wind.pyomo_variables(mdl)
+            if "solar" in technology:
+                ems_core_solar.pyomo_variables(mdl)
+            if "battery" in technology:
+                ems_core_battery.pyomo_variables(mdl)
 
             # Constraints
             ems_core_defaults.pyomo_constraints(mdl, **kwargs)
-            # if "wind" in technology:
-            #     ems_core_wind.cplex_constraints(mdl)
-
-            # if "solar" in technology:
-            #     ems_core_solar.cplex_constraints(mdl)
-
-            # if "battery" in technology:
-            #     ems_core_battery.cplex_constraints(mdl)
+            if "wind" in technology:
+                ems_core_wind.pyomo_constraints(mdl)
+            if "solar" in technology:
+                ems_core_solar.pyomo_constraints(mdl)
+            if "battery" in technology:
+                ems_core_battery.pyomo_constraints(mdl)
 
             # objective
             ems_core_defaults.pyomo_opjective(mdl, **kwargs)
-            # if "wind" in technology:
-            #     ems_core_wind.cplex_opjective(mdl)
-            # if "solar" in technology:
-            #     ems_core_solar.cplex_opjective(mdl)
-            # if "battery" in technology:
-            #     ems_core_battery.cplex_opjective(mdl)
+            if "wind" in technology:
+                ems_core_wind.pyomo_opjective(mdl)
+            if "solar" in technology:
+                ems_core_solar.pyomo_opjective(mdl)
+            if "battery" in technology:
+                ems_core_battery.pyomo_opjective(mdl)
 
             # Solve
             # solve with CPLEX via Pyomo
 
-            solver = pyo.SolverFactory("cplex")
-            solver.options["threads"] = 6
+            solver = pyo.SolverFactory("cplex")  # glpk
+            # solver.options["threads"] = 6
             result = solver.solve(mdl, tee=False)  # tee=True if you want solver log
 
-            ems_core_defaults.pyomo_outputs(mdl, **kwargs)
-            # if "wind" in technology:
-            #     ems_core_wind.cplex_outputs(sol)
-            # if "solar" in technology:
-            #     ems_core_solar.cplex_outputs(sol)
-            # if "battery" in technology:
-            #     ems_core_battery.cplex_outputs(sol)
+            ems_core_defaults.pyomo_outputs(mdl)
+            if "wind" in technology:
+                ems_core_wind.pyomo_outputs(mdl)
+            if "solar" in technology:
+                ems_core_solar.pyomo_outputs(mdl)
+            if "battery" in technology:
+                ems_core_battery.pyomo_outputs(mdl)
 
         # update ems outputs
         out_ems = ems_core_defaults.get_final_outputs()
-        # out_ems.update(ems_core_wind.get_final_outputs())
-        # out_ems.update(ems_core_solar.get_final_outputs())
-        # out_ems.update(ems_core_battery.get_final_outputs())
+        out_ems.update(ems_core_wind.get_final_outputs())
+        out_ems.update(ems_core_solar.get_final_outputs())
+        out_ems.update(ems_core_battery.get_final_outputs())
 
     # final process on outputs
     ems_core_defaults.final_process(**out_ems)
-    # if "wind" in technology:
-    #     ems_core_wind.final_process(**out_ems)
+    if "wind" in technology:
+        ems_core_wind.final_process(**out_ems)
 
-    # if "solar" in technology:
-    #     ems_core_solar.final_process(**out_ems)
+    if "solar" in technology:
+        ems_core_solar.final_process(**out_ems)
 
-    # if "battery" in technology:
-    #     ems_core_battery.final_process(**out_ems)
+    if "battery" in technology:
+        ems_core_battery.final_process(**out_ems)
 
     return out_ems
 
@@ -313,10 +302,6 @@ class EMSCoreDefaults(EMSCoreInterface):
 
         self.price_ts_to_max = price_ts_to_max_batch
         self.time_batch = self.price_ts_batch.index
-
-        self.wind_ts_batch = kwargs["wind_ts"].iloc[batch]
-
-        self.solar_ts_batch = kwargs["solar_ts"].iloc[batch]
 
     def cplex_variables(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
@@ -535,19 +520,8 @@ class EMSCoreDefaults(EMSCoreInterface):
         """ """
         ## Variables ##
         time_batch = self.time_batch
-        peak_hours_index_batch = self.peak_hours_index_batch
-        SOCtime_batch = self.time_batch.append(
-            pd.Index([self.time_batch[-1] + pd.Timedelta("1hour")])
-        )
-
-        self.SOCtime_batch = SOCtime_batch
 
         hpp_grid_connection = self.hpp_grid_connection
-        self.P_batt_MW = kwargs["P_batt_MW"]
-
-        charge_efficiency = kwargs["charge_efficiency"]
-
-        P_batt_MW = kwargs["P_batt_MW"]
 
         mdl.IDX1 = range(len(time_batch))
         mdl.IDX2 = range(1)
@@ -559,67 +533,15 @@ class EMSCoreDefaults(EMSCoreInterface):
         mdl.penalty = pyo.Var(mdl.IDX2, domain=pyo.Reals, bounds=(-1e12, 1e12))
         mdl.e_penalty = pyo.Var(mdl.IDX2, domain=pyo.Reals, bounds=(-1e12, 1e12))
 
-        # ----- battery
-        mdl.IDX3 = [t for t in range(len(time_batch)) if t in peak_hours_index_batch]
-        mdl.IDX4 = range(len(SOCtime_batch))
-        mdl.IDX5 = range(len(time_batch) - 1)
-        # Power charge/discharge from battery with Lower/Upper bounds
-        mdl.P_charge_discharge_t = pyo.Var(
-            mdl.IDX1,
-            domain=pyo.Reals,
-            bounds=(-2 * P_batt_MW, 2 * P_batt_MW),  # excess bounds
-        )
-        # Battery energy level
-        mdl.E_SOC_t = pyo.Var(
-            mdl.IDX4, domain=pyo.NonNegativeReals, bounds=(0, 1e12)
-        )  # bounds=(0,E_batt_MWh))
-
-        # x-values of the piece-wise function
-        f_piecewise_x_vals = [-P_batt_MW, 0, P_batt_MW]
-        # y-values of the piece-wise function
-        f_piecewise_y_vals = [
-            -P_batt_MW / charge_efficiency,
-            0,
-            P_batt_MW * charge_efficiency,
-        ]
-
-        mdl.P_charge_discharge_with_eff_t = pyo.Var(
-            mdl.IDX1,
-            domain=pyo.Reals,
-            bounds=(-P_batt_MW / charge_efficiency, P_batt_MW * charge_efficiency),
-        )
-        mdl.battery_eff_constraint = pyo.Piecewise(
-            mdl.IDX1,
-            mdl.P_charge_discharge_with_eff_t,
-            mdl.P_charge_discharge_t,
-            pw_pts=f_piecewise_x_vals,
-            f_rule=f_piecewise_y_vals,
-            pw_constr_type="EQ",
-            # pw_repn='SOS2',
-            # pw_repn='CC',
-            # pw_repn='DCC',
-            pw_repn="DLOG",
-            force_pw=False,
-            warn_domain_coverage=False,
-            unbounded_domain_var=True,
-        )
-
     def pyomo_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
         ## Constraints ##
-        batch = self.batch
         time_batch = self.time_batch
 
         self.P_batt_MW = kwargs["P_batt_MW"]
-        # self.hpp_grid_connection = kwargs["hpp_grid_connection"]
-        battery_depth_of_discharge = kwargs["battery_depth_of_discharge"]
 
         e_peak_period_expected_batch = self.e_peak_period_expected_batch
         price_peak_batch = self.price_peak_batch
-        wind_ts_batch = self.wind_ts_batch
-        solar_ts_batch = self.solar_ts_batch
-
-        E_batt_MWh_t_batch = kwargs["E_batt_MWh_t"].iloc[batch]
 
         mdl.curtailment_constraint = pyo.ConstraintList()
         mdl.power_constraint = pyo.ConstraintList()
@@ -646,94 +568,18 @@ class EMSCoreDefaults(EMSCoreInterface):
             warn_domain_coverage=False,
             # unbounded_domain_var=True
         )
+        from pyomo.environ import Constraint, Set
 
-        for t in range(0, len(time_batch)):
+        mdl.T = Set(initialize=range(len(time_batch)))
 
-            # Power constraint
-            mdl.power_constraint.add(
-                mdl.P_HPP_t[t]
-                == wind_ts_batch.iloc[t]
-                + solar_ts_batch.iloc[t]
-                - mdl.P_curtailment_t[t]
-                + mdl.P_charge_discharge_with_eff_t[t]
-            )
+        # define indexed constraint once (rule takes index t)
+        def power_rule(m, t):
+            return m.P_HPP_t[t] == -m.P_curtailment_t[t]
 
-        # battery
-        mdl.charge_discharge_constraint = pyo.ConstraintList()
-        mdl.battery_energy_constraint = pyo.ConstraintList()
-        mdl.battery_energy_min_constraint = pyo.ConstraintList()
-        mdl.battery_dynamics_constraint = pyo.ConstraintList()
+        if hasattr(mdl, "power_constraint"):
+            mdl.del_component("power_constraint")
 
-        mdl.SOC_initial_condition = pyo.Constraint(
-            expr=mdl.E_SOC_t[0] == 0.5 * E_batt_MWh_t_batch.iloc[0]
-        )
-
-        # SOC at the end of the year has to be equal to SOC at the beginning of the year
-        mdl.SOC_final = pyo.Constraint(
-            expr=mdl.E_SOC_t[len(time_batch) - 1]
-            == 0.5 * E_batt_MWh_t_batch.iloc[len(time_batch) - 1]
-        )
-
-        # Delta_t of 1 hour
-        dt = 1
-
-        for t in range(0, len(time_batch)):
-            # Constraining battery energy level to maximum battery level
-            mdl.battery_energy_constraint.add(
-                mdl.E_SOC_t[t] <= E_batt_MWh_t_batch.iloc[t]
-            )
-            # Constraining battery energy level to minimum battery level
-            mdl.battery_energy_min_constraint.add(
-                mdl.E_SOC_t[t]
-                >= (1 - battery_depth_of_discharge) * E_batt_MWh_t_batch.iloc[t]
-            )
-            # print(battery_depth_of_discharge)
-
-            # # Power constraint
-            # mdl.power_constraint.add(
-            #     mdl.P_HPP_t[t]
-            #     == wind_ts_batch.iloc[t]
-            #     + solar_ts_batch.iloc[t]
-            #     - mdl.P_curtailment_t[t]
-            #     + mdl.P_charge_discharge_with_eff_t[t]
-            # )
-
-        # Battery dynamics with efficiency charge =! discharge
-        for t in range(1, len(time_batch)):
-            mdl.battery_dynamics_constraint.add(
-                mdl.E_SOC_t[t]
-                == mdl.E_SOC_t[t - 1] - mdl.P_charge_discharge_with_eff_t[t] * dt
-            )
-
-        # Battery delta for battery operation constraints
-        mdl.P_battery_delta = pyo.Var(mdl.IDX5, domain=pyo.Reals, bounds=(-1e12, 1e12))
-
-        mdl.P_battery_delta_abs_pw = pyo.Var(
-            mdl.IDX5, domain=pyo.Reals, bounds=(0, 1e12)
-        )
-
-        for t in mdl.IDX5:
-            mdl.power_constraint.add(
-                mdl.P_battery_delta[t]
-                == mdl.P_charge_discharge_with_eff_t[t + 1]
-                - mdl.P_charge_discharge_with_eff_t[t]
-            )
-
-        mdl.P_battery_delta_abs_pw_constr = pyo.Piecewise(
-            mdl.IDX5,
-            mdl.P_battery_delta_abs_pw,
-            mdl.P_battery_delta,
-            pw_pts=[-1e12, 0, 1e12],
-            f_rule=[1e12, 0, 1e12],
-            pw_constr_type="EQ",
-            # pw_repn='SOS2',
-            # pw_repn='CC',
-            # pw_repn='DCC',
-            pw_repn="DLOG",
-            force_pw=False,
-            warn_domain_coverage=False,
-            # unbounded_domain_var=True
-        )
+        mdl.power_constraint = Constraint(mdl.T, rule=power_rule)
 
     def pyomo_opjective(self, mdl, **kwargs):
         # Objective Function ##
@@ -748,16 +594,17 @@ class EMSCoreDefaults(EMSCoreInterface):
 
         mdl.OBJ = pyo.Objective(
             # revenues and OPEX
-            expr=sum(price_ts_batch.iloc[t] * mdl.P_HPP_t[t] for t in mdl.IDX1)
-            - mdl.penalty[0]
-            + -sum(
-                mdl.P_battery_delta_abs_pw[t]
-                * cost_of_battery_P_fluct_in_peak_price_ratio
-                * price_ts_to_max.iloc[t]
-                for t in mdl.IDX5
-            ),
+            expr=0,
             sense=pyo.maximize,
         )
+
+        electricity_income = sum(
+            price_ts_batch.iloc[t] * mdl.P_HPP_t[t] for t in mdl.IDX1
+        )
+        penalty = -mdl.penalty[0]
+
+        self.add_to_objective_pyomo(mdl, addition_expr=electricity_income)
+        self.add_to_objective_pyomo(mdl, addition_expr=penalty)
 
     def pyomo_outputs(self, mdl, **kwargs):
         # output pyomo
@@ -809,29 +656,3 @@ class EMSCoreDefaults(EMSCoreInterface):
         self.P_HPP_ts[batch] = P_HPP_ts_batch
         self.P_curtailment_ts[batch] = P_curtailment_ts_batch
         self.penalty_ts[batch] = penalty_ts_batch
-
-        # battery
-        self.P_batt_MW = kwargs["P_batt_MW"]
-        P_charge_discharge_ts_batch_df = series_from_indexed_var(
-            mdl.P_charge_discharge_t, time_batch
-        )
-        E_SOC_ts_batch_df = series_from_indexed_var(mdl.E_SOC_t, self.SOCtime_batch)
-
-        P_charge_discharge_ts_batch = P_charge_discharge_ts_batch_df.reindex(
-            time_batch, fill_value=0
-        ).values
-        E_SOC_ts_batch = E_SOC_ts_batch_df.reindex(
-            self.SOCtime_batch, fill_value=0
-        ).values
-
-        # fallback recompute if docplex-like missing behaviour happened in your original code
-        # if len(P_HPP_ts_batch_df) < len(wind_ts_batch):
-        #     P_HPP_ts_batch = (
-        #         wind_ts_batch.values
-        #         + solar_ts_batch.values
-        #         + -P_curtailment_ts_batch
-        #         + P_charge_discharge_ts_batch
-        #     )
-
-        self.P_charge_discharge_ts[batch] = P_charge_discharge_ts_batch
-        self.E_SOC_ts[batch] = E_SOC_ts_batch[:-1]

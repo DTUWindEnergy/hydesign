@@ -155,6 +155,37 @@ class EMSCoreInterface(ABC):
         else:
             mdl.minimize(old_obj + addition_expr)
 
+    def add_to_objective_pyomo(self, mdl, addition_expr, obj_name="OBJ"):
+        """
+        Add `addition_expr` to model objective.
+        - tries model.OBJ first (matches your code),
+        - falls back to the first active scalar Objective,
+        - if none exists, creates model.OBJ with the given expr.
+        """
+        # prefer explicit name (e.g. mdl.OBJ)
+        target = getattr(mdl, obj_name, None)
+
+        # update objective expression (preserves sense)
+        target.set_value(target.expr + addition_expr)
+
+    # update function (very small, similar to your original)
+    def update_constraint_rhs_pyomo(self, mdl, constraint_name, added_value, idx=None):
+        comp = getattr(mdl, constraint_name, None)
+        if comp is None:
+            raise ValueError(f"Constraint '{constraint_name}' not found.")
+        # target single ConstraintData if idx provided
+        target = comp[idx] if (idx is not None and comp.is_indexed()) else comp
+        c = target  # ConstraintData
+        lb, ub, body = c.lower, c.upper, c.body
+        if (lb is not None) and (ub is not None) and float(lb) == float(ub):
+            c.set_value(body == (ub + added_value))
+        elif ub is not None:
+            c.set_value(body <= (ub + added_value))
+        elif lb is not None:
+            c.set_value((lb + added_value) <= body)
+        else:
+            raise ValueError("No bounds to update.")
+
     def update_constraint_rhs_ortools(
         self, solver, constraint_name, addition_expr: float, coeff: float = 1
     ):

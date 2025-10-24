@@ -49,3 +49,11 @@ class EMSCoreWind(EMSCoreInterface):
                 constraint_name=f"P_HPP_t_balance{t}",
                 addition_expr=wind_ts_batch[t],
             )
+
+    def pyomo_constraints(self, mdl) -> Dict[str, Any]:
+        """ """
+        for t in range(0, len(self.time_batch)):
+            # wind
+            self.update_constraint_rhs_pyomo(
+                mdl, "power_constraint", added_value=self.wind_ts_batch.iloc[t], idx=t
+            )
