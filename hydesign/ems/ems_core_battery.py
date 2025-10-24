@@ -3,6 +3,7 @@ from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
+import pyomo.environ as pyo
 
 from .ems_core_helpers import EMSCoreInterface
 

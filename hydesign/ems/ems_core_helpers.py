@@ -78,6 +78,18 @@ class EMSCoreInterface(ABC):
     def ortools_outputs(self):
         pass
 
+    def pyomo_variables(self, mdl):
+        pass
+
+    def pyomo_constraints(self, mdl):
+        pass
+
+    def pyomo_opjective(self, mdl):
+        pass
+
+    def pyomo_outputs(self, mdl):
+        pass
+
     def final_process(self, **kwargs) -> Dict[str, Any]:
         """
         Final processing step.
