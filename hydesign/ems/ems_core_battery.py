@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pyomo.environ as pyo
 
-from .ems_core_helpers import EMSCoreInterface
+from .ems_core_helpers import EMSCoreInterface, series_from_indexed_var
 
 
 class EMSCoreBattery(EMSCoreInterface):
@@ -15,17 +15,12 @@ class EMSCoreBattery(EMSCoreInterface):
     """
 
     def __init__(self, **kwargs) -> Dict[str, Any]:
-        super().__init__(**kwargs)
-
-        # allocate arrays
         self.P_batt_MW = kwargs["P_batt_MW"]
-        # self.hpp_grid_connection = kwargs["hpp_grid_connection"]
         self.battery_depth_of_discharge = kwargs["battery_depth_of_discharge"]
         self.charge_efficiency = kwargs["charge_efficiency"]
         self.cost_of_battery_P_fluct_in_peak_price_ratio = kwargs.get(
             "cost_of_battery_P_fluct_in_peak_price_ratio", 0.5
         )
-
         self.E_batt_MWh_t = kwargs["E_batt_MWh_t"]
         self.P_charge_discharge_ts = np.zeros(self.n_ts)
         self.E_SOC_ts = np.zeros(self.n_ts + 1)
@@ -522,25 +517,6 @@ class EMSCoreBattery(EMSCoreInterface):
         batch = self.batch
         time_batch = self.time_batch
         batch = self.batch
-
-        # helper to safely read an indexed Pyomo Var into a pandas Series
-        def series_from_indexed_var(var, idx_map):
-            """
-            var: Pyomo Var indexed by integers 0..T-1
-            idx_map: list-like of labels for the pandas index (e.g. time_batch)
-            returns: pd.Series indexed by idx_map with numeric values
-            """
-            values = []
-            for i in range(len(idx_map)):
-                try:
-                    values.append(pyo.value(var[i]))
-                except KeyError:
-                    # missing index in var
-                    values.append(0.0)
-                except Exception:
-                    # value not available (uninitialized) -> preserve failure behavior or set nan/0
-                    values.append(0.0)
-            return pd.Series(values, index=idx_map)
 
         # Extract time series as pandas Series (index = your time_batch items)
 

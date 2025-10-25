@@ -17,7 +17,7 @@ class EMSCoreSolar(EMSCoreInterface):
     """
 
     def __init__(self, **kwargs) -> Dict[str, Any]:
-        super().__init__(**kwargs)
+        self.solar_ts = kwargs["solar_ts"]
 
     def solver_init(self, batch, **kwargs) -> Dict[str, Any]:
         """ """

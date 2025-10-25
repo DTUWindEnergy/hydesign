@@ -14,7 +14,7 @@ class EMSCoreWind(EMSCoreInterface):
     """
 
     def __init__(self, **kwargs) -> Dict[str, Any]:
-        super().__init__(**kwargs)
+        self.wind_ts = kwargs["wind_ts"]
 
     def solver_init(self, batch, **kwargs) -> Dict[str, Any]:
         """ """

@@ -24,20 +24,7 @@ class EMSCoreInterface(ABC):
     """
 
     def __init__(self, **kwargs):
-        self.wind_ts = kwargs["wind_ts"]
-
-        self.solar_ts = kwargs["solar_ts"]
-
-        self.hpp_grid_connection = kwargs.get("hpp_grid_connection", 0)
-        self.price_ts = kwargs["price_ts"]
-        self.peak_hr_quantile = kwargs.get("peak_hr_quantile", 0.9)
-        self.n_full_power_hours_expected_per_day_at_peak_price = kwargs.get(
-            "n_full_power_hours_expected_per_day_at_peak_price", 3
-        )
-        self.batch_size = kwargs.get("batch_size", 110)
-
-        n_ts = len(self.price_ts)
-        self.n_ts = n_ts
+        pass
 
     def inputs(self, **kwargs) -> Dict[str, Any]:
         """Prepare and return the initial inputs / allocated arrays and meta values."""
@@ -215,3 +202,23 @@ def split_in_batch(array, N):
         batch += [array[counter * N : end]]
         counter += 1
     return batch
+
+
+# helper to safely read an indexed Pyomo Var into a pandas Series
+def series_from_indexed_var(var, idx_map):
+    """
+    var: Pyomo Var indexed by integers 0..T-1
+    idx_map: list-like of labels for the pandas index (e.g. time_batch)
+    returns: pd.Series indexed by idx_map with numeric values
+    """
+    values = []
+    for i in range(len(idx_map)):
+        try:
+            values.append(pyo.value(var[i]))
+        except KeyError:
+            # missing index in var
+            values.append(0.0)
+        except Exception:
+            # value not available (uninitialized) -> preserve failure behavior or set nan/0
+            values.append(0.0)
+    return pd.Series(values, index=idx_map)
