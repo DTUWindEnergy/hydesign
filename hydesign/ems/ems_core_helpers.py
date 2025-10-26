@@ -1,10 +1,7 @@
 # basic libraries
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict
 
-import numpy as np
-
-# from numpy import newaxis as na
 import pandas as pd
 import pyomo.environ as pyo
 from docplex.mp.constants import ComparisonType
@@ -83,7 +80,7 @@ class EMSCoreInterface(ABC):
         """
         return kwargs
 
-    def get_final_outputs(self):
+    def update_final_outputs(self):
         return {}
 
     def update_constraint_rhs(self, mdl, constraint_name, added_value):

@@ -297,7 +297,7 @@ def build_combined_class_text_multi(
             _, _, body_text = methods_map[mname]
             norm = normalize_body(body_text, indent=8)
             if appended_any:
-                sep = f"\n# --- body from {os.path.basename(src_files[idx])} ---\n"
+                sep = f"\n# --- content from {os.path.basename(src_files[idx])} ---\n"
                 parts.append(textwrap.indent(sep, " " * 8))
             parts.append(norm)
             appended_any = True

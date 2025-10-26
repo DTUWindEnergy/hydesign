@@ -2,10 +2,8 @@
 
 from typing import Any, Dict
 
-import numpy as np
-
-# from numpy import newaxis as na
 import pandas as pd
+import pyomo.environ as pyo
 
 from .ems_core_helpers import EMSCoreInterface
 
@@ -20,20 +18,9 @@ class EMSCoreSolar(EMSCoreInterface):
         self.solar_ts = kwargs["solar_ts"]
 
     def solver_init(self, batch, **kwargs) -> Dict[str, Any]:
-        """ """
-        self.price_ts_batch = self.price_ts.iloc[batch]
         self.solar_ts_batch = self.solar_ts.iloc[batch]
-        self.batch = batch
-
-        self.time_batch = self.price_ts_batch.index
-        # time set with an additional time slot for the last soc
-        self.SOCtime_batch = self.time_batch.append(
-            pd.Index([self.time_batch[-1] + pd.Timedelta("1hour")])
-        )
 
     def cplex_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
-        """ """
-
         for t in self.time_batch:
             self.update_constraint_rhs(
                 mdl,
@@ -42,7 +29,6 @@ class EMSCoreSolar(EMSCoreInterface):
             )
 
     def ortools_constraints(self, solver) -> Dict[str, Any]:
-        """ """
         solar_ts_batch = {
             t: solver.NumVar(
                 float(self.solar_ts_batch.loc[t]),
@@ -59,7 +45,6 @@ class EMSCoreSolar(EMSCoreInterface):
             )
 
     def pyomo_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
-        """ """
         for t in range(0, len(self.time_batch)):
             # solar
             self.update_constraint_rhs_pyomo(

@@ -10,8 +10,7 @@ from .ems_core_helpers import EMSCoreInterface, series_from_indexed_var
 
 class EMSCoreBattery(EMSCoreInterface):
     """
-    Concrete EMS core implementation based on original EMSCoreBase code.
-    Methods follow the original logic but are instance methods.
+    EMSCoreBattery
     """
 
     def __init__(self, **kwargs) -> Dict[str, Any]:
@@ -26,52 +25,19 @@ class EMSCoreBattery(EMSCoreInterface):
         self.E_SOC_ts = np.zeros(self.n_ts + 1)
 
     def final_process(self, **kwargs) -> Dict[str, Any]:
-        """
-        Final processing step.
-        """
         # set last SOC element equal to initial SOC.
         kwargs["E_SOC_ts"][-1] = kwargs["E_SOC_ts"][0]
         # return kwargs
 
     def solver_init(self, batch, **kwargs) -> Dict[str, Any]:
-        """ """
-        self.price_ts_batch = self.price_ts.iloc[batch]
         self.E_batt_MWh_t_batch = self.E_batt_MWh_t.iloc[batch]
-        self.batch = batch
 
-        # Penalties
-        self.N_t_batch = len(self.price_ts_batch.index)
-        self.N_days_batch = self.N_t_batch / 24
-        self.e_peak_day_expected = (
-            self.n_full_power_hours_expected_per_day_at_peak_price
-            * self.hpp_grid_connection
-        )
-        self.e_peak_period_expected_batch = self.e_peak_day_expected * self.N_days_batch
-        self.price_peak_batch = np.quantile(
-            self.price_ts_batch.values, self.peak_hr_quantile
-        )
-        self.peak_hours_index_batch = np.where(
-            self.price_ts_batch.values >= self.price_peak_batch
-        )[0]
-
-        price_ts_to_max_batch = self.price_peak_batch - self.price_ts_batch
-        price_ts_to_max_batch.loc[price_ts_to_max_batch < 0] = 0
-        price_ts_to_max_batch.iloc[:-1] = (
-            0.5 * price_ts_to_max_batch.iloc[:-1].values
-            + 0.5 * price_ts_to_max_batch.iloc[1:].values
-        )
-
-        self.price_ts_to_max_batch = price_ts_to_max_batch
-
-        self.time_batch = self.price_ts_batch.index
         # time set with an additional time slot for the last soc
         self.SOCtime_batch = self.time_batch.append(
             pd.Index([self.time_batch[-1] + pd.Timedelta("1hour")])
         )
 
     def cplex_variables(self, mdl, **kwargs) -> Dict[str, Any]:
-        """ """
-
         # Power charge/discharge from battery
         # Lower bound as large negative number in order to allow the variable to
         # have either positive or negative values
@@ -89,15 +55,8 @@ class EMSCoreBattery(EMSCoreInterface):
         )
 
     def ortools_variables(self, solver):
-        """
-        EMS solver implemented with OR-Tools linear solver.
-        Returns:
-            P_HPP_ts, P_curtailment_ts, P_charge_discharge_ts, E_SOC_ts, penalty_ts
-        """
         time_batch = self.time_batch
         SOCtime_batch = self.SOCtime_batch
-
-        # Variables
 
         # Decompose battery power into discharge and charge parts (both >=0)
         # Bounds chosen to reflect original asymmetric bounds:
@@ -134,8 +93,6 @@ class EMSCoreBattery(EMSCoreInterface):
         self.E_SOC_batch = E_SOC_batch
 
     def pyomo_variables(self, mdl, **kwargs) -> Dict[str, Any]:
-        """ """
-
         time_batch = self.time_batch
         SOCtime_batch = self.SOCtime_batch
         P_batt_MW = self.P_batt_MW
@@ -187,7 +144,6 @@ class EMSCoreBattery(EMSCoreInterface):
         )
 
     def cplex_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
-        """ """
         # Intitial and end SOC
         mdl.add_constraint(
             self.E_SOC_t_batch[self.SOCtime_batch[0]]
@@ -244,11 +200,6 @@ class EMSCoreBattery(EMSCoreInterface):
             )
 
     def ortools_constraints(self, solver):
-        """
-        EMS solver implemented with OR-Tools linear solver.
-        Returns:
-            P_HPP_ts, P_curtailment_ts, P_charge_discharge_ts, E_SOC_ts, penalty_ts
-        """
         time_batch = self.time_batch
         N_t_batch = self.N_t_batch
         SOCtime_batch = self.SOCtime_batch
@@ -259,7 +210,6 @@ class EMSCoreBattery(EMSCoreInterface):
         # delta variables for absolute battery power change cost
         delta = self.delta
 
-        # Constraints
         # initial and final SOC equal to 0.5 * E_batt at first time (same as original)
         solver.Add(
             E_SOC_batch[SOCtime_batch[0]]
@@ -325,8 +275,6 @@ class EMSCoreBattery(EMSCoreInterface):
         )
 
     def pyomo_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
-        """ """
-        ## Constraints ##
         time_batch = self.time_batch
         SOCtime_batch = self.SOCtime_batch
 
@@ -359,7 +307,6 @@ class EMSCoreBattery(EMSCoreInterface):
 
         # Delta_t of 1 hour
         dt = 1
-
         for t in range(0, len(time_batch)):
             # Constraining battery energy level to maximum battery level
             mdl.battery_energy_constraint.add(
@@ -371,15 +318,6 @@ class EMSCoreBattery(EMSCoreInterface):
                 >= (1 - battery_depth_of_discharge) * E_batt_MWh_t_batch.iloc[t]
             )
             # print(battery_depth_of_discharge)
-
-            # # Power constraint
-            # mdl.power_constraint.add(
-            #     mdl.P_HPP_t[t]
-            #     == wind_ts_batch.iloc[t]
-            #     + solar_ts_batch.iloc[t]
-            #     - mdl.P_curtailment_t[t]
-            #     + mdl.P_charge_discharge_with_eff_t[t]
-            # )
 
         # Battery dynamics with efficiency charge =! discharge
         for t in range(1, len(time_batch)):
@@ -421,7 +359,6 @@ class EMSCoreBattery(EMSCoreInterface):
     def cplex_opjective(self, mdl):
         # Piecewise function for "absolute value" function
         self.fabs = mdl.piecewise(-1, [(0, 0)], 1)
-
         battery_penalty = -mdl.sum(
             self.fabs(
                 self.P_charge_discharge_batch[t + pd.Timedelta("1hour")]
@@ -449,8 +386,6 @@ class EMSCoreBattery(EMSCoreInterface):
         objective.SetMaximization()
 
     def pyomo_opjective(self, mdl, **kwargs):
-        # Objective Function ##
-
         cost_of_battery_P_fluct_in_peak_price_ratio = (
             self.cost_of_battery_P_fluct_in_peak_price_ratio
         )
@@ -476,23 +411,16 @@ class EMSCoreBattery(EMSCoreInterface):
             sol.get_value_dict(self.E_SOC_t_batch), orient="index"
         ).loc[:, 0]
 
-        # make a time series like P_HPP with a constant penalty
-
         # Cplex sometimes returns missing values :O
-
         P_charge_discharge_ts_batch = P_charge_discharge_ts_df.reindex(
             self.time_batch, fill_value=0
         ).values
         E_SOC_ts_batch = E_SOC_ts_df.reindex(self.SOCtime_batch, fill_value=0).values
 
-        batch = self.batch
-
-        self.P_charge_discharge_ts[batch] = P_charge_discharge_ts_batch
-        self.E_SOC_ts[batch] = E_SOC_ts_batch[:-1]
+        self.P_charge_discharge_ts[self.batch] = P_charge_discharge_ts_batch
+        self.E_SOC_ts[self.batch] = E_SOC_ts_batch[:-1]
 
     def ortools_outputs(self):
-        batch = self.batch
-        time_batch = self.time_batch
         SOCtime_batch = self.SOCtime_batch
         P_dis_batch = self.P_dis_batch
         P_ch_batch = self.P_ch_batch
@@ -501,19 +429,17 @@ class EMSCoreBattery(EMSCoreInterface):
         P_charge_discharge_ts_batch = np.array(
             [
                 (P_dis_batch[t].solution_value() - P_ch_batch[t].solution_value())
-                for t in time_batch
+                for t in self.time_batch
             ]
         )
         E_SOC_ts_batch = np.array(
             [E_SOC_batch[t].solution_value() for t in SOCtime_batch]
         )
 
-        self.P_charge_discharge_ts[batch] = P_charge_discharge_ts_batch
-        self.E_SOC_ts[batch] = E_SOC_ts_batch[:-1]
+        self.P_charge_discharge_ts[self.batch] = P_charge_discharge_ts_batch
+        self.E_SOC_ts[self.batch] = E_SOC_ts_batch[:-1]
 
     def pyomo_outputs(self, mdl, **kwargs):
-        # output pyomo
-        N_t = self.N_t_batch
         batch = self.batch
         time_batch = self.time_batch
         batch = self.batch
@@ -532,24 +458,12 @@ class EMSCoreBattery(EMSCoreInterface):
             self.SOCtime_batch, fill_value=0
         ).values
 
-        # fallback recompute if docplex-like missing behaviour happened in your original code
-        # if len(P_HPP_ts_batch_df) < len(wind_ts_batch):
-        #     P_HPP_ts_batch = (
-        #         wind_ts_batch.values
-        #         + solar_ts_batch.values
-        #         + -P_curtailment_ts_batch
-        #         + P_charge_discharge_ts_batch
-        #     )
-
         self.P_charge_discharge_ts[batch] = P_charge_discharge_ts_batch
         self.E_SOC_ts[batch] = E_SOC_ts_batch[:-1]
 
-    def get_final_outputs(self):
-        # self.E_SOC_ts[99] = 40 # 50
-        # self.P_charge_discharge_ts[98] = 19.6 # 9.8
-
-        # self.P_charge_discharge_ts[99] = 9.8 #  19.6
-        return {
+    def update_final_outputs(self, out):
+        out_battery = {
             "P_charge_discharge_ts": self.P_charge_discharge_ts,
             "E_SOC_ts": self.E_SOC_ts,
         }
+        out.update(out_battery)

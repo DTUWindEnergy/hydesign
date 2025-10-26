@@ -3,8 +3,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Iterable, List
 
 import numpy as np
-
-# from numpy import newaxis as na
 import pandas as pd
 import pyomo.environ as pyo
 
@@ -18,6 +16,8 @@ class EMSCoreDefaults(EMSCoreInterface):
     """
 
     def __init__(self, **kwargs) -> Dict[str, Any]:
+        """ """
+        # --- defaults
         self.hpp_grid_connection = kwargs.get("hpp_grid_connection", 0)
         self.price_ts = kwargs["price_ts"]
         self.peak_hr_quantile = kwargs.get("peak_hr_quantile", 0.9)
@@ -25,32 +25,24 @@ class EMSCoreDefaults(EMSCoreInterface):
             "n_full_power_hours_expected_per_day_at_peak_price", 3
         )
         self.batch_size = kwargs.get("batch_size", 110)
-
         n_ts = len(self.price_ts)
         self.n_ts = n_ts
 
-        # allocate arrays
-
         # split in batches
-        n_ts = self.n_ts
         batches_all = split_in_batch(list(range(n_ts)), self.batch_size)
         self.batches = batches_all
 
-        n_ts = self.n_ts
         self.P_HPP_ts = np.zeros(n_ts)
         self.P_curtailment_ts = np.zeros(n_ts)
         self.penalty_ts = np.zeros(n_ts)
 
-        # for pyomo
-        self.P_charge_discharge_ts = np.zeros(n_ts)
-        self.E_SOC_ts = np.zeros(n_ts + 1)
-
     def solver_init(self, batch, **kwargs) -> Dict[str, Any]:
         """ """
+        # --- defaults
         self.price_ts_batch = self.price_ts.iloc[batch]
         self.batch = batch
+        self.time_batch = self.price_ts_batch.index
 
-        # Penalties
         self.N_t_batch = len(self.price_ts_batch.index)
         self.N_days_batch = self.N_t_batch / 24
         self.e_peak_day_expected = (
@@ -72,12 +64,11 @@ class EMSCoreDefaults(EMSCoreInterface):
             + 0.5 * price_ts_to_max_batch.iloc[1:].values
         )
 
-        self.price_ts_to_max = price_ts_to_max_batch
-        self.time_batch = self.price_ts_batch.index
+        self.price_ts_to_max_batch = price_ts_to_max_batch
 
     def cplex_variables(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
-        # Variables definition
+        # --- defaults
         self.P_HPP_t_batch = mdl.continuous_var_dict(
             self.time_batch, lb=0, ub=self.hpp_grid_connection, name="HPP power output"
         )
@@ -90,7 +81,7 @@ class EMSCoreDefaults(EMSCoreInterface):
 
     def cplex_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
-        # Constraints
+        # --- defaults
         mdl.add_constraint(
             self.e_penalty_batch
             == (
@@ -114,9 +105,9 @@ class EMSCoreDefaults(EMSCoreInterface):
             )
 
     def cplex_opjective(self, mdl):
-        # Piecewise function for "absolute value" function
+        """ """
+        # --- default
         self.fabs = mdl.piecewise(-1, [(0, 0)], 1)
-
         mdl.maximize(0)
 
         electricity_income = mdl.sum(
@@ -128,6 +119,8 @@ class EMSCoreDefaults(EMSCoreInterface):
         self.add_to_objective(mdl, addition_expr=penalty_grid)
 
     def cplex_outputs(self, sol):
+        """ """
+        # --- defaults
         P_HPP_ts_batch_df = pd.DataFrame.from_dict(
             sol.get_value_dict(self.P_HPP_t_batch), orient="index"
         ).loc[:, 0]
@@ -149,54 +142,47 @@ class EMSCoreDefaults(EMSCoreInterface):
         if len(P_HPP_ts_batch_df) < 1:  # len(self.wind_ts_batch):
             print("recomputing p_hpp")
             print("to do!")
-            # P_HPP_ts_batch = (
-            #     self.wind_ts_batch.values
-            #     + self.solar_ts_batch.values
-            #     - P_curtailment_ts_batch
-            # )
+        #     P_HPP_ts_batch = (
+        #         wind_ts_batch.values
+        #         + solar_ts_batch.values
+        #         + -P_curtailment_ts_batch
+        #         + P_charge_discharge_ts_batch
+        #     )
 
-        batch = self.batch
+        self.P_HPP_ts[self.batch] = P_HPP_ts_batch
+        self.P_curtailment_ts[self.batch] = P_curtailment_ts_batch
+        self.penalty_ts[self.batch] = penalty_ts_batch
 
-        self.P_HPP_ts[batch] = P_HPP_ts_batch
-        self.P_curtailment_ts[batch] = P_curtailment_ts_batch
-        self.penalty_ts[batch] = penalty_ts_batch
-
-    def get_final_outputs(self):
-        return {
+    def update_final_outputs(self, out):
+        """ """
+        # --- defaults
+        out_defaults = {
             "P_HPP_ts": self.P_HPP_ts,
             "P_curtailment_ts": self.P_curtailment_ts,
             "penalty_ts": self.penalty_ts,
-            # for pyomo
-            "P_charge_discharge_ts": self.P_charge_discharge_ts,
-            "E_SOC_ts": self.E_SOC_ts,
         }
+        out.update(out_defaults)
 
     def ortools_variables(self, solver):
-        """
-        EMS solver implemented with OR-Tools linear solver.
-        Returns:
-            P_HPP_ts, P_curtailment_ts, P_charge_discharge_ts, E_SOC_ts, penalty_ts
-        """
-
+        """ """
         time_batch = self.time_batch
         hpp_grid_connection = self.hpp_grid_connection
 
-        # Variables
-        # HPP power
+        # --- defaults
         P_HPP_batch = {
             t: solver.NumVar(0.0, float(hpp_grid_connection), f"P_HPP_{i}")
             for i, t in enumerate(time_batch)
         }
-        # Curtailment
+
         P_curtail_batch = {
             t: solver.NumVar(0.0, solver.infinity(), f"P_curt_{i}")
             for i, t in enumerate(time_batch)
         }
 
-        # penalty variables
         e_penalty_batch = solver.NumVar(
             -solver.infinity(), solver.infinity(), "e_penalty"
         )
+
         p_nonneg_batch = solver.NumVar(
             0.0, solver.infinity(), "p_nonneg"
         )  # represents max(0, e_penalty)
@@ -207,12 +193,7 @@ class EMSCoreDefaults(EMSCoreInterface):
         self.e_penalty_batch = e_penalty_batch
 
     def ortools_constraints(self, solver):
-        """
-        EMS solver implemented with OR-Tools linear solver.
-        Returns:
-            P_HPP_ts, P_curtailment_ts, P_charge_discharge_ts, E_SOC_ts, penalty_ts
-        """
-
+        """ """
         time_batch = self.time_batch
         N_t_batch = self.N_t_batch
         e_peak_period_expected_batch = self.e_peak_period_expected_batch
@@ -231,8 +212,8 @@ class EMSCoreDefaults(EMSCoreInterface):
             delta[t] = solver.NumVar(0.0, solver.infinity(), f"delta_{i}")
 
         self.delta = delta
-        # Constraints
 
+        # --- defaults
         # e_penalty == e_peak_period_expected - sum(P_HPP over peak hours)
         if len(peak_hours_index_batch) > 0:
             expr = solver.Sum(
@@ -253,8 +234,8 @@ class EMSCoreDefaults(EMSCoreInterface):
             )
 
     def ortools_objective(self, solver):
-        # ------------
-        # Objective: maximize sum(price * P_HPP) - penalty - sum(delta * cost_ratio * price_ts_to_max)
+        """ """
+        # --- defaults
         objective = solver.Objective()
         for t in self.time_batch:
             objective.SetCoefficient(
@@ -267,6 +248,7 @@ class EMSCoreDefaults(EMSCoreInterface):
         objective.SetMaximization()
 
     def ortools_outputs(self):
+        """ """
         batch = self.batch
         time_batch = self.time_batch
         N_t_batch = self.N_t_batch
@@ -275,7 +257,7 @@ class EMSCoreDefaults(EMSCoreInterface):
         P_HPP_batch = self.P_HPP_batch
         P_curtail_batch = self.P_curtail_batch
 
-        # extract results
+        # --- defaults
         P_HPP_ts_batch = np.array([P_HPP_batch[t].solution_value() for t in time_batch])
         P_curtail_ts_batch = np.array(
             [P_curtail_batch[t].solution_value() for t in time_batch]
@@ -290,7 +272,7 @@ class EMSCoreDefaults(EMSCoreInterface):
 
     def pyomo_variables(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
-        ## Variables ##
+        # --- defaults
         time_batch = self.time_batch
 
         hpp_grid_connection = self.hpp_grid_connection
@@ -307,9 +289,8 @@ class EMSCoreDefaults(EMSCoreInterface):
 
     def pyomo_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
-        ## Constraints ##
+        # --- defaults
         time_batch = self.time_batch
-
         self.P_batt_MW = kwargs["P_batt_MW"]
 
         e_peak_period_expected_batch = self.e_peak_period_expected_batch
@@ -354,15 +335,11 @@ class EMSCoreDefaults(EMSCoreInterface):
         mdl.power_constraint = Constraint(mdl.T, rule=power_rule)
 
     def pyomo_opjective(self, mdl, **kwargs):
-        # Objective Function ##
+        """ """
+        # --- defaults
         self.P_batt_MW = kwargs["P_batt_MW"]
 
-        cost_of_battery_P_fluct_in_peak_price_ratio = kwargs.get(
-            "cost_of_battery_P_fluct_in_peak_price_ratio", 0.5
-        )
-
         price_ts_batch = self.price_ts_batch
-        price_ts_to_max = self.price_ts_to_max
 
         mdl.OBJ = pyo.Objective(
             # revenues and OPEX
@@ -379,13 +356,13 @@ class EMSCoreDefaults(EMSCoreInterface):
         self.add_to_objective_pyomo(mdl, addition_expr=penalty)
 
     def pyomo_outputs(self, mdl, **kwargs):
-        # output pyomo
+        """ """
         N_t = self.N_t_batch
         batch = self.batch
         time_batch = self.time_batch
         batch = self.batch
 
-        # Extract time series as pandas Series (index = your time_batch items)
+        # --- defaults
         P_HPP_ts_batch_df = series_from_indexed_var(mdl.P_HPP_t, time_batch)
         P_curtailment_ts_batch_df = series_from_indexed_var(
             mdl.P_curtailment_t, time_batch

@@ -3,11 +3,7 @@ import pyomo.environ as pyo
 from docplex.mp.model import Model
 from ortools.linear_solver import pywraplp
 
-from .ems_core_battery import EMSCoreBattery
 from .ems_core_combined import EMSCoreCombined
-from .ems_core_defaults import EMSCoreDefaults
-from .ems_core_solar import EMSCoreSolar
-from .ems_core_wind import EMSCoreWind
 
 
 def ems_core(**kwargs):
@@ -36,7 +32,7 @@ def ems_core(**kwargs):
             ems_core_combined.cplex_constraints(mdl)
             sol = mdl.solve(log_output=False)
             ems_core_combined.cplex_outputs(sol)
-        out_ems = ems_core_combined.get_final_outputs()
+        ems_core_combined.update_final_outputs(out_ems)
 
     elif ems_solver == "ortools":
         for ib, batch in enumerate(batches):
@@ -107,10 +103,10 @@ def ems_core(**kwargs):
                 ems_core_battery.ortools_outputs()
 
         # update ems outputs
-        out_ems = ems_core_defaults.get_final_outputs()
-        out_ems.update(ems_core_wind.get_final_outputs())
-        out_ems.update(ems_core_solar.get_final_outputs())
-        out_ems.update(ems_core_battery.get_final_outputs())
+        out_ems = ems_core_defaults.update_final_outputs()
+        out_ems.update(ems_core_wind.update_final_outputs())
+        out_ems.update(ems_core_solar.update_final_outputs())
+        out_ems.update(ems_core_battery.update_final_outputs())
 
     elif ems_solver == "pyomo":
         for ib, batch in enumerate(batches):
@@ -169,10 +165,10 @@ def ems_core(**kwargs):
                 ems_core_battery.pyomo_outputs(mdl)
 
         # update ems outputs
-        out_ems = ems_core_defaults.get_final_outputs()
-        out_ems.update(ems_core_wind.get_final_outputs())
-        out_ems.update(ems_core_solar.get_final_outputs())
-        out_ems.update(ems_core_battery.get_final_outputs())
+        out_ems = ems_core_defaults.update_final_outputs()
+        out_ems.update(ems_core_wind.update_final_outputs())
+        out_ems.update(ems_core_solar.update_final_outputs())
+        out_ems.update(ems_core_battery.update_final_outputs())
 
     # final process on outputs
     ems_core_combined.final_process(**out_ems)
