@@ -434,7 +434,7 @@ class hpp_model(hpp_base):
         ems_modular_regenerate = sim_pars.get("ems_modular_regenerate", False)
         technologies = sim_pars.get("technologies", ("wind", "solar", "battery"))
 
-        # ems_modular_regenerate = True
+        ems_modular_regenerate = True
         # technologies = ()
 
         if ems_script == "modular":

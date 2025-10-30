@@ -10,7 +10,7 @@ from hydesign.costs.costs import ptg_cost_comp as ptg_cost
 from hydesign.costs.costs import pvp_cost_comp as pvp_cost
 from hydesign.costs.costs import shared_cost_comp as shared_cost
 from hydesign.costs.costs import wpp_cost_comp as wpp_cost
-from hydesign.ems.ems_P2X import ems_P2X_comp as ems  # , ems_long_term_operation
+from hydesign.ems.ems_P2X import ems_P2X_comp as ems_static  # , ems_long_term_operation
 from hydesign.finance.finance_P2X import finance_P2X_comp as finance_P2X
 from hydesign.pv.pv import pvp_comp as pvp  # , pvp_with_degradation
 from hydesign.weather.weather import ABL_comp as ABL
@@ -68,6 +68,30 @@ class hpp_model_P2X(hpp_base):
         eff_curve = my_df[1:].values.astype(float)
         electrolyzer_eff_curve_type = sim_pars["electrolyzer_eff_curve_type"]
 
+        # --- added for modular ems
+        ems_script = sim_pars.get(
+            "ems_script", "modular"
+        )  # "static" sim_pars["ems_script"]
+
+        ems_modular_regenerate = sim_pars.get("ems_modular_regenerate", False)
+        technologies = sim_pars.get("technologies", ("wind", "solar", "battery", "P2X"))
+
+        ems_modular_regenerate = True
+        # technologies = ()
+
+        if ems_script == "modular":
+            if ems_modular_regenerate:
+                from hydesign.ems_modular.modules.ems_core_builder import (
+                    generate_ems_core_combined,
+                )
+
+                generate_ems_core_combined(technologies)
+                from hydesign.ems_modular.ems import ems_comp as ems_modular
+            ems = ems_modular
+        elif ems_script == "static":
+            ems = ems_static
+
+        # --- end of modular ems
         # model = om.Group()
         comps = [
             (
