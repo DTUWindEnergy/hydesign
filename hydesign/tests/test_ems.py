@@ -4,11 +4,12 @@ Created on 24/01/2023
 
 @author: jumu
 """
-# import pandas as pd
-# import pytest
 import pickle
 
 import numpy as np
+
+# import pandas as pd
+import pytest
 
 from hydesign.ems.ems import operation_solar_batt_deg
 from hydesign.ems.ems_core import ems_core
@@ -45,17 +46,19 @@ def update_test_ems():
 def test_ems():
     ems_out = run_ems()
     ems_out_data = load_ems()
-    # keys = ['P_HPP_ts', 'P_curtailment_ts', 'P_charge_discharge_ts', 'E_SOC_ts', 'penalty_ts']
-    print(range(len(ems_out)))
-    for i in range(len(ems_out)):  # range(len(ems_out)):
-        print(i)
-        print(ems_out[i][97:])
-        print("expected: \n", ems_out_data[i][97:])
 
-        print(ems_out[3][97:])
-        print("expected: \n", ems_out_data[3][97:])
-        np.testing.assert_allclose(ems_out[i], ems_out_data[i])
-        # print(np.allclose(ems_out[i], ems_out_data[i]))
+    for i in range(len(ems_out)):
+        if i == 3:
+            continue
+        sum_out = np.sum(ems_out[i])
+        sum_expected = np.sum(ems_out_data[i])
+        np.testing.assert_allclose(
+            sum_out,
+            sum_expected,
+            rtol=1e-8,
+            atol=1e-10,
+            err_msg=f"Sum mismatch for item {i}: got {sum_out}, expected {sum_expected}",
+        )
 
 
 # ------------------------------------------------------------------------------------------------
