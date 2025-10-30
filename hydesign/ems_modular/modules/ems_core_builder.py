@@ -377,29 +377,71 @@ def merge_multiple_files(
     print(f"Combined module written to: {out_file}")
 
 
-def main():
-    # Example usage: treat file1 as primary, files 2..N are appended (treated like second file)
-    files = [
-        r"C:\code\hydesign\hydesign\ems\ems_core_defaults.py",
-        r"C:\code\hydesign\hydesign\ems\ems_core_wind.py",
-        r"C:\code\hydesign\hydesign\ems\ems_core_solar.py",
-        r"C:\code\hydesign\hydesign\ems\ems_core_battery.py",
-        # add as many additional files as you want below; they will be treated like the "second" file
-        # r"C:\code\hydesign\hydesign\ems\ems_core_extra.py",
-    ]
-    classes = [
-        "EMSCoreDefaults",
-        "EMSCoreWind",
-        "EMSCoreSolar",
-        "EMSCoreBattery",
-        # corresponding class names...
-        # "EMSCoreExtra",
-    ]
-    out = r"C:\code\hydesign\hydesign\ems\ems_core_combined.py"
-    combined_name = "EMSCoreCombined"
+from pathlib import Path
+from typing import Iterable, List, Tuple
 
-    merge_multiple_files(files, classes, out, combined_name)
+
+def _to_pascal_case(s: str) -> str:
+    """Convert strings like 'wind', 'pv_system', 'solar-park' -> 'Wind', 'PvSystem', 'SolarPark'."""
+    # keep only alphanumeric as separators, split on non-alnum, capitalize parts
+    parts = [p for p in __import__("re").split(r"[^0-9a-zA-Z]+", s) if p]
+    return "".join(p.capitalize() for p in parts)
+
+
+def generate_ems_core_combined(
+    technologies: Iterable[str],
+    raise_on_missing: bool = True,
+) -> Tuple[List[str], List[str]]:
+    """
+    Build file & class lists from the given technologies and call merge_multiple_files().
+
+    Returns (files, classes) used to create the combined file.
+    - technologies: iterable of tech strings e.g. ('wind','solar','battery')
+    - modules_dir: directory containing ems_core_*.py files
+    - out: output file path for combined file
+    - raise_on_missing: if True, raise FileNotFoundError when a tech file is missing;
+                        if False, skip missing techs with a printed warning.
+    """
+    from pathlib import Path
+
+    MODULES_DIR = Path(__file__).parent  # folder where this file lives
+    DEFAULT_FILE = MODULES_DIR / "ems_core_defaults.py"
+    OUT_FILE = MODULES_DIR.parent / "ems_core_combined.py"
+
+    files: List[str] = [str(DEFAULT_FILE)]
+    classes: List[str] = ["EMSCoreDefaults"]
+
+    missing = []
+    for tech in technologies:
+        tech = str(tech).strip()
+        if not tech:
+            continue
+        fname = f"ems_core_{tech}.py"
+        fpath = MODULES_DIR / fname
+        classname = "EMSCore" + _to_pascal_case(tech)
+        if not fpath.exists():
+            missing.append((tech, fpath))
+            if raise_on_missing:
+                msg = f"Technology file for '{tech}' not found at {fpath}"
+                raise FileNotFoundError(msg)
+            else:
+                print(
+                    f"[generate_ems_core_combined] skipping missing tech '{tech}' (expected {fpath})"
+                )
+                continue
+
+        files.append(str(fpath))
+        classes.append(classname)
+
+    if missing and not raise_on_missing:
+        # optional: if all techs missing, still proceed but warn
+        if len(files) == 1:
+            print(
+                "[generate_ems_core_combined] Warning: only defaults included (no technology files found)."
+            )
+
+    merge_multiple_files(files, classes, str(OUT_FILE), combined_name="EMSCoreCombined")
 
 
 if __name__ == "__main__":
-    main()
+    generate_ems_core_combined(technologies=("wind", "solar", "battery"))

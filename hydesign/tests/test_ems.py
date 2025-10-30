@@ -8,12 +8,12 @@ import pickle
 
 import numpy as np
 
-# import pandas as pd
-import pytest
-
 from hydesign.ems.ems import operation_solar_batt_deg
-from hydesign.ems.ems_core import ems_core
+from hydesign.ems_modular.ems_core import ems_core
 from hydesign.tests.test_files import tfp
+
+# import pandas as pd
+# import pytest
 
 
 # ------------------------------------------------------------------------------------------------

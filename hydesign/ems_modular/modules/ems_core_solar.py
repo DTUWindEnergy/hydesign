@@ -5,7 +5,7 @@ from typing import Any, Dict
 import pandas as pd
 import pyomo.environ as pyo
 
-from .ems_core_helpers import EMSCoreInterface
+from hydesign.ems_modular.modules.ems_core_helpers import EMSCoreInterface
 
 
 class EMSCoreSolar(EMSCoreInterface):

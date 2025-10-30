@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 import pyomo.environ as pyo
 
-from hydesign.ems.ems_core_helpers import EMSCoreInterface
+from hydesign.ems_modular.modules.ems_core_helpers import EMSCoreInterface
 
 
 class EMSCoreWind(EMSCoreInterface):

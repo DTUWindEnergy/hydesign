@@ -6,7 +6,11 @@ import numpy as np
 import pandas as pd
 import pyomo.environ as pyo
 
-from .ems_core_helpers import EMSCoreInterface, series_from_indexed_var, split_in_batch
+from hydesign.ems_modular.modules.ems_core_helpers import (
+    EMSCoreInterface,
+    series_from_indexed_var,
+    split_in_batch,
+)
 
 
 class EMSCoreDefaults(EMSCoreInterface):

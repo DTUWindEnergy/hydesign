@@ -15,7 +15,9 @@ from hydesign.costs.costs import battery_cost_comp as battery_cost
 from hydesign.costs.costs import pvp_cost_comp as pvp_cost
 from hydesign.costs.costs import shared_cost_comp as shared_cost
 from hydesign.costs.costs import wpp_cost_comp as wpp_cost
-from hydesign.ems.ems import ems_comp as ems
+
+# from hydesign.ems_modular.ems import ems_comp as ems_modular
+from hydesign.ems.ems import ems_comp as ems_static
 from hydesign.ems.ems import ems_long_term_operation_comp as ems_long_term_operation
 from hydesign.finance.finance import finance_comp as finance
 from hydesign.look_up_tables import lut_filepath
@@ -424,6 +426,28 @@ class hpp_model(hpp_base):
         reliability_ts_pv = sim_pars["reliability_ts_pv"]
         battery_price_reduction_per_year = sim_pars["battery_price_reduction_per_year"]
         work_dir = sim_pars["work_dir"]
+
+        ems_script = sim_pars.get(
+            "ems_script", "modular"
+        )  # "static" sim_pars["ems_script"]
+
+        ems_modular_regenerate = sim_pars.get("ems_modular_regenerate", False)
+        technologies = sim_pars.get("technologies", ("wind", "solar", "battery"))
+
+        # ems_modular_regenerate = True
+        # technologies = ()
+
+        if ems_script == "modular":
+            if ems_modular_regenerate:
+                from hydesign.ems_modular.modules.ems_core_builder import (
+                    generate_ems_core_combined,
+                )
+
+                generate_ems_core_combined(technologies)
+                from hydesign.ems_modular.ems import ems_comp as ems_modular
+            ems = ems_modular
+        elif ems_script == "static":
+            ems = ems_static
 
         comps = [
             (
