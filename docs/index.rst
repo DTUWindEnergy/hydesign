@@ -1,6 +1,11 @@
 Welcome to hydesign
 ===========================================
 
+.. image:: HyDesign_logo.png
+    :width: 70 %
+    :align: center
+
+
 HyDesign is the DTU tool for design, control and optimization of utility scale Hybrid Power- and Energy Plants including  wind, solar, storage and P2X technologies.
 
 For installation instructions, please see the :ref:`Installation Guide <installation>`.

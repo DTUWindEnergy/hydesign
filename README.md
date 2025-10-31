@@ -5,6 +5,8 @@
 [![License](https://img.shields.io/pypi/l/hydesign)](https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign/blob/main/LICENSE)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/git/https%3A%2F%2Fgitlab.windenergy.dtu.dk%2FTOPFARM%2FHyDesign.git/main)
 
+![HyDesign](https://gitlab.windenergy.dtu.dk/TOPFARM/HyDesign/raw/main/docs/HyDesign_logo.png)
+
 ## Welcome to Hydesign
 The DTU tool for design, control and optimization of utility scale Hybrid Power- and Energy Plants including wind, solar, storage and P2X technologies.
 - Hydesign is a non-linear model for evaluating HPP projects including: 
@@ -30,7 +32,7 @@ PAGES = {759--776},
 URL = {https://wes.copernicus.org/articles/9/759/2024/},
 DOI = {10.5194/wes-9-759-2024}
 }
-```
+```  
 
 ## Source code repository (and issue tracker):
 [https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign](https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign)
