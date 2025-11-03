@@ -42,8 +42,8 @@ release = __release__
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
+#    'sphinx.ext.autodoc',
+#    'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
@@ -101,7 +101,7 @@ exclude_patterns = [
 pygments_style = None
 
 
-autosummary_generate = True
+#autosummary_generate = True
 napolean_use_rtype = False
 
 # -- Options for nbsphinx -----------------------------------------------------

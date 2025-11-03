@@ -38,17 +38,17 @@ Explanations of hydesign's core objects can be found in the following tutorials:
 	:caption: Evaluation Tutorials
 
 	notebooks/Quickstart
-        notebooks/Advanced_hpp_model
-        notebooks/HPP_evaluation_P2X
-        notebooks/PyWake_P2X_Example
-        notebooks/break_even_price_and_PPA
+	notebooks/Advanced_hpp_model
+	notebooks/HPP_evaluation_P2X
+	notebooks/PyWake_P2X_Example
+	notebooks/break_even_price_and_PPA
 	notebooks/constant_output
 	notebooks/offshore
 	notebooks/Example_ISO_prob
 	notebooks/HPP_evaluation_BM
 	notebooks/Hybridize
 	notebooks/evaluate_with_reliability
-    notebooks/HPP_evaluation_P2MeOH
+	notebooks/HPP_evaluation_P2MeOH
 
     .. toctree::
         :maxdepth: 1
@@ -64,7 +64,9 @@ Explanations of hydesign's core objects can be found in the following tutorials:
         :maxdepth: 1
 	:caption: Publications
     
-        publications/*
+        pub_tool
+        pub_theses
+        pub_related
     
 
     .. toctree::
