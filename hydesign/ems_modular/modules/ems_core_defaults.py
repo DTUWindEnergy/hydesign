@@ -28,7 +28,7 @@ class EMSCoreDefaults(EMSCoreInterface):
         self.n_full_power_hours_expected_per_day_at_peak_price = kwargs.get(
             "n_full_power_hours_expected_per_day_at_peak_price", 3
         )
-        self.batch_size = kwargs.get("batch_size", 110)
+        self.batch_size = kwargs.get("batch_size", 10)
         n_ts = len(self.price_ts)
         self.n_ts = n_ts
 

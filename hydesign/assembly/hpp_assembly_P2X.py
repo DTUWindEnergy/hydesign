@@ -74,11 +74,12 @@ class hpp_model_P2X(hpp_base):
         )  # "static" sim_pars["ems_script"]
 
         ems_modular_regenerate = sim_pars.get("ems_modular_regenerate", False)
-        technologies = sim_pars.get("technologies", ("wind", "solar", "battery", "P2X"))
+        technologies = sim_pars.get("technologies", ("wind", "solar", "battery", "p2x"))
 
         ems_modular_regenerate = True
         # technologies = ()
 
+        ems_script = "static"
         if ems_script == "modular":
             if ems_modular_regenerate:
                 from hydesign.ems_modular.modules.ems_core_builder import (
@@ -86,7 +87,7 @@ class hpp_model_P2X(hpp_base):
                 )
 
                 generate_ems_core_combined(technologies)
-                from hydesign.ems_modular.ems import ems_comp as ems_modular
+                from hydesign.ems_modular.ems_P2X import ems_P2X_comp as ems_modular
             ems = ems_modular
         elif ems_script == "static":
             ems = ems_static
