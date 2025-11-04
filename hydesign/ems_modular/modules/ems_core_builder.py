@@ -393,4 +393,4 @@ def generate_ems_core_combined(
 
 
 if __name__ == "__main__":
-    generate_ems_core_combined(technologies=("wind", "solar", "battery", "p2x"))
+    generate_ems_core_combined(technologies=("wind", "solar", "battery"))

@@ -69,28 +69,44 @@ class hpp_model_P2X(hpp_base):
         electrolyzer_eff_curve_type = sim_pars["electrolyzer_eff_curve_type"]
 
         # --- added for modular ems
-        ems_script = sim_pars.get(
-            "ems_script", "modular"
-        )  # "static" sim_pars["ems_script"]
+        ems_script = sim_pars.get("ems_script", "static")
 
         ems_modular_regenerate = sim_pars.get("ems_modular_regenerate", False)
         technologies = sim_pars.get("technologies", ("wind", "solar", "battery", "p2x"))
+        ems_solver = sim_pars.get("ems_solver", "cplex")
+        batch_size = sim_pars.get("batch_size", 110)
 
-        ems_modular_regenerate = True
-        # technologies = ()
+        ems_args = {
+            "N_time": N_time,
+            "eff_curve": eff_curve,
+            "ems_type": ems_type,
+            "electrolyzer_eff_curve_type": electrolyzer_eff_curve_type,
+            "price_H2": sim_pars["price_H2"],
+            "storage_eff": sim_pars["storage_eff"],
+            "hhv": sim_pars["hhv"],
+            "penalty_factor_H2": sim_pars["penalty_factor_H2"],
+            "min_power_standby": sim_pars["min_power_standby"],
+        }
+        if ems_script == "static":
+            ems = ems_static
 
-        ems_script = "modular"
-        if ems_script == "modular":
+        elif ems_script == "modular":
             if ems_modular_regenerate:
                 from hydesign.ems_modular.modules.ems_core_builder import (
                     generate_ems_core_combined,
                 )
 
                 generate_ems_core_combined(technologies)
-                from hydesign.ems_modular.ems_P2X import ems_P2X_comp as ems_modular
+            from hydesign.ems_modular.ems_P2X import ems_P2X_comp as ems_modular
+
             ems = ems_modular
-        elif ems_script == "static":
-            ems = ems_static
+            ems_args.update(
+                {
+                    "technologies": technologies,
+                    "ems_solver": ems_solver,
+                    "batch_size": batch_size,
+                }
+            )
 
         # --- end of modular ems
         # model = om.Group()
@@ -129,15 +145,7 @@ class hpp_model_P2X(hpp_base):
             (
                 "ems",
                 ems(
-                    N_time=N_time,
-                    eff_curve=eff_curve,
-                    ems_type=ems_type,
-                    electrolyzer_eff_curve_type=electrolyzer_eff_curve_type,
-                    price_H2=sim_pars["price_H2"],
-                    storage_eff=sim_pars["storage_eff"],
-                    hhv=sim_pars["hhv"],
-                    penalty_factor_H2=sim_pars["penalty_factor_H2"],
-                    min_power_standby=sim_pars["min_power_standby"],
+                    **ems_args,
                 ),
             ),
             (

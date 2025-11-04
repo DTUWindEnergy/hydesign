@@ -302,7 +302,6 @@ class EMSCoreDefaults(EMSCoreInterface):
         """ """
         # --- defaults
         time_batch = self.time_batch
-        self.P_batt_MW = kwargs["P_batt_MW"]
 
         e_peak_period_expected_batch = self.e_peak_period_expected_batch
         price_peak_batch = self.price_peak_batch
@@ -348,8 +347,6 @@ class EMSCoreDefaults(EMSCoreInterface):
     def pyomo_opjective(self, mdl, **kwargs):
         """ """
         # --- defaults
-        self.P_batt_MW = kwargs["P_batt_MW"]
-
         price_ts_batch = self.price_ts_batch
 
         mdl.OBJ = pyo.Objective(

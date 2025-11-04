@@ -111,34 +111,17 @@ class EMSCoreBattery(EMSCoreInterface):
             mdl.IDX4, domain=pyo.NonNegativeReals, bounds=(0, 1e12)
         )  # bounds=(0,E_batt_MWh))
 
-        # x-values of the piece-wise function
-        f_piecewise_x_vals = [-P_batt_MW, 0, P_batt_MW]
-        # y-values of the piece-wise function
-        f_piecewise_y_vals = [
-            -P_batt_MW / charge_efficiency,
-            0,
-            P_batt_MW * charge_efficiency,
-        ]
-
         mdl.P_charge_discharge_with_eff_t = pyo.Var(
             mdl.IDX1,
             domain=pyo.Reals,
             bounds=(-P_batt_MW / charge_efficiency, P_batt_MW * charge_efficiency),
         )
-        mdl.battery_eff_constraint = pyo.Piecewise(
-            mdl.IDX1,
-            mdl.P_charge_discharge_with_eff_t,
-            mdl.P_charge_discharge_t,
-            pw_pts=f_piecewise_x_vals,
-            f_rule=f_piecewise_y_vals,
-            pw_constr_type="EQ",
-            # pw_repn='SOS2',
-            # pw_repn='CC',
-            # pw_repn='DCC',
-            pw_repn="DLOG",
-            force_pw=False,
-            warn_domain_coverage=False,
-            unbounded_domain_var=True,
+
+        # Battery delta for battery operation constraints
+        mdl.P_battery_delta = pyo.Var(mdl.IDX5, domain=pyo.Reals, bounds=(-1e12, 1e12))
+
+        mdl.P_battery_delta_abs_pw = pyo.Var(
+            mdl.IDX5, domain=pyo.Reals, bounds=(0, 1e12)
         )
 
     def cplex_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
@@ -324,19 +307,36 @@ class EMSCoreBattery(EMSCoreInterface):
                 == mdl.E_SOC_t[t - 1] - mdl.P_charge_discharge_with_eff_t[t] * dt
             )
 
-        # Battery delta for battery operation constraints
-        mdl.P_battery_delta = pyo.Var(mdl.IDX5, domain=pyo.Reals, bounds=(-1e12, 1e12))
-
-        mdl.P_battery_delta_abs_pw = pyo.Var(
-            mdl.IDX5, domain=pyo.Reals, bounds=(0, 1e12)
-        )
-
         # for t in mdl.IDX5:
         #     mdl.power_constraint.add(
         #         mdl.P_battery_delta[t]
         #         == mdl.P_charge_discharge_with_eff_t[t + 1]
         #         - mdl.P_charge_discharge_with_eff_t[t]
         #     )
+
+        # x-values of the piece-wise function
+        f_piecewise_x_vals = [-self.P_batt_MW, 0, self.P_batt_MW]
+        # y-values of the piece-wise function
+        f_piecewise_y_vals = [
+            -self.P_batt_MW / self.charge_efficiency,
+            0,
+            self.P_batt_MW * self.charge_efficiency,
+        ]
+        mdl.battery_eff_constraint = pyo.Piecewise(
+            mdl.IDX1,
+            mdl.P_charge_discharge_with_eff_t,
+            mdl.P_charge_discharge_t,
+            pw_pts=f_piecewise_x_vals,
+            f_rule=f_piecewise_y_vals,
+            pw_constr_type="EQ",
+            # pw_repn='SOS2',
+            # pw_repn='CC',
+            # pw_repn='DCC',
+            pw_repn="DLOG",
+            force_pw=False,
+            warn_domain_coverage=False,
+            unbounded_domain_var=True,
+        )
 
         mdl.P_battery_delta_abs_pw_constr = pyo.Piecewise(
             mdl.IDX5,

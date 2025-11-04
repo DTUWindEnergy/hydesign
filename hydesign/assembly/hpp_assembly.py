@@ -427,27 +427,38 @@ class hpp_model(hpp_base):
         battery_price_reduction_per_year = sim_pars["battery_price_reduction_per_year"]
         work_dir = sim_pars["work_dir"]
 
-        ems_script = sim_pars.get(
-            "ems_script", "modular"
-        )  # "static" sim_pars["ems_script"]
+        ems_script = sim_pars.get("ems_script", "static")
 
         ems_modular_regenerate = sim_pars.get("ems_modular_regenerate", False)
         technologies = sim_pars.get("technologies", ("wind", "solar", "battery"))
+        ems_solver = sim_pars.get("ems_solver", "cplex")
+        batch_size = sim_pars.get("batch_size", 110)
 
-        ems_modular_regenerate = True
-        # technologies = ()
-
-        if ems_script == "modular":
+        ems_args = {
+            "N_time": N_time,
+            "weeks_per_season_per_year": weeks_per_season_per_year,
+            "life_y": life_y,
+            "ems_type": ems_type,
+        }
+        if ems_script == "static":
+            ems = ems_static
+        elif ems_script == "modular":
             if ems_modular_regenerate:
                 from hydesign.ems_modular.modules.ems_core_builder import (
                     generate_ems_core_combined,
                 )
 
                 generate_ems_core_combined(technologies)
-                from hydesign.ems_modular.ems import ems_comp as ems_modular
+            from hydesign.ems_modular.ems import ems_comp as ems_modular
+
             ems = ems_modular
-        elif ems_script == "static":
-            ems = ems_static
+            ems_args.update(
+                {
+                    "technologies": technologies,
+                    "ems_solver": ems_solver,
+                    "batch_size": batch_size,
+                }
+            )
 
         comps = [
             (
@@ -484,10 +495,7 @@ class hpp_model(hpp_base):
             (
                 "ems",
                 ems(
-                    N_time=N_time,
-                    weeks_per_season_per_year=weeks_per_season_per_year,
-                    life_y=life_y,
-                    ems_type=ems_type,
+                    **ems_args,
                 ),
             ),
             (
