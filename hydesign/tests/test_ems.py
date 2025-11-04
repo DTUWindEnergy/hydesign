@@ -4,30 +4,21 @@ Created on 24/01/2023
 
 @author: jumu
 """
+# import pandas as pd
+# import pytest
 import pickle
 
 import numpy as np
 
-from hydesign.ems.ems import operation_solar_batt_deg
-from hydesign.ems_modular.ems_core import ems_core
+from hydesign.ems.ems import ems_cplex, operation_solar_batt_deg
 from hydesign.tests.test_files import tfp
-
-# import pandas as pd
-# import pytest
 
 
 # ------------------------------------------------------------------------------------------------
 def run_ems():
     with open(tfp + "ems_input_ems.pickle", "rb") as f:
         input_ems = pickle.load(f)
-    outputs_ems_core = ems_core(**input_ems)
-    ems_out = (
-        outputs_ems_core["P_HPP_ts"],
-        outputs_ems_core["P_curtailment_ts"],
-        outputs_ems_core["P_charge_discharge_ts"],
-        outputs_ems_core["E_SOC_ts"],
-        outputs_ems_core["penalty_ts"],
-    )
+    ems_out = ems_cplex(**input_ems)
     return ems_out
 
 
@@ -46,19 +37,10 @@ def update_test_ems():
 def test_ems():
     ems_out = run_ems()
     ems_out_data = load_ems()
-
+    # keys = ['P_HPP_ts', 'P_curtailment_ts', 'P_charge_discharge_ts', 'E_SOC_ts', 'penalty_ts']
     for i in range(len(ems_out)):
-        if i == 3:
-            continue
-        sum_out = np.sum(ems_out[i])
-        sum_expected = np.sum(ems_out_data[i])
-        np.testing.assert_allclose(
-            sum_out,
-            sum_expected,
-            rtol=1e-8,
-            atol=1e-10,
-            err_msg=f"Sum mismatch for item {i}: got {sum_out}, expected {sum_expected}",
-        )
+        np.testing.assert_allclose(ems_out[i], ems_out_data[i])
+        # print(np.allclose(ems_out[i], ems_out_data[i]))
 
 
 # ------------------------------------------------------------------------------------------------
