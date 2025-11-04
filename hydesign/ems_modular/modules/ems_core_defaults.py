@@ -46,6 +46,10 @@ class EMSCoreDefaults(EMSCoreInterface):
         self.price_ts_batch = self.price_ts.iloc[batch]
         self.batch = batch
         self.time_batch = self.price_ts_batch.index
+        # time set with an additional time slot for the last soc
+        self.SOCtime_batch = self.time_batch.append(
+            pd.Index([self.time_batch[-1] + pd.Timedelta("1hour")])
+        )
 
         self.N_t_batch = len(self.price_ts_batch.index)
         self.N_days_batch = self.N_t_batch / 24

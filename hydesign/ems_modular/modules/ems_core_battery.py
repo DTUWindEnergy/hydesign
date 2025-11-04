@@ -35,11 +35,6 @@ class EMSCoreBattery(EMSCoreInterface):
     def solver_init(self, batch, **kwargs) -> Dict[str, Any]:
         self.E_batt_MWh_t_batch = self.E_batt_MWh_t.iloc[batch]
 
-        # time set with an additional time slot for the last soc
-        self.SOCtime_batch = self.time_batch.append(
-            pd.Index([self.time_batch[-1] + pd.Timedelta("1hour")])
-        )
-
     def cplex_variables(self, mdl, **kwargs) -> Dict[str, Any]:
         # Power charge/discharge from battery
         # Lower bound as large negative number in order to allow the variable to

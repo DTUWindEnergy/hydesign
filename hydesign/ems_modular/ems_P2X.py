@@ -320,7 +320,7 @@ class ems_P2X:
             "cost_of_battery_P_fluct_in_peak_price_ratio": cost_of_battery_P_fluct_in_peak_price_ratio,
             "n_full_power_hours_expected_per_day_at_peak_price": n_full_power_hours_expected_per_day_at_peak_price,
             "electrolyzer_eff_curve_type": self.electrolyzer_eff_curve_type,
-            "batch_size": 10,
+            "batch_size": 110,
         }
 
         outputs_ems_core = ems_core(**ems_core_params)

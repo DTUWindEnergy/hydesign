@@ -77,9 +77,10 @@ class EMSCoreCombined(EMSCoreInterface):
 
         self.LoS_H2_ts = np.zeros(self.n_ts)
         self.P_ptg_ts = np.zeros(self.n_ts)
+        self.P_ptg_SB_ts = np.zeros_like(self.P_ptg_ts)
         self.m_H2_ts = np.zeros(self.n_ts)
         self.m_H2_offtake_ts = np.zeros(self.n_ts)
-        self.P_ptg_SB_ts = np.zeros_like(self.P_ptg_ts)
+        print(self.batch_size)
 
     def solver_init(self, batch, **kwargs) -> Dict[str, Any]:
         """ """
@@ -87,6 +88,10 @@ class EMSCoreCombined(EMSCoreInterface):
         self.price_ts_batch = self.price_ts.iloc[batch]
         self.batch = batch
         self.time_batch = self.price_ts_batch.index
+        # time set with an additional time slot for the last soc
+        self.SOCtime_batch = self.time_batch.append(
+            pd.Index([self.time_batch[-1] + pd.Timedelta("1hour")])
+        )
 
         self.N_t_batch = len(self.price_ts_batch.index)
         self.N_days_batch = self.N_t_batch / 24
@@ -119,11 +124,6 @@ class EMSCoreCombined(EMSCoreInterface):
 
         # --- content from ems_core_battery.py ---
         self.E_batt_MWh_t_batch = self.E_batt_MWh_t.iloc[batch]
-
-        # time set with an additional time slot for the last soc
-        self.SOCtime_batch = self.time_batch.append(
-            pd.Index([self.time_batch[-1] + pd.Timedelta("1hour")])
-        )
 
         # --- content from ems_core_p2x.py ---
         self.price_H2_batch = self.price_H2  # .iloc[batch]
@@ -1406,4 +1406,4 @@ class EMSCoreCombined(EMSCoreInterface):
         kwargs["E_SOC_ts"][-1] = kwargs["E_SOC_ts"][0]
 
         # --- content from ems_core_p2x.py ---
-        pass
+        kwargs["LoS_H2_ts"][-1] = kwargs["LoS_H2_ts"][0]

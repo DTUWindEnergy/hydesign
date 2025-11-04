@@ -34,13 +34,13 @@ class EMSCoreP2x(EMSCoreInterface):
 
         self.LoS_H2_ts = np.zeros(self.n_ts)
         self.P_ptg_ts = np.zeros(self.n_ts)
+        self.P_ptg_SB_ts = np.zeros_like(self.P_ptg_ts)
         self.m_H2_ts = np.zeros(self.n_ts)
         self.m_H2_offtake_ts = np.zeros(self.n_ts)
-        self.P_ptg_SB_ts = np.zeros_like(self.P_ptg_ts)
+        print(self.batch_size)
 
     def final_process(self, **kwargs) -> Dict[str, Any]:
-        pass
-        # kwargs["LoS_H2_t"][-1] = kwargs["LoS_H2_t"][0]
+        kwargs["LoS_H2_ts"][-1] = kwargs["LoS_H2_ts"][0]
 
     def solver_init(self, batch, **kwargs) -> Dict[str, Any]:
         self.price_H2_batch = self.price_H2  # .iloc[batch]
