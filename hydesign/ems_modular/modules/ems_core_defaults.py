@@ -28,7 +28,7 @@ class EMSCoreDefaults(EMSCoreInterface):
         self.n_full_power_hours_expected_per_day_at_peak_price = kwargs.get(
             "n_full_power_hours_expected_per_day_at_peak_price", 3
         )
-        self.batch_size = kwargs.get("batch_size", 10)
+        self.batch_size = kwargs.get("batch_size", 110)
         n_ts = len(self.price_ts)
         self.n_ts = n_ts
 
@@ -98,11 +98,14 @@ class EMSCoreDefaults(EMSCoreInterface):
         )
         # Piecewise function for "only positive" function
         self.f1 = mdl.piecewise(0, [(0, 0)], 1)
-        mdl.add_constraint(
-            self.penalty_batch == self.price_peak_batch * self.f1(self.e_penalty_batch)
-        )
 
         for t in self.time_batch:
+            mdl.add_constraint(
+                self.penalty_batch
+                == self.price_peak_batch * self.f1(self.e_penalty_batch),
+                ctname=f"penalty_{t}",
+            )
+
             mdl.add_constraint(
                 self.P_HPP_t_batch[t] == -self.P_curtailment_t_batch[t],
                 ctname=f"P_HPP_t_balance{t}",

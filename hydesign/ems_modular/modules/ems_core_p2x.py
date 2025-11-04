@@ -39,17 +39,13 @@ class EMSCoreP2x(EMSCoreInterface):
         self.P_ptg_SB_ts = np.zeros_like(self.P_ptg_ts)
 
     def final_process(self, **kwargs) -> Dict[str, Any]:
-        self.LoS_H2_t_batch[-1] = self.LoS_H2_t_batch[0]
+        pass
+        # kwargs["LoS_H2_t"][-1] = kwargs["LoS_H2_t"][0]
 
     def solver_init(self, batch, **kwargs) -> Dict[str, Any]:
         self.price_H2_batch = self.price_H2  # .iloc[batch]
         self.m_H2_demand_ts_batch = self.m_H2_demand_ts.iloc[batch]
         self.H2_storage_t_batch = self.H2_storage_t.iloc[batch]
-
-        # time set with an additional time slot for the last soc
-        self.SOCtime_batch = self.time_batch.append(
-            pd.Index([self.time_batch[-1] + pd.Timedelta("1hour")])
-        )
 
     def cplex_variables(self, mdl, **kwargs) -> Dict[str, Any]:
         # Hydrogen storgae level
@@ -116,6 +112,18 @@ class EMSCoreP2x(EMSCoreInterface):
             # Delta_t of 1 hour
             dt = 1
 
+            penalty_p2x = mdl.sum(
+                self.penalty_factor_H2
+                * (self.m_H2_demand_ts_batch[t] - self.m_H2_offtake_t_batch[t])
+                for t in self.time_batch
+            )
+
+            self.update_constraint_rhs(
+                mdl,
+                constraint_name=f"penalty_{t}",
+                added_value=penalty_p2x,
+            )
+
             self.update_constraint_rhs(
                 mdl,
                 constraint_name=f"P_HPP_t_balance{t}",
@@ -166,40 +174,27 @@ class EMSCoreP2x(EMSCoreInterface):
             sol.get_value_dict(self.m_H2_offtake_t_batch), orient="index"
         ).loc[:, 0]
 
+        # Cplex sometimes returns missing values :O
+        P_ptg_ts_batch = P_ptg_ts_df_batch.reindex(self.time_batch, fill_value=0).values
+        m_H2_ts_batch = m_H2_ts_df_batch.reindex(self.time_batch, fill_value=0).values
+        LoS_H2_ts_batch = LoS_H2_ts_df_batch.reindex(
+            self.time_batch, fill_value=0
+        ).values
+        m_H2_offtake_ts_batch = m_H2_offtake_ts_df_batch.reindex(
+            self.time_batch, fill_value=0
+        ).values
+
         for t in range(self.N_t_batch):
-            if abs(self.P_ptg_ts[t] - self.min_power_standby * self.ptg_MW) < 1e-6:
+            if abs(P_ptg_ts_batch[t] - self.min_power_standby * self.ptg_MW) < 1e-6:
                 self.P_ptg_SB_ts[t] = self.min_power_standby * self.ptg_MW
-                self.P_ptg_ts[t] = 0
-                self.m_H2_ts[t] = 0
+                P_ptg_ts_batch[t] = 0
+                m_H2_ts_batch[t] = 0
 
-        self.P_ptg_ts[self.batch] = P_ptg_ts_df_batch
-        self.m_H2_ts[self.batch] = m_H2_ts_df_batch
-        # inside EMSCoreCombined.cplex_outputs, just before the failing line
-        print("DEBUG batch index:", self.batch)
-        print(
-            "type LoS_H2_ts:",
-            type(self.LoS_H2_ts[self.batch]),
-            "shape:",
-            getattr(self.LoS_H2_ts[self.batch], "shape", None),
-        )
-        print("type LoS_H2_ts_df_batch:", type(LoS_H2_ts_df_batch))
-        try:
-            print("LoS_H2_ts_df_batch.shape:", LoS_H2_ts_df_batch.shape)
-        except Exception:
-            # maybe a DataFrame
-            print(
-                "LoS_H2_ts_df_batch.shape (DF):",
-                getattr(LoS_H2_ts_df_batch, "shape", None),
-            )
+        self.P_ptg_ts[self.batch] = P_ptg_ts_batch
+        self.m_H2_ts[self.batch] = m_H2_ts_batch
 
-        # If it's a pandas DataFrame, also inspect:
-        if hasattr(LoS_H2_ts_df_batch, "columns"):
-            print("cols:", LoS_H2_ts_df_batch.columns)
-        if hasattr(LoS_H2_ts_df_batch, "index"):
-            print("index len:", len(LoS_H2_ts_df_batch.index))
-
-        self.LoS_H2_ts[self.batch] = LoS_H2_ts_df_batch
-        self.m_H2_offtake_ts[self.batch] = m_H2_offtake_ts_df_batch
+        self.LoS_H2_ts[self.batch] = LoS_H2_ts_batch
+        self.m_H2_offtake_ts[self.batch] = m_H2_offtake_ts_batch
 
     def ortools_variables(self, solver):
         time_batch = self.time_batch

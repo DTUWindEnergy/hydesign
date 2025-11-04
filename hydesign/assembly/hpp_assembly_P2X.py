@@ -79,7 +79,7 @@ class hpp_model_P2X(hpp_base):
         ems_modular_regenerate = True
         # technologies = ()
 
-        ems_script = "static"
+        ems_script = "modular"
         if ems_script == "modular":
             if ems_modular_regenerate:
                 from hydesign.ems_modular.modules.ems_core_builder import (
