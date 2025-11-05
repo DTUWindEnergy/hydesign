@@ -7,9 +7,7 @@ from .ems_core_combined import EMSCoreCombined
 
 
 def ems_core(**kwargs):
-    technologies = kwargs["technologies"]
     ems_solver = kwargs["ems_solver"]
-
     #
     out_ems = {}
     ems_core_combined = EMSCoreCombined(**kwargs)

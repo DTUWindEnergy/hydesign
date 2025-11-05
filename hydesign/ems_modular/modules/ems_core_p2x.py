@@ -196,323 +196,346 @@ class EMSCoreP2x(EMSCoreInterface):
         self.LoS_H2_ts[self.batch] = LoS_H2_ts_batch
         self.m_H2_offtake_ts[self.batch] = m_H2_offtake_ts_batch
 
-    def ortools_variables(self, solver):
-        time_batch = self.time_batch
-        SOCtime_batch = self.SOCtime_batch
-
-        # Decompose battery power into discharge and charge parts (both >=0)
-        # Bounds chosen to reflect original asymmetric bounds:
-        # original ub for P (positive) = P_batt_MW * self.charge_efficiency
-        # original lb for P (negative) = - P_batt_MW / self.charge_efficiency
-        P_dis_batch = {
-            t: solver.NumVar(
-                0.0, float(self.P_batt_MW * self.charge_efficiency), f"P_dis_{i}"
-            )
-            for i, t in enumerate(time_batch)
-        }
-        P_ch_batch = {
-            t: solver.NumVar(
-                0.0, float(self.P_batt_MW / self.charge_efficiency), f"P_ch_{i}"
-            )
-            for i, t in enumerate(time_batch)
-        }
-
-        # SOC variables for each hour plus final hour
-        E_SOC_batch = {
-            t: solver.NumVar(0.0, float(self.E_batt_MWh_t_batch.max()), f"E_SOC_{i}")
-            for i, t in enumerate(SOCtime_batch)
-        }
-
-        delta = {}
-        for i in range(self.N_t_batch - 1):
-            t = time_batch[i]
-            delta[t] = solver.NumVar(0.0, solver.infinity(), f"delta_{i}")
-
-        self.delta = delta
-
-        self.P_dis_batch = P_dis_batch
-        self.P_ch_batch = P_ch_batch
-        self.E_SOC_batch = E_SOC_batch
-
     def pyomo_variables(self, mdl, **kwargs) -> Dict[str, Any]:
-        time_batch = self.time_batch
-        SOCtime_batch = self.SOCtime_batch
-        P_batt_MW = self.P_batt_MW
-        charge_efficiency = self.charge_efficiency
+        # Hydrogen storage level (use IDX4 for SOCtime index)
+        mdl.LoS_H2_t_batch = pyo.Var(mdl.IDX4, domain=pyo.NonNegativeReals)
 
-        peak_hours_index_batch = self.peak_hours_index_batch
-        mdl.IDX3 = [t for t in range(len(time_batch)) if t in peak_hours_index_batch]
-        mdl.IDX4 = range(len(SOCtime_batch))
-        mdl.IDX5 = range(len(time_batch) - 1)
-        # Power charge/discharge from battery with Lower/Upper bounds
-        mdl.P_charge_discharge_t = pyo.Var(
+        # Power to gas plant consumption (use IDX1 for peak hours or full time range)
+        mdl.P_ptg_t_batch = pyo.Var(
             mdl.IDX1,
-            domain=pyo.Reals,
-            bounds=(-2 * P_batt_MW, 2 * P_batt_MW),  # excess bounds
-        )
-        # Battery energy level
-        mdl.E_SOC_t = pyo.Var(
-            mdl.IDX4, domain=pyo.NonNegativeReals, bounds=(0, 1e12)
-        )  # bounds=(0,E_batt_MWh))
-
-        # x-values of the piece-wise function
-        f_piecewise_x_vals = [-P_batt_MW, 0, P_batt_MW]
-        # y-values of the piece-wise function
-        f_piecewise_y_vals = [
-            -P_batt_MW / charge_efficiency,
-            0,
-            P_batt_MW * charge_efficiency,
-        ]
-
-        mdl.P_charge_discharge_with_eff_t = pyo.Var(
-            mdl.IDX1,
-            domain=pyo.Reals,
-            bounds=(-P_batt_MW / charge_efficiency, P_batt_MW * charge_efficiency),
-        )
-        mdl.battery_eff_constraint = pyo.Piecewise(
-            mdl.IDX1,
-            mdl.P_charge_discharge_with_eff_t,
-            mdl.P_charge_discharge_t,
-            pw_pts=f_piecewise_x_vals,
-            f_rule=f_piecewise_y_vals,
-            pw_constr_type="EQ",
-            # pw_repn='SOS2',
-            # pw_repn='CC',
-            # pw_repn='DCC',
-            pw_repn="DLOG",
-            force_pw=False,
-            warn_domain_coverage=False,
-            unbounded_domain_var=True,
+            bounds=(self.min_power_standby * self.ptg_MW, self.ptg_MW),
         )
 
-    def ortools_constraints(self, solver):
-        time_batch = self.time_batch
-        N_t_batch = self.N_t_batch
-        SOCtime_batch = self.SOCtime_batch
-        E_SOC_batch = self.E_SOC_batch
-        P_dis_batch = self.P_dis_batch
-        P_ch_batch = self.P_ch_batch
+        # Produced hydrogen (use IDX1)
+        mdl.m_H2_t_batch = pyo.Var(mdl.IDX1, domain=pyo.NonNegativeReals)
 
-        # delta variables for absolute battery power change cost
-        delta = self.delta
-
-        # initial and final SOC equal to 0.5 * E_batt at first time (same as original)
-        solver.Add(
-            E_SOC_batch[SOCtime_batch[0]]
-            == 0.5 * float(self.E_batt_MWh_t_batch.loc[time_batch[0]])
-        )
-        solver.Add(
-            E_SOC_batch[SOCtime_batch[-1]]
-            == 0.5 * float(self.E_batt_MWh_t_batch.loc[time_batch[0]])
-        )
-
-        # Per-time constraints
-        for i, t in enumerate(time_batch):
-            tt = time_batch[i] + pd.Timedelta("1hour")
-            dt = 1.0
-
-            self.update_constraint_rhs_ortools(
-                solver,
-                constraint_name=f"P_HPP_t_balance{t}",
-                addition_expr=P_dis_batch[t],
-            )  # - P_ch_batch[t])
-            self.update_constraint_rhs_ortools(
-                solver,
-                constraint_name=f"P_HPP_t_balance{t}",
-                addition_expr=P_ch_batch[t],
-                coeff=-1,
-            )
-
-            # SOC transition with asymmetric efficiency:
-            # E_SOC_next == E_SOC - (1/eff)*P_dis*dt + eff*P_ch*dt
-            solver.Add(
-                E_SOC_batch[tt]
-                == E_SOC_batch[t]
-                - (1.0 / float(self.charge_efficiency)) * P_dis_batch[t] * dt
-                + float(self.charge_efficiency) * P_ch_batch[t] * dt
-            )
-
-            # SOC bounds for time t
-            min_SOC_batch = (1.0 - float(self.battery_depth_of_discharge)) * float(
-                self.E_batt_MWh_t_batch.loc[t]
-            )
-            max_SOC_batch = float(self.E_batt_MWh_t_batch.loc[t])
-            solver.Add(E_SOC_batch[t] >= min_SOC_batch)
-            solver.Add(E_SOC_batch[t] <= max_SOC_batch)
-
-            # delta constraints for absolute differences
-            if i < N_t_batch - 1:
-                t_next = time_batch[i + 1]
-                diff_expr_batch = (P_dis_batch[t_next] - P_ch_batch[t_next]) - (
-                    P_dis_batch[t] - P_ch_batch[t]
-                )
-                solver.Add(delta[t] >= diff_expr_batch)
-                solver.Add(delta[t] >= -diff_expr_batch)
-
-        # SOC bounds for final SOC node (redundant but included to match original)
-        last_t = SOCtime_batch[-1]
-        solver.Add(
-            E_SOC_batch[last_t] <= float(self.E_batt_MWh_t_batch.loc[time_batch[-1]])
-        )
-        solver.Add(
-            E_SOC_batch[last_t]
-            >= (1.0 - float(self.battery_depth_of_discharge))
-            * float(self.E_batt_MWh_t_batch.loc[time_batch[-1]])
-        )
+        # Hydrogen offtake (use IDX1)
+        mdl.m_H2_offtake_t_batch = pyo.Var(mdl.IDX1, domain=pyo.NonNegativeReals)
 
     def pyomo_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
-        time_batch = self.time_batch
-        SOCtime_batch = self.SOCtime_batch
+        # --- P2X constraints (fixed: use ConstraintList instead of mdl.add_constraint) ---
 
-        battery_depth_of_discharge = self.battery_depth_of_discharge
-        E_batt_MWh_t_batch = self.E_batt_MWh_t_batch
+        # Initial and end LoS_H2 (use integer indices 0 and last index)
+        mdl.LoS_H2_t_batch_constraint_start = pyo.Constraint(
+            expr=mdl.LoS_H2_t_batch[0] == 0
+        )
+        mdl.LoS_H2_t_batch_constraint_end = pyo.Constraint(
+            expr=mdl.LoS_H2_t_batch[len(self.SOCtime_batch) - 1] == 0
+        )
 
-        for t in range(0, len(time_batch)):
-            # battery
+        # Build H2 production piecewise map P_ptg_t_batch -> m_H2_t_batch over IDX1 (if IDX1 non-empty)
+        if self.electrolyzer_eff_curve_type == "production":
+            H2_curve_list = [
+                (load * self.ptg_MW, H2 * self.ptg_MW) for load, H2 in self.eff_curve
+            ]
+        elif self.electrolyzer_eff_curve_type == "efficiency":
+            H2_curve_list = [
+                (load * self.ptg_MW, load * self.ptg_MW * efficiency / self.hhv * 1000)
+                for load, efficiency in self.eff_curve
+            ]
+        else:
+            raise ValueError(
+                f'electrolyzer_eff_curve_type is: "{self.electrolyzer_eff_curve_type}". '
+                'Available options are ["production", "efficiency"]'
+            )
+
+        pw_inputs = [pt[0] for pt in H2_curve_list]
+        pw_outputs = [pt[1] for pt in H2_curve_list]
+
+        if len(mdl.IDX1) > 0:
+            mdl.H2_prod_pw = pyo.Piecewise(
+                mdl.IDX1,
+                mdl.m_H2_t_batch,
+                mdl.P_ptg_t_batch,
+                pw_pts=pw_inputs,
+                f_rule=pw_outputs,
+                pw_constr_type="EQ",
+            )
+
+        # Create ConstraintLists to collect per-time constraints
+        mdl.h2_storage_eq = pyo.ConstraintList()
+        mdl.h2_storage_capacity = pyo.ConstraintList()
+        mdl.h2_offtake_demand = pyo.ConstraintList()
+        mdl.h2_offtake_storage_zero = pyo.ConstraintList()
+
+        # Precompute helper lookups mapping timestamps -> integer indices
+        time_to_idx = {tt: i for i, tt in enumerate(self.time_batch)}
+        soctime_to_idx = {tt: i for i, tt in enumerate(self.SOCtime_batch)}
+
+        for t in self.time_batch:
+            # integer index for current time
+            k = time_to_idx[t]
+
+            # successor timestamp t+1h
+            tt_time = t + pd.Timedelta("1hour")
+
+            # find SOC integer indices corresponding to t and tt_time (raise helpful KeyError if missing)
+            try:
+                i_soc = soctime_to_idx[t]
+            except KeyError:
+                raise KeyError(
+                    f"Time {t!r} not found in self.SOCtime_batch; can't index LoS_H2_t_batch."
+                )
+
+            try:
+                j_soc = soctime_to_idx[tt_time]
+            except KeyError:
+                raise KeyError(
+                    f"Successor time {tt_time!r} (t+1h) not found in self.SOCtime_batch; "
+                    "ensure SOCtime_batch contains successive timesteps."
+                )
+
+            # penalty term for this time t (use model var if available, otherwise treat off-take as 0)
+            if k in mdl.IDX1:
+                penalty_p2x = self.penalty_factor_H2 * (
+                    self.m_H2_demand_ts_batch[t] - mdl.m_H2_offtake_t_batch[k]
+                )
+            else:
+                penalty_p2x = self.penalty_factor_H2 * (
+                    self.m_H2_demand_ts_batch[t] - 0
+                )
+
+            # (If you need to still call update_constraint_rhs_pyomo for penalty, re-enable here)
+            # self.update_constraint_rhs_pyomo(
+            #     mdl,
+            #     constraint_name=f"penalty_{t}",
+            #     added_value=penalty_p2x,
+            #     idx=t,
+            # )
+
+            # If P_ptg exists at this k (peak hour) include it; else 0
+            if k in mdl.IDX1:
+                ptg_term = -mdl.P_ptg_t_batch[k]
+            else:
+                ptg_term = 0
+
+            # Add the P_ptg term into your power_constraint RHS (you already call update_constraint_rhs_pyomo)
             self.update_constraint_rhs_pyomo(
                 mdl,
-                "power_constraint",
-                added_value=mdl.P_charge_discharge_with_eff_t[t],
-                idx=t,
+                constraint_name="power_constraint",
+                added_value=ptg_term,
+                idx=k,
             )
 
-        mdl.charge_discharge_constraint = pyo.ConstraintList()
-        mdl.battery_energy_constraint = pyo.ConstraintList()
-        mdl.battery_energy_min_constraint = pyo.ConstraintList()
-        mdl.battery_dynamics_constraint = pyo.ConstraintList()
+            # Determine inflow_minus_offtake for storage eqn: use model vars if present (k in IDX1)
+            if k in mdl.IDX1:
+                inflow_minus_offtake = mdl.m_H2_t_batch[k] - mdl.m_H2_offtake_t_batch[k]
+            else:
+                inflow_minus_offtake = 0
 
-        mdl.SOC_initial_condition = pyo.Constraint(
-            expr=mdl.E_SOC_t[0] == 0.5 * E_batt_MWh_t_batch.iloc[0]
+            # Hydrogen storage equation (index with integer SOC indices) -> add to ConstraintList
+            mdl.h2_storage_eq.add(
+                mdl.LoS_H2_t_batch[j_soc]
+                == mdl.LoS_H2_t_batch[i_soc] + inflow_minus_offtake / self.storage_eff
+            )
+
+            # Storage capacity constraint (LoS <= capacity) -> add to ConstraintList
+            mdl.h2_storage_capacity.add(
+                mdl.LoS_H2_t_batch[i_soc] <= self.H2_storage_t_batch[t]
+            )
+
+            # m_H2_offtake <= demand (only when var exists) -> add to ConstraintList
+            if k in mdl.IDX1:
+                mdl.h2_offtake_demand.add(
+                    mdl.m_H2_offtake_t_batch[k] <= self.m_H2_demand_ts_batch[t]
+                )
+
+            # When H2 storage is zero: enforce equality if the variables exist for this k -> add to ConstraintList
+            if self.H2_storage_t_batch[t] == 0 and k in mdl.IDX1:
+                mdl.h2_offtake_storage_zero.add(
+                    mdl.m_H2_offtake_t_batch[k] == mdl.m_H2_t_batch[k]
+                )
+
+    def pyomo_opjective(self, mdl, **kwargs):
+        H2_revenue = sum(
+            self.price_H2_batch * mdl.m_H2_offtake_t_batch[t] for t in mdl.IDX1
         )
 
-        # SOC at the end of the year has to be equal to SOC at the beginning of the year
-        mdl.SOC_final = pyo.Constraint(
-            expr=mdl.E_SOC_t[len(time_batch) - 1]
-            == 0.5 * E_batt_MWh_t_batch.iloc[len(time_batch) - 1]
+        self.add_to_objective_pyomo(mdl, addition_expr=H2_revenue)
+
+    def pyomo_outputs(self, mdl, **kwargs):
+        # Extract Pyomo solution values as dictionaries
+        P_ptg_ts_dict = series_from_indexed_var(mdl.P_ptg_t_batch, self.time_batch)
+        m_H2_ts_dict = series_from_indexed_var(mdl.m_H2_t_batch, self.time_batch)
+        LoS_H2_ts_dict = series_from_indexed_var(mdl.LoS_H2_t_batch, self.time_batch)
+        m_H2_offtake_ts_dict = series_from_indexed_var(
+            mdl.m_H2_offtake_t_batch, self.time_batch
         )
 
-        # Delta_t of 1 hour
-        dt = 1
-        for t in range(0, len(time_batch)):
-            # Constraining battery energy level to maximum battery level
-            mdl.battery_energy_constraint.add(
-                mdl.E_SOC_t[t] <= E_batt_MWh_t_batch.iloc[t]
-            )
-            # Constraining battery energy level to minimum battery level
-            mdl.battery_energy_min_constraint.add(
-                mdl.E_SOC_t[t]
-                >= (1 - battery_depth_of_discharge) * E_batt_MWh_t_batch.iloc[t]
-            )
-            # print(battery_depth_of_discharge)
-
-        # Battery dynamics with efficiency charge =! discharge
-        for t in range(1, len(time_batch)):
-            mdl.battery_dynamics_constraint.add(
-                mdl.E_SOC_t[t]
-                == mdl.E_SOC_t[t - 1] - mdl.P_charge_discharge_with_eff_t[t] * dt
-            )
-
-        # Battery delta for battery operation constraints
-        mdl.P_battery_delta = pyo.Var(mdl.IDX5, domain=pyo.Reals, bounds=(-1e12, 1e12))
-
-        mdl.P_battery_delta_abs_pw = pyo.Var(
-            mdl.IDX5, domain=pyo.Reals, bounds=(0, 1e12)
+        # Convert to pandas Series / DataFrame for convenience
+        P_ptg_ts_df_batch = pd.Series(P_ptg_ts_dict).reindex(
+            self.time_batch, fill_value=0
+        )
+        m_H2_ts_df_batch = pd.Series(m_H2_ts_dict).reindex(
+            self.time_batch, fill_value=0
+        )
+        LoS_H2_ts_df_batch = pd.Series(LoS_H2_ts_dict).reindex(
+            self.time_batch, fill_value=0
+        )
+        m_H2_offtake_ts_df_batch = pd.Series(m_H2_offtake_ts_dict).reindex(
+            self.time_batch, fill_value=0
         )
 
-        # for t in mdl.IDX5:
-        #     mdl.power_constraint.add(
-        #         mdl.P_battery_delta[t]
-        #         == mdl.P_charge_discharge_with_eff_t[t + 1]
-        #         - mdl.P_charge_discharge_with_eff_t[t]
-        #     )
+        # Convert to numpy arrays
+        P_ptg_ts_batch = P_ptg_ts_df_batch.values
+        m_H2_ts_batch = m_H2_ts_df_batch.values
+        LoS_H2_ts_batch = LoS_H2_ts_df_batch.values
+        m_H2_offtake_ts_batch = m_H2_offtake_ts_df_batch.values
 
-        mdl.P_battery_delta_abs_pw_constr = pyo.Piecewise(
-            mdl.IDX5,
-            mdl.P_battery_delta_abs_pw,
-            mdl.P_battery_delta,
-            pw_pts=[-1e12, 0, 1e12],
-            f_rule=[1e12, 0, 1e12],
-            pw_constr_type="EQ",
-            # pw_repn='SOS2',
-            # pw_repn='CC',
-            # pw_repn='DCC',
-            pw_repn="DLOG",
-            force_pw=False,
-            warn_domain_coverage=False,
-            # unbounded_domain_var=True
+        # Adjust for minimum power standby
+        for t in range(self.N_t_batch):
+            if abs(P_ptg_ts_batch[t] - self.min_power_standby * self.ptg_MW) < 1e-6:
+                self.P_ptg_SB_ts[t] = self.min_power_standby * self.ptg_MW
+                P_ptg_ts_batch[t] = 0
+                m_H2_ts_batch[t] = 0
+
+        # Save results to class attributes
+        self.P_ptg_ts[self.batch] = P_ptg_ts_batch
+        self.m_H2_ts[self.batch] = m_H2_ts_batch
+        self.LoS_H2_ts[self.batch] = LoS_H2_ts_batch
+        self.m_H2_offtake_ts[self.batch] = m_H2_offtake_ts_batch
+
+    def ortools_variables(self, solver):
+
+        # Hydrogen storage level
+        self.LoS_H2_t_batch = {}
+        self.LoS_H2_t_batch = {
+            t: solver.NumVar(0, self.H2_storage_t_batch[t], f"LoS_H2_{t}")
+            for t in self.time_batch
+        }
+
+        # Power to gas plant consumption
+        P_min = self.min_power_standby * self.ptg_MW
+        P_max = self.ptg_MW
+        self.P_ptg_t_batch = {}
+        for t in self.time_batch:
+            self.P_ptg_t_batch[t] = solver.NumVar(P_min, P_max, f"P_ptg_{t}")
+
+        # Produced hydrogen
+        self.m_H2_t_batch = {}
+        for t in self.time_batch:
+            self.m_H2_t_batch[t] = solver.NumVar(
+                0, 1e6, f"m_H2_{t}"
+            )  # large upper bound
+
+        # Hydrogen offtake
+        self.m_H2_offtake_t_batch = {}
+        for t in self.time_batch:
+            self.m_H2_offtake_t_batch[t] = solver.NumVar(0, 1e6, f"m_H2_offtake_{t}")
+
+        # Optional penalty variable
+        self.penalty_var = solver.NumVar(0, 1e6, "penalty_H2")
+
+    def ortools_constraints(self, solver):
+        # Initial and end LoS_H2
+        solver.Add(self.LoS_H2_t_batch[self.SOCtime_batch[0]] == 0)
+        solver.Add(self.LoS_H2_t_batch[self.SOCtime_batch[-1]] == 0)
+
+        # Prepare electrolyzer piecewise linear
+        # H2_curve_list = [(P, H2_prod)] for breakpoints
+        if self.electrolyzer_eff_curve_type == "production":
+            H2_curve_list = [
+                (load * self.ptg_MW, H2 * self.ptg_MW) for load, H2 in self.eff_curve
+            ]
+        elif self.electrolyzer_eff_curve_type == "efficiency":
+            H2_curve_list = [
+                (load * self.ptg_MW, load * self.ptg_MW * efficiency / self.hhv * 1000)
+                for load, efficiency in self.eff_curve
+            ]
+        else:
+            raise ValueError(
+                f'electrolyzer_eff_curve_type is "{self.electrolyzer_eff_curve_type}". Available options: ["production","efficiency"]'
+            )
+
+        # Convex combination variables for piecewise linearization
+        self.lambda_vars = {}
+        for t in self.time_batch:
+            self.lambda_vars[t] = []
+            for i, (P_i, H2_i) in enumerate(H2_curve_list):
+                var = solver.NumVar(0, 1, f"lambda_{t}_{i}")
+                self.lambda_vars[t].append(var)
+            # Convex sum = 1
+            solver.Add(solver.Sum(self.lambda_vars[t]) == 1)
+            # Link P_ptg and m_H2
+            solver.Add(
+                self.P_ptg_t_batch[t]
+                == solver.Sum(
+                    P_i * self.lambda_vars[t][i]
+                    for i, (P_i, _) in enumerate(H2_curve_list)
+                )
+            )
+            solver.Add(
+                self.m_H2_t_batch[t]
+                == solver.Sum(
+                    H2_i * self.lambda_vars[t][i]
+                    for i, (_, H2_i) in enumerate(H2_curve_list)
+                )
+            )
+
+        # Time-step constraints
+        for i, t in enumerate(self.time_batch[:-1]):
+            tt = self.time_batch[i + 1]
+
+            # Hydrogen storage balance
+            solver.Add(
+                self.LoS_H2_t_batch[tt]
+                == self.LoS_H2_t_batch[t]
+                + (self.m_H2_t_batch[t] - self.m_H2_offtake_t_batch[t])
+                / self.storage_eff
+            )
+
+            # Storage limit
+            solver.Add(self.LoS_H2_t_batch[t] <= self.H2_storage_t_batch[t])
+
+            # Offtake limit
+            solver.Add(self.m_H2_offtake_t_batch[t] <= self.m_H2_demand_ts_batch[t])
+
+            # If storage=0, offtake=production
+            if self.H2_storage_t_batch[t] == 0:
+                solver.Add(self.m_H2_offtake_t_batch[t] == self.m_H2_t_batch[t])
+
+        # Penalty constraints
+        solver.Add(
+            self.penalty_var
+            >= solver.Sum(
+                self.penalty_factor_H2
+                * (self.m_H2_demand_ts_batch[t] - self.m_H2_offtake_t_batch[t])
+                for t in self.time_batch
+            )
         )
 
     def ortools_objective(self, solver):
         objective = solver.Objective()
-
-        # battery fluctuation cost
-        for i in range(self.N_t_batch - 1):
-            t = self.time_batch[i]
-            coef = -float(
-                self.cost_of_battery_P_fluct_in_peak_price_ratio
-                * self.price_ts_to_max_batch.loc[t]
+        for t in self.time_batch:
+            objective.SetCoefficient(
+                self.m_H2_offtake_t_batch[t], float(self.price_H2_batch)
             )
-            objective.SetCoefficient(self.delta[t], coef)
-
         objective.SetMaximization()
 
-    def pyomo_opjective(self, mdl, **kwargs):
-        cost_of_battery_P_fluct_in_peak_price_ratio = (
-            self.cost_of_battery_P_fluct_in_peak_price_ratio
-        )
-
-        price_ts_to_max = self.price_ts_to_max_batch
-
-        # battery
-        battery_cost = sum(
-            mdl.P_battery_delta_abs_pw[t]
-            * cost_of_battery_P_fluct_in_peak_price_ratio
-            * price_ts_to_max.iloc[t]
-            for t in mdl.IDX5
-        )
-
-        self.add_to_objective_pyomo(mdl, addition_expr=-battery_cost)
-
     def ortools_outputs(self):
-        SOCtime_batch = self.SOCtime_batch
-        P_dis_batch = self.P_dis_batch
-        P_ch_batch = self.P_ch_batch
-        E_SOC_batch = self.E_SOC_batch
+        P_ptg_ts_batch = [
+            self.P_ptg_t_batch[t].solution_value() for t in self.time_batch
+        ]
+        m_H2_ts_batch = [self.m_H2_t_batch[t].solution_value() for t in self.time_batch]
+        LoS_H2_ts_batch = [
+            self.LoS_H2_t_batch[t].solution_value() for t in self.time_batch
+        ]
+        m_H2_offtake_ts_batch = [
+            self.m_H2_offtake_t_batch[t].solution_value() for t in self.time_batch
+        ]
 
-        P_charge_discharge_ts_batch = np.array(
-            [
-                (P_dis_batch[t].solution_value() - P_ch_batch[t].solution_value())
-                for t in self.time_batch
-            ]
-        )
-        E_SOC_ts_batch = np.array(
-            [E_SOC_batch[t].solution_value() for t in SOCtime_batch]
-        )
+        # Adjust for minimum power standby
+        for t in range(self.N_t_batch):
+            if abs(P_ptg_ts_batch[t] - self.min_power_standby * self.ptg_MW) < 1e-6:
+                self.P_ptg_SB_ts[t] = self.min_power_standby * self.ptg_MW
+                P_ptg_ts_batch[t] = 0
+                m_H2_ts_batch[t] = 0
 
-        self.P_charge_discharge_ts[self.batch] = P_charge_discharge_ts_batch
-        self.E_SOC_ts[self.batch] = E_SOC_ts_batch[:-1]
-
-    def pyomo_outputs(self, mdl, **kwargs):
-        batch = self.batch
-        time_batch = self.time_batch
-        batch = self.batch
-
-        # Extract time series as pandas Series (index = your time_batch items)
-
-        P_charge_discharge_ts_batch_df = series_from_indexed_var(
-            mdl.P_charge_discharge_t, time_batch
-        )
-        E_SOC_ts_batch_df = series_from_indexed_var(mdl.E_SOC_t, self.SOCtime_batch)
-
-        P_charge_discharge_ts_batch = P_charge_discharge_ts_batch_df.reindex(
-            time_batch, fill_value=0
-        ).values
-        E_SOC_ts_batch = E_SOC_ts_batch_df.reindex(
-            self.SOCtime_batch, fill_value=0
-        ).values
-
-        self.P_charge_discharge_ts[batch] = P_charge_discharge_ts_batch
-        self.E_SOC_ts[batch] = E_SOC_ts_batch[:-1]
+        # Save results
+        self.P_ptg_ts[self.batch] = P_ptg_ts_batch
+        self.m_H2_ts[self.batch] = m_H2_ts_batch
+        self.LoS_H2_ts[self.batch] = LoS_H2_ts_batch
+        self.m_H2_offtake_ts[self.batch] = m_H2_offtake_ts_batch
 
     def update_final_outputs(self, out):
         out_p2x = {

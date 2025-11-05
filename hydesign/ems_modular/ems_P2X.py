@@ -56,6 +56,9 @@ class ems_P2X:
     def __init__(
         self,
         N_time,
+        technologies,
+        ems_solver,
+        batch_size,
         eff_curve,
         life_y=25,
         intervals_per_hour=1,
@@ -84,6 +87,9 @@ class ems_P2X:
         self.hhv = hhv
         self.penalty_factor_H2 = penalty_factor_H2
         self.min_power_standby = min_power_standby
+        self.technologies = technologies
+        self.ems_solver = ems_solver
+        self.batch_size = batch_size
 
         # def setup(self):
         self.inputs = [
@@ -295,8 +301,8 @@ class ems_P2X:
 
         # --- modular ems
         ems_core_params = {
-            "technology": {"wind", "solar", "battery"},
-            "ems_solver": "cplex",
+            "technologies": self.technologies,
+            "ems_solver": self.ems_solver,
             "wind_ts": WSPr_df.wind_t,
             "solar_ts": WSPr_df.solar_t,
             "price_ts": WSPr_df.price_t,
@@ -320,7 +326,7 @@ class ems_P2X:
             "cost_of_battery_P_fluct_in_peak_price_ratio": cost_of_battery_P_fluct_in_peak_price_ratio,
             "n_full_power_hours_expected_per_day_at_peak_price": n_full_power_hours_expected_per_day_at_peak_price,
             "electrolyzer_eff_curve_type": self.electrolyzer_eff_curve_type,
-            "batch_size": 110,
+            "batch_size": self.batch_size,
         }
 
         outputs_ems_core = ems_core(**ems_core_params)
