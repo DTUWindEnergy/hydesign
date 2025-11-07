@@ -5,7 +5,7 @@
 ems_script: "modular" # static or modular
 ems_modular_regenerate: true
 #technologies: [wind, solar, battery]
-ems_solver: "ortools"
+ems_solver: "pyomo"
 batch_size: 50 #110
 
 # --------------------------------------------------------------------------------------------

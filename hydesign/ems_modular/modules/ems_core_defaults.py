@@ -84,7 +84,7 @@ class EMSCoreDefaults(EMSCoreInterface):
             self.time_batch, lb=0, name="Curtailment"
         )
 
-        self.penalty_batch = mdl.continuous_var(name="penalty", lb=-1e12)
+        self.penalty_el_batch = mdl.continuous_var(name="penalty", lb=-1e12)
         self.e_penalty_batch = mdl.continuous_var(name="e_penalty", lb=-1e12)
 
     def cplex_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
@@ -102,14 +102,13 @@ class EMSCoreDefaults(EMSCoreInterface):
         )
         # Piecewise function for "only positive" function
         self.f1 = mdl.piecewise(0, [(0, 0)], 1)
+        mdl.add_constraint(
+            self.penalty_el_batch
+            == self.price_peak_batch * self.f1(self.e_penalty_batch),
+            ctname="penalty_el",
+        )
 
         for t in self.time_batch:
-            mdl.add_constraint(
-                self.penalty_batch
-                == self.price_peak_batch * self.f1(self.e_penalty_batch),
-                ctname=f"penalty_{t}",
-            )
-
             mdl.add_constraint(
                 self.P_HPP_t_batch[t] == -self.P_curtailment_t_batch[t],
                 ctname=f"P_HPP_t_balance{t}",
@@ -126,8 +125,7 @@ class EMSCoreDefaults(EMSCoreInterface):
         )
         self.add_to_objective(mdl, addition_expr=electricity_income)
 
-        penalty_grid = self.penalty_batch
-        self.add_to_objective(mdl, addition_expr=penalty_grid)
+        self.add_to_objective(mdl, addition_expr=self.penalty_el_batch)
 
     def cplex_outputs(self, sol):
         """ """
@@ -190,6 +188,8 @@ class EMSCoreDefaults(EMSCoreInterface):
             for i, t in enumerate(time_batch)
         }
 
+        penalty_batch = solver.NumVar(-solver.infinity(), solver.infinity(), "penalty")
+
         e_penalty_batch = solver.NumVar(
             -solver.infinity(), solver.infinity(), "e_penalty"
         )
@@ -201,6 +201,7 @@ class EMSCoreDefaults(EMSCoreInterface):
         self.P_HPP_batch = P_HPP_batch
         self.p_nonneg_batch = p_nonneg_batch
         self.P_curtail_batch = P_curtail_batch
+        self.penalty_batch = penalty_batch
         self.e_penalty_batch = e_penalty_batch
 
     def ortools_constraints(self, solver):
@@ -226,13 +227,27 @@ class EMSCoreDefaults(EMSCoreInterface):
 
         # --- defaults
         # e_penalty == e_peak_period_expected - sum(P_HPP over peak hours)
-        if len(peak_hours_index_batch) > 0:
-            expr = solver.Sum(
+        # Sum of P_HPP over peak hours
+        expr = (
+            solver.Sum(
                 [P_HPP_batch[time_batch[int(idx)]] for idx in peak_hours_index_batch]
             )
-        else:
-            expr = solver.Sum([])
+            if len(peak_hours_index_batch) > 0
+            else 0.0
+        )
+
+        # Define e_penalty
+        e_penalty_batch = solver.NumVar(
+            -solver.infinity(), solver.infinity(), "e_penalty_batch"
+        )
         solver.Add(e_penalty_batch == float(e_peak_period_expected_batch) - expr)
+
+        # Linearize f_pos = max(0, e_penalty)
+        f_pos = solver.NumVar(0.0, solver.infinity(), "f_pos")
+        solver.Add(f_pos >= e_penalty_batch)
+
+        # Penalty = price_peak * f_pos
+        solver.Add(self.penalty_batch == float(self.price_peak_batch) * f_pos)
 
         # p_nonneg >= e_penalty  (and p_nonneg >= 0 by var bound)
         solver.Add(p_nonneg_batch >= e_penalty_batch)
@@ -253,6 +268,8 @@ class EMSCoreDefaults(EMSCoreInterface):
                 self.P_HPP_batch[t], float(self.price_ts_batch.loc[t])
             )
 
+        if self.penalty_batch is not None:
+            objective.SetCoefficient(self.penalty_batch, -1.0)
         # penalty term (note penalty = price_peak * p_nonneg; objective subtracts it)
         objective.SetCoefficient(self.p_nonneg_batch, -float(self.price_peak_batch))
 

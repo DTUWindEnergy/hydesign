@@ -212,6 +212,10 @@ class EMSCoreP2x(EMSCoreInterface):
         # Hydrogen offtake (use IDX1)
         mdl.m_H2_offtake_t_batch = pyo.Var(mdl.IDX1, domain=pyo.NonNegativeReals)
 
+        mdl.penalty_p2x_batch = pyo.Var(
+            mdl.IDX2, domain=pyo.Reals, bounds=(-1e12, 1e12)
+        )
+
     def pyomo_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
         # --- P2X constraints (fixed: use ConstraintList instead of mdl.add_constraint) ---
 
@@ -285,16 +289,6 @@ class EMSCoreP2x(EMSCoreInterface):
                     "ensure SOCtime_batch contains successive timesteps."
                 )
 
-            # penalty term for this time t (use model var if available, otherwise treat off-take as 0)
-            if k in mdl.IDX1:
-                penalty_p2x = self.penalty_factor_H2 * (
-                    self.m_H2_demand_ts_batch[t] - mdl.m_H2_offtake_t_batch[k]
-                )
-            else:
-                penalty_p2x = self.penalty_factor_H2 * (
-                    self.m_H2_demand_ts_batch[t] - 0
-                )
-
             # (If you need to still call update_constraint_rhs_pyomo for penalty, re-enable here)
             # self.update_constraint_rhs_pyomo(
             #     mdl,
@@ -346,12 +340,25 @@ class EMSCoreP2x(EMSCoreInterface):
                     mdl.m_H2_offtake_t_batch[k] == mdl.m_H2_t_batch[k]
                 )
 
+        # penalty term for this time t (use model var if available, otherwise treat off-take as 0)
+
+        penalty_p2x = sum(
+            self.penalty_factor_H2
+            * (self.m_H2_demand_ts_batch[t] - mdl.m_H2_offtake_t_batch[t])
+            for t in mdl.IDX1
+        )
+
+        mdl.penalty_constraint.add(mdl.penalty_p2x_batch[0] == penalty_p2x)
+
     def pyomo_opjective(self, mdl, **kwargs):
         H2_revenue = sum(
             self.price_H2_batch * mdl.m_H2_offtake_t_batch[t] for t in mdl.IDX1
         )
 
         self.add_to_objective_pyomo(mdl, addition_expr=H2_revenue)
+
+        penalty_p2x = -mdl.penalty_p2x_batch[0]
+        self.add_to_objective_pyomo(mdl, addition_expr=penalty_p2x)
 
     def pyomo_outputs(self, mdl, **kwargs):
         # Extract Pyomo solution values as dictionaries
@@ -397,6 +404,12 @@ class EMSCoreP2x(EMSCoreInterface):
 
     # --- ortools_variables ---
     def ortools_variables(self, solver):
+        # State-of-storage variables indexed by SOCtime_batch (as in CPLEX)
+        self.LoS_H2_t_batch = {
+            t: solver.NumVar(0.0, solver.infinity(), f"H2_storage_{t}")
+            for t in self.SOCtime_batch
+        }
+
         # P_ptg, H2 production, H2 offtake for each time in self.time_batch
         self.P_ptg_t_batch = {
             t: solver.NumVar(
@@ -412,19 +425,17 @@ class EMSCoreP2x(EMSCoreInterface):
             t: solver.NumVar(0.0, solver.infinity(), f"H2_offtake_{t}")
             for t in self.time_batch
         }
-        # State-of-storage variables indexed by SOCtime_batch (as in CPLEX)
-        self.LoS_H2_t_batch = {
-            t: solver.NumVar(0.0, solver.infinity(), f"H2_storage_{t}")
-            for t in self.SOCtime_batch
-        }
 
-        # lambda variables placeholders (will be filled per timestep in constraints)
+        self.penalty_p2x_batch = solver.NumVar(
+            0.0, solver.infinity(), "penalty_p2x_batch"
+        )
+        """ # lambda variables placeholders (will be filled per timestep in constraints)
         self.lambdas_ptg_batch = {t: [] for t in self.time_batch}
         self.lambdas_H2_batch = {t: [] for t in self.time_batch}
 
         # penalty variables
         self.penalty_batch = solver.NumVar(0.0, solver.infinity(), "penalty_batch")
-        self.e_penalty_batch = solver.NumVar(0.0, solver.infinity(), "e_penalty_batch")
+        self.e_penalty_batch = solver.NumVar(0.0, solver.infinity(), "e_penalty_batch") """
 
     # --- ortools_constraints ---
     def ortools_constraints(self, solver: pywraplp.Solver):
@@ -433,88 +444,69 @@ class EMSCoreP2x(EMSCoreInterface):
         m_H2_offtake_t_batch = self.m_H2_offtake_t_batch
         LoS_H2_t_batch = self.LoS_H2_t_batch
 
+        # initial and terminal LoS constraints (matching cplex)
+        solver.Add(LoS_H2_t_batch[self.SOCtime_batch[0]] == 0.0)
+        solver.Add(LoS_H2_t_batch[self.SOCtime_batch[-1]] == 0.0)
+
         # Build electrolyser piecewise points depending on chosen type (match CPLEX)
+
+        time_batch = self.time_batch
+
+        # Storage efficiency linear function
+        storage_eff = self.storage_eff
+
+        def f3(x):
+            return x / storage_eff
+
+        # Prepare electrolyzer piecewise curve
         if self.electrolyzer_eff_curve_type == "production":
-            x_points = [float(load * self.ptg_MW) for load, _ in self.eff_curve]
-            y_points = [float(H2 * self.ptg_MW) for _, H2 in self.eff_curve]
+            H2_curve_list = [
+                (load * self.ptg_MW, H2 * self.ptg_MW) for load, H2 in self.eff_curve
+            ]
         elif self.electrolyzer_eff_curve_type == "efficiency":
-            if self.hhv is None:
-                x_points = [float(load * self.ptg_MW) for load, _ in self.eff_curve]
-                y_points = [
-                    float(load * self.ptg_MW * eff) for load, eff in self.eff_curve
-                ]
-            else:
-                x_points = [float(load * self.ptg_MW) for load, _ in self.eff_curve]
-                # CPLEX used load * ptg_MW * eff / hhv * 1000 in the 'efficiency' branch
-                y_points = [
-                    float(load * self.ptg_MW * eff / self.hhv * 1000.0)
-                    for load, eff in self.eff_curve
-                ]
+            H2_curve_list = [
+                (load * self.ptg_MW, load * self.ptg_MW * efficiency / self.hhv * 1000)
+                for load, efficiency in self.eff_curve
+            ]
         else:
-            raise ValueError("Unsupported electrolyzer_eff_curve_type")
-
-        n_pts_ptg = len(x_points)
-
-        # Two-point H2 storage piecewise as in your OR-Tools code (maps mass delta -> stored mass)
-        x_H2 = [0.0, float(self.HSS_kg)]
-        y_H2 = [0.0, float(self.HSS_kg * self.storage_eff)]
-
-        # Add per-hour constraints (mirror structure used in CPLEX)
-        for i, t in enumerate(self.time_batch):
-            # electrolyser lambdas (convex combination to create piecewise linear mapping)
-            lambdas = [
-                solver.NumVar(0.0, 1.0, f"lambda_ptg_{t}_{j}") for j in range(n_pts_ptg)
-            ]
-            self.lambdas_ptg_batch[t] = lambdas
-            solver.Add(solver.Sum(lambdas[j] for j in range(n_pts_ptg)) == 1.0)
-            # link P_ptg to convex combination of x_points
-            solver.Add(
-                P_ptg_t_batch[t]
-                == solver.Sum([lambdas[j] * x_points[j] for j in range(n_pts_ptg)])
-            )
-            # link H2 production to convex combination of y_points
-            solver.Add(
-                m_H2_t_batch[t]
-                == solver.Sum([lambdas[j] * y_points[j] for j in range(n_pts_ptg)])
+            raise ValueError(
+                f'electrolyzer_eff_curve_type is: "{self.electrolyzer_eff_curve_type}". Available options are ["production", "efficiency"]'
             )
 
-            # lambdas for H2 storage mapping (two-point)
-            lambdas_h2 = [
-                solver.NumVar(0.0, 1.0, f"lambda_H2_{t}_{j}") for j in range(len(x_H2))
-            ]
-            self.lambdas_H2_batch[t] = lambdas_h2
-            solver.Add(solver.Sum(lambdas_h2[j] for j in range(len(x_H2))) == 1.0)
-            # (m_H2 - offtake) is represented by convex combination of x_H2
-            solver.Add(
-                (m_H2_t_batch[t] - m_H2_offtake_t_batch[t])
-                == solver.Sum([lambdas_h2[j] * x_H2[j] for j in range(len(x_H2))])
+        # --- Constraints ---
+        for t in time_batch:
+            tt = t + pd.Timedelta("1hour")
+
+            self.update_constraint_rhs_ortools(
+                solver,
+                constraint_name=f"P_HPP_t_balance{t}",
+                addition_expr=P_ptg_t_batch[t],
+                coeff=-1,
             )
 
-            # storage transition (LoS_{t+1} == LoS_t + stored_from_delta) if SOC time exists (mirror CPLEX tt logic)
-            tt = t + pd.Timedelta("1h")
-            if tt in LoS_H2_t_batch:
+            # Hydrogen storage balance
+            if tt in time_batch:
                 solver.Add(
                     LoS_H2_t_batch[tt]
-                    == LoS_H2_t_batch[t]
-                    + solver.Sum([lambdas_h2[j] * y_H2[j] for j in range(len(y_H2))])
+                    == LoS_H2_t_batch[t] + f3(m_H2_t_batch[t] - m_H2_offtake_t_batch[t])
                 )
 
-            # storage limit if LoS var exists for this t
-            if t in LoS_H2_t_batch:
-                solver.Add(LoS_H2_t_batch[t] <= float(self.H2_storage_t_batch[t]))
+            # Storage and offtake limits
+            solver.Add(LoS_H2_t_batch[t] <= self.H2_storage_t_batch[t])
+            solver.Add(m_H2_offtake_t_batch[t] <= self.m_H2_demand_ts_batch[t])
 
-            # offtake limit (always add)
-            solver.Add(m_H2_offtake_t_batch[t] <= float(self.m_H2_demand_ts_batch[t]))
-
-            # when storage capacity is zero at this timestep, force equality of offtake and production
-            # (this mirrors the CPLEX branch where you did `self.m_H2_offtake_t_batch[t] = self.m_H2_t_batch[t]`)
-            if float(self.H2_storage_t_batch[t]) == 0.0:
+            # No storage case
+            if self.H2_storage_t_batch[t] == 0:
                 solver.Add(m_H2_offtake_t_batch[t] == m_H2_t_batch[t])
 
-        # initial and terminal LoS constraints (matching cplex)
-        if len(self.SOCtime_batch) >= 2:
-            solver.Add(LoS_H2_t_batch[self.SOCtime_batch[0]] == 0.0)
-            solver.Add(LoS_H2_t_batch[self.SOCtime_batch[-1]] == 0.0)
+            # Hydrogen production equality
+            # solver.Add(m_H2_t_batch[t] == H2_prod[t])
+            # Create the piecewise linear constraint for H2 production
+
+            solver.add_element(
+                m_H2_t_batch[t],
+            )
+            solver.Add(m_H2_t_batch[t] == 16 * P_ptg_t_batch[t])
 
         # Penalty construction: unmet H2 demand sum (identical formula)
         unmet_sum = solver.Sum(
@@ -525,56 +517,17 @@ class EMSCoreP2x(EMSCoreInterface):
             ]
         )
 
-        # Attempt to link peak e_penalty as in your OR-Tools code, otherwise fallback
-        linked_peak = False
-        if (
-            (getattr(self, "price_ts_batch", None) is not None)
-            and (getattr(self, "hpp_grid_connection", None) is not None)
-            and hasattr(self, "P_HPP_t_batch")
-        ):
-            try:
-                price_vals = np.array(self.price_ts_batch)
-                self.price_peak_batch = float(
-                    np.quantile(price_vals, self.peak_hr_quantile)
-                )
-                N_t = len(self.time_batch)
-                N_days = N_t / 24.0
-                e_peak_day_expected = (
-                    self.n_full_power_hours_expected_per_day_at_peak_price
-                    * self.hpp_grid_connection
-                )
-                e_peak_period_expected = e_peak_day_expected * N_days
+        solver.Add(self.penalty_p2x_batch == unmet_sum)
 
-                peak_mask = np.array(self.price_ts_batch) >= self.price_peak_batch
-                Phpp_in_peak = solver.Sum(
-                    [
-                        self.P_HPP_t_batch[t]
-                        for i, t in enumerate(self.time_batch)
-                        if peak_mask[i]
-                    ]
-                )
-
-                # e_penalty >= expected_peak - Sum P_HPP_peak
-                solver.Add(
-                    self.e_penalty_batch >= e_peak_period_expected - Phpp_in_peak
-                )
-
-                # penalty >= price_peak * e_penalty + unmet_sum
-                solver.Add(
-                    self.penalty_batch
-                    >= self.price_peak_batch * self.e_penalty_batch + unmet_sum
-                )
-                linked_peak = True
-            except Exception:
-                linked_peak = False
-
-        if not linked_peak:
-            # fallback consistent with OR-Tools earlier version
-            solver.Add(self.penalty_batch >= unmet_sum)
+        # self.update_constraint_rhs_ortools(
+        #     solver,"penalty_batch",
+        #     addition_expr=unmet_sum,
+        #     coeff=1,
+        # )
 
     # --- ortools_objective ---
     def ortools_objective(self, solver: pywraplp.Solver):
-        obj = solver.Objective()
+        objective = solver.Objective()
         # Use the same revenue summation range as CPLEX: time_batch[:-1]
         # and use per-timestep price value (price_H2_batch[t]) if available.
         for t in self.time_batch[:-1]:
@@ -584,13 +537,12 @@ class EMSCoreP2x(EMSCoreInterface):
             except Exception:
                 # fallback: scalar or not indexable
                 price_t = float(self.price_H2_batch)
-            obj.SetCoefficient(self.m_H2_offtake_t_batch[t], price_t)
+            objective.SetCoefficient(self.m_H2_offtake_t_batch[t], price_t)
 
         # subtract penalty (same sign as CPLEX; CPLEX added penalty to objective with negative sign)
-        if self.penalty_batch is not None:
-            obj.SetCoefficient(self.penalty_batch, -1.0)
+        objective.SetCoefficient(self.penalty_p2x_batch, -1.0)
 
-        obj.SetMaximization()
+        objective.SetMaximization()
 
     # --- ortools_outputs ---
     def ortools_outputs(self):
