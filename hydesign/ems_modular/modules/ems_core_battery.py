@@ -47,6 +47,8 @@ class EMSCoreBattery(EMSCoreInterface):
             name="Energy level",  # ub=E_batt_MWh_t.max(),
         )
 
+        self.penalty_batt_batch = mdl.continuous_var(name="penalty_batt", lb=-1e12)
+
     def ortools_variables(self, solver):
         time_batch = self.time_batch
         SOCtime_batch = self.SOCtime_batch
@@ -88,7 +90,7 @@ class EMSCoreBattery(EMSCoreInterface):
     def cplex_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
         # Intitial and end SOC
         mdl.add_constraint(
-            self.E_SOC_t_batch[self.SOCtime_batch[-1]]
+            self.E_SOC_t_batch[self.SOCtime_batch[0]]
             == 0.5 * self.E_batt_MWh_t_batch[self.time_batch[0]]
         )
 
@@ -101,6 +103,22 @@ class EMSCoreBattery(EMSCoreInterface):
         # pircewise linear representation of charge vs dischrage effciency
         self.f2 = mdl.piecewise(
             self.charge_efficiency, [(0, 0)], 1 / self.charge_efficiency
+        )
+
+        self.fabs = mdl.piecewise(-1, [(0, 0)], 1)
+        penalty_batt = mdl.sum(
+            self.fabs(
+                self.P_charge_discharge_batch[t + pd.Timedelta("1hour")]
+                - self.P_charge_discharge_batch[t]
+            )
+            * self.cost_of_battery_P_fluct_in_peak_price_ratio
+            * self.price_ts_to_max_batch[t]
+            for t in self.time_batch[:-1]
+        )
+
+        mdl.add_constraint(
+            self.penalty_batt_batch == penalty_batt,
+            ctname="penalty_batt",
         )
 
         for t in self.time_batch:
@@ -219,17 +237,9 @@ class EMSCoreBattery(EMSCoreInterface):
     def cplex_opjective(self, mdl):
         # Piecewise function for "absolute value" function
         self.fabs = mdl.piecewise(-1, [(0, 0)], 1)
-        battery_penalty = -mdl.sum(
-            self.fabs(
-                self.P_charge_discharge_batch[t + pd.Timedelta("1hour")]
-                - self.P_charge_discharge_batch[t]
-            )
-            * self.cost_of_battery_P_fluct_in_peak_price_ratio
-            * self.price_ts_to_max_batch[t]
-            for t in self.time_batch[:-1]
-        )
 
-        self.add_to_objective(mdl, addition_expr=battery_penalty)
+        self.add_to_objective(mdl, addition_expr=-self.penalty_batt_batch)
+        # self.add_to_objective(mdl, addition_expr=-battery_penalty)
 
     def ortools_objective(self, solver):
         objective = solver.Objective()
@@ -271,6 +281,7 @@ class EMSCoreBattery(EMSCoreInterface):
             sol.get_value_dict(self.E_SOC_t_batch), orient="index"
         ).loc[:, 0]
 
+        penalty_batt_batch = sol.get_value(self.penalty_batt_batch)
         # Cplex sometimes returns missing values :O
         P_charge_discharge_ts_batch = P_charge_discharge_ts_df.reindex(
             self.time_batch, fill_value=0
@@ -279,6 +290,7 @@ class EMSCoreBattery(EMSCoreInterface):
 
         self.P_charge_discharge_ts[self.batch] = P_charge_discharge_ts_batch
         self.E_SOC_ts[self.batch] = E_SOC_ts_batch[:-1]
+        self.penalty_ts[self.batch] += penalty_batt_batch
 
     def ortools_outputs(self):
         SOCtime_batch = self.SOCtime_batch

@@ -4,7 +4,7 @@ import pandas as pd
 from docplex.mp.model import Model
 
 from hydesign.ems.ems import expand_to_lifetime, split_in_batch
-from hydesign.ems_modular.ems_core import ems_core
+from hydesign.ems_modular.ems_core import EMSCore
 from hydesign.openmdao_wrapper import ComponentWrapper
 
 
@@ -329,7 +329,8 @@ class ems_P2X:
             "batch_size": self.batch_size,
         }
 
-        outputs_ems_core = ems_core(**ems_core_params)
+        ems_core = EMSCore(**ems_core_params)
+        outputs_ems_core = ems_core.solve()
 
         (
             P_HPP_ts,

@@ -8,7 +8,7 @@ import pandas as pd
 # import xarray as xr
 from docplex.mp.model import Model
 
-from hydesign.ems_modular.ems_core_combined import EMSCoreCombined
+from hydesign.ems_modular.ems_core import EMSCore
 from hydesign.openmdao_wrapper import ComponentWrapper
 
 # import yaml
@@ -137,7 +137,7 @@ class ems:
             "batch_size": self.batch_size,
         }
 
-        ems_core = EMSCoreCombined(**ems_core_params)
+        ems_core = EMSCore(**ems_core_params)
         outputs_ems_core = ems_core.solve()
 
         P_HPP_ts, P_curtailment_ts, P_charge_discharge_ts, E_SOC_ts, penalty_ts = (

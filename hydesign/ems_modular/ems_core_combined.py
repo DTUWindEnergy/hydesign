@@ -152,7 +152,7 @@ class EMSCoreCombined(EMSCoreInterface):
             name="Energy level",  # ub=E_batt_MWh_t.max(),
         )
 
-        """   """
+        """ """
         # ------------
         # Constraints
         # ------------
@@ -252,7 +252,7 @@ class EMSCoreCombined(EMSCoreInterface):
                 >= -self.P_batt_MW / self.charge_efficiency
             )
 
-        """   """
+        """ """
         # ------------
         # Objective
         # ------------
@@ -283,7 +283,7 @@ class EMSCoreCombined(EMSCoreInterface):
 
         sol = mdl.solve(log_output=False)
 
-        """   """
+        """ """
         # ------------
         # Outputs
         # ------------

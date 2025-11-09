@@ -154,7 +154,7 @@ class EMSCoreDefaults(EMSCoreInterface):
         )
         self.add_to_objective(mdl, addition_expr=revenue_el)
 
-        self.add_to_objective(mdl, addition_expr=self.penalty_el_batch)
+        self.add_to_objective(mdl, addition_expr=-self.penalty_el_batch)
 
     def cplex_solve(self, mdl):
         sol = mdl.solve(log_output=False)
@@ -177,8 +177,6 @@ class EMSCoreDefaults(EMSCoreInterface):
         penalty_el_2 = sol.get_value(self.penalty_el_batch)
         penalty_el_ts_batch = np.ones(self.N_t_batch) * (penalty_el_2 / self.N_t_batch)
 
-        penalty_ts_batch = penalty_el_ts_batch
-
         # Cplex sometimes returns missing values :O
         P_HPP_ts_batch = P_HPP_ts_batch_df.reindex(self.time_batch, fill_value=0).values
         P_curtailment_ts_batch = P_curtailment_ts_batch_df.reindex(
@@ -197,10 +195,13 @@ class EMSCoreDefaults(EMSCoreInterface):
 
         self.P_HPP_ts[self.batch] = P_HPP_ts_batch
         self.P_curtailment_ts[self.batch] = P_curtailment_ts_batch
-        self.penalty_ts[self.batch] = penalty_ts_batch
+        self.penalty_ts[self.batch] = penalty_el_ts_batch
 
     def pyomo_variables(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
+        # ------------
+        # Variables
+        # ------------
         mdl = pyo.ConcreteModel()
         # --- defaults
         time_batch = self.time_batch
@@ -219,6 +220,9 @@ class EMSCoreDefaults(EMSCoreInterface):
 
     def pyomo_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
+        # ------------
+        # Constraints
+        # ------------
         # --- defaults
         time_batch = self.time_batch
 
@@ -265,6 +269,9 @@ class EMSCoreDefaults(EMSCoreInterface):
 
     def pyomo_opjective(self, mdl, **kwargs):
         """ """
+        # ------------
+        # Objective
+        # ------------
         # --- defaults
         price_ts_batch = self.price_ts_batch
 
@@ -288,6 +295,9 @@ class EMSCoreDefaults(EMSCoreInterface):
 
     def pyomo_outputs(self, mdl, **kwargs):
         """ """
+        # ------------
+        # Outputs
+        # ------------
         N_t = self.N_t_batch
         batch = self.batch
         time_batch = self.time_batch
@@ -320,6 +330,9 @@ class EMSCoreDefaults(EMSCoreInterface):
 
     def ortools_variables(self, solver):
         """ """
+        # ------------
+        # Variables
+        # ------------
         solver = pywraplp.Solver.CreateSolver("GLOP")
         if solver is None:
             raise RuntimeError(
@@ -359,6 +372,9 @@ class EMSCoreDefaults(EMSCoreInterface):
 
     def ortools_constraints(self, solver):
         """ """
+        # ------------
+        # Constraints
+        # ------------
         time_batch = self.time_batch
         N_t_batch = self.N_t_batch
         e_peak_period_expected_batch = self.e_peak_period_expected_batch
@@ -412,6 +428,9 @@ class EMSCoreDefaults(EMSCoreInterface):
 
     def ortools_objective(self, solver):
         """ """
+        # ------------
+        # Objective
+        # ------------
         # --- defaults
         objective = solver.Objective()
         for t in self.time_batch:
@@ -426,8 +445,18 @@ class EMSCoreDefaults(EMSCoreInterface):
 
         objective.SetMaximization()
 
+    def ortools_solve(self, solver):
+        result_status = solver.Solve()
+        if result_status not in (pywraplp.Solver.OPTIMAL, pywraplp.Solver.FEASIBLE):
+            raise RuntimeError(
+                f"Solver failed or returned infeasible (status {result_status})."
+            )
+
     def ortools_outputs(self):
         """ """
+        # ------------
+        # Outputs
+        # ------------
         batch = self.batch
         time_batch = self.time_batch
         N_t_batch = self.N_t_batch

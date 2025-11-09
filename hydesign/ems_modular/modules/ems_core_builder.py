@@ -238,9 +238,7 @@ def build_combined_class_text_multi(
     parts.append(
         '    """Auto-generated combined class (merged bodies of multiple classes)\n\n'
     )
-    parts.append(
-        "    NOTE: bodies are concatenated (primary class then others). Please review for semantic issues.\n"
-    )
+    parts.append("    NOTE: Please review for semantic issues.\n")
     parts.append('    """\n\n')
 
     if not ordered:
@@ -334,7 +332,7 @@ def merge_multiple_files(
     files: List[str],
     classes: List[str],
     out_file: str,
-    combined_name: str = "EMSCoreCombined",
+    combined_name: str = "EMSCore",
 ) -> None:
     """
     Merge multiple files/classes into a single module written to out_file.
@@ -400,7 +398,7 @@ def _to_pascal_case(s: str) -> str:
     return "".join(p.capitalize() for p in parts)
 
 
-def generate_ems_core_combined(
+def generate_ems_core(
     technologies: Iterable[str], raise_on_missing: bool = True
 ) -> Tuple[List[str], List[str]]:
     """
@@ -409,7 +407,7 @@ def generate_ems_core_combined(
     """
     MODULES_DIR = Path(__file__).parent
     DEFAULT_FILE = MODULES_DIR / "ems_core_defaults.py"
-    OUT_FILE = MODULES_DIR.parent / "ems_core_combined.py"
+    OUT_FILE = MODULES_DIR.parent / "ems_core.py"
 
     files: List[str] = [str(DEFAULT_FILE)]
     classes: List[str] = ["EMSCoreDefaults"]
@@ -441,7 +439,7 @@ def generate_ems_core_combined(
             "[generate_ems_core_combined] Warning: only defaults included (no technology files found)."
         )
 
-    merge_multiple_files(files, classes, str(OUT_FILE), combined_name="EMSCoreCombined")
+    merge_multiple_files(files, classes, str(OUT_FILE), combined_name="EMSCore")
     return files, classes
 
 

@@ -69,6 +69,8 @@ class EMSCoreP2x(EMSCoreInterface):
             self.time_batch, lb=0, name="Hydrogen offtake"
         )
 
+        self.penalty_p2x_batch = mdl.continuous_var(name="penalty_p2x", lb=-1e12)
+
     def cplex_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
 
         # # ------ penalty p2x
@@ -107,23 +109,28 @@ class EMSCoreP2x(EMSCoreInterface):
 
         H2_prod = mdl.piecewise(0, H2_curve_list, 0)
 
+        penalty_p2x = mdl.sum(
+            self.penalty_factor_H2
+            * (self.m_H2_demand_ts_batch[t] - self.m_H2_offtake_t_batch[t])
+            for t in self.time_batch
+        )
+
+        mdl.add_constraint(
+            self.penalty_p2x_batch == penalty_p2x,
+            ctname="penalty_p2x",
+        )
+
+        # self.update_constraint_rhs(
+        #     mdl,
+        #     constraint_name="penalty_el",
+        #     added_value=penalty_p2x,
+        # )
+
         for t in self.time_batch:
             # Time index for successive time step
             tt = t + pd.Timedelta("1hour")
             # Delta_t of 1 hour
             dt = 1
-
-            penalty_p2x = mdl.sum(
-                self.penalty_factor_H2
-                * (self.m_H2_demand_ts_batch[t] - self.m_H2_offtake_t_batch[t])
-                for t in self.time_batch
-            )
-
-            self.update_constraint_rhs(
-                mdl,
-                constraint_name=f"penalty_{t}",
-                added_value=penalty_p2x,
-            )
 
             self.update_constraint_rhs(
                 mdl,
@@ -154,11 +161,12 @@ class EMSCoreP2x(EMSCoreInterface):
     def cplex_opjective(self, mdl):
 
         H2_revenue = mdl.sum(
-            self.price_H2_batch * self.m_H2_offtake_t_batch[t]
-            for t in self.time_batch[:-1]
+            self.price_H2_batch * self.m_H2_offtake_t_batch[t] for t in self.time_batch
         )
 
         self.add_to_objective(mdl, addition_expr=H2_revenue)
+
+        self.add_to_objective(mdl, addition_expr=-self.penalty_p2x_batch)
 
     def cplex_outputs(self, sol):
 
@@ -174,6 +182,8 @@ class EMSCoreP2x(EMSCoreInterface):
         m_H2_offtake_ts_df_batch = pd.DataFrame.from_dict(
             sol.get_value_dict(self.m_H2_offtake_t_batch), orient="index"
         ).loc[:, 0]
+
+        penalty_p2x_batch = sol.get_value(self.penalty_p2x_batch)
 
         # Cplex sometimes returns missing values :O
         P_ptg_ts_batch = P_ptg_ts_df_batch.reindex(self.time_batch, fill_value=0).values
@@ -196,6 +206,7 @@ class EMSCoreP2x(EMSCoreInterface):
 
         self.LoS_H2_ts[self.batch] = LoS_H2_ts_batch
         self.m_H2_offtake_ts[self.batch] = m_H2_offtake_ts_batch
+        self.penalty_ts[self.batch] += penalty_p2x_batch
 
     def pyomo_variables(self, mdl, **kwargs) -> Dict[str, Any]:
         # Hydrogen storage level (use IDX4 for SOCtime index)

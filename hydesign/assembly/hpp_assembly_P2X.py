@@ -93,10 +93,10 @@ class hpp_model_P2X(hpp_base):
         elif ems_script == "modular":
             if ems_modular_regenerate:
                 from hydesign.ems_modular.modules.ems_core_builder import (
-                    generate_ems_core_combined,
+                    generate_ems_core,
                 )
 
-                generate_ems_core_combined(technologies)
+                generate_ems_core(technologies)
             from hydesign.ems_modular.ems_P2X import ems_P2X_comp as ems_modular
 
             ems = ems_modular
