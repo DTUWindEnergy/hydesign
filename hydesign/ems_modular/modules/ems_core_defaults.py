@@ -5,6 +5,8 @@ from typing import Any, Dict, Iterable, List
 import numpy as np
 import pandas as pd
 import pyomo.environ as pyo
+from docplex.mp.model import Model
+from ortools.linear_solver import pywraplp
 
 from hydesign.ems_modular.modules.ems_core_helpers import (
     EMSCoreInterface,
@@ -22,6 +24,7 @@ class EMSCoreDefaults(EMSCoreInterface):
     def __init__(self, **kwargs) -> Dict[str, Any]:
         """ """
         # --- defaults
+        self.ems_solver = kwargs["ems_solver"]
         self.hpp_grid_connection = kwargs.get("hpp_grid_connection", 0)
         self.price_ts = kwargs["price_ts"]
         self.peak_hr_quantile = kwargs.get("peak_hr_quantile", 0.9)
@@ -40,7 +43,21 @@ class EMSCoreDefaults(EMSCoreInterface):
         self.P_curtailment_ts = np.zeros(n_ts)
         self.penalty_ts = np.zeros(n_ts)
 
-    def solver_init(self, batch, **kwargs) -> Dict[str, Any]:
+    def solve(self, **kwargs):
+        out_ems = {}
+        ems_solver = self.ems_solver
+        for ib, batch in enumerate(self.batches):
+            self.batch_data(batch=batch)
+            if ems_solver == "cplex":
+                self.cplex()
+            elif ems_solver == "pyomo":
+                self.pyomo()
+            elif ems_solver == "ortools":
+                self.ortools()
+            self.update_final_outputs(out_ems)
+        return out_ems
+
+    def batch_data(self, batch, **kwargs) -> Dict[str, Any]:
         """ """
         # --- defaults
         self.price_ts_batch = self.price_ts.iloc[batch]
@@ -76,6 +93,12 @@ class EMSCoreDefaults(EMSCoreInterface):
 
     def cplex_variables(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
+        # ------------
+        # Variables
+        # ------------
+        mdl = Model(name="EMS")
+        mdl.context.cplex_parameters.threads = 1
+        mdl.context.cplex_parameters.emphasis.mip = 1
         # --- defaults
         self.P_HPP_t_batch = mdl.continuous_var_dict(
             self.time_batch, lb=0, ub=self.hpp_grid_connection, name="HPP power output"
@@ -89,6 +112,9 @@ class EMSCoreDefaults(EMSCoreInterface):
 
     def cplex_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
+        # ------------
+        # Constraints
+        # ------------
         # --- defaults
         mdl.add_constraint(
             self.e_penalty_batch
@@ -116,19 +142,28 @@ class EMSCoreDefaults(EMSCoreInterface):
 
     def cplex_opjective(self, mdl):
         """ """
+        # ------------
+        # Objective
+        # ------------
         # --- default
         self.fabs = mdl.piecewise(-1, [(0, 0)], 1)
         mdl.maximize(0)
 
-        electricity_income = mdl.sum(
+        revenue_el = mdl.sum(
             self.price_ts_batch[t] * self.P_HPP_t_batch[t] for t in self.time_batch
         )
-        self.add_to_objective(mdl, addition_expr=electricity_income)
+        self.add_to_objective(mdl, addition_expr=revenue_el)
 
         self.add_to_objective(mdl, addition_expr=self.penalty_el_batch)
 
+    def cplex_solve(self, mdl):
+        sol = mdl.solve(log_output=False)
+
     def cplex_outputs(self, sol):
         """ """
+        # ------------
+        # Outputs
+        # ------------
         # --- defaults
         P_HPP_ts_batch_df = pd.DataFrame.from_dict(
             sol.get_value_dict(self.P_HPP_t_batch), orient="index"
@@ -139,8 +174,10 @@ class EMSCoreDefaults(EMSCoreInterface):
         ).loc[:, 0]
 
         # make a time series like P_HPP with a constant penalty
-        penalty_2 = sol.get_value(self.penalty_batch)
-        penalty_ts_batch = np.ones(self.N_t_batch) * (penalty_2 / self.N_t_batch)
+        penalty_el_2 = sol.get_value(self.penalty_el_batch)
+        penalty_el_ts_batch = np.ones(self.N_t_batch) * (penalty_el_2 / self.N_t_batch)
+
+        penalty_ts_batch = penalty_el_ts_batch
 
         # Cplex sometimes returns missing values :O
         P_HPP_ts_batch = P_HPP_ts_batch_df.reindex(self.time_batch, fill_value=0).values
@@ -162,144 +199,9 @@ class EMSCoreDefaults(EMSCoreInterface):
         self.P_curtailment_ts[self.batch] = P_curtailment_ts_batch
         self.penalty_ts[self.batch] = penalty_ts_batch
 
-    def update_final_outputs(self, out):
-        """ """
-        # --- defaults
-        out_defaults = {
-            "P_HPP_ts": self.P_HPP_ts,
-            "P_curtailment_ts": self.P_curtailment_ts,
-            "penalty_ts": self.penalty_ts,
-        }
-        out.update(out_defaults)
-
-    def ortools_variables(self, solver):
-        """ """
-        time_batch = self.time_batch
-        hpp_grid_connection = self.hpp_grid_connection
-
-        # --- defaults
-        P_HPP_batch = {
-            t: solver.NumVar(0.0, float(hpp_grid_connection), f"P_HPP_{i}")
-            for i, t in enumerate(time_batch)
-        }
-
-        P_curtail_batch = {
-            t: solver.NumVar(0.0, solver.infinity(), f"P_curt_{i}")
-            for i, t in enumerate(time_batch)
-        }
-
-        penalty_batch = solver.NumVar(-solver.infinity(), solver.infinity(), "penalty")
-
-        e_penalty_batch = solver.NumVar(
-            -solver.infinity(), solver.infinity(), "e_penalty"
-        )
-
-        p_nonneg_batch = solver.NumVar(
-            0.0, solver.infinity(), "p_nonneg"
-        )  # represents max(0, e_penalty)
-
-        self.P_HPP_batch = P_HPP_batch
-        self.p_nonneg_batch = p_nonneg_batch
-        self.P_curtail_batch = P_curtail_batch
-        self.penalty_batch = penalty_batch
-        self.e_penalty_batch = e_penalty_batch
-
-    def ortools_constraints(self, solver):
-        """ """
-        time_batch = self.time_batch
-        N_t_batch = self.N_t_batch
-        e_peak_period_expected_batch = self.e_peak_period_expected_batch
-        peak_hours_index_batch = self.peak_hours_index_batch
-        hpp_grid_connection = self.hpp_grid_connection
-
-        P_HPP_batch = self.P_HPP_batch
-        p_nonneg_batch = self.p_nonneg_batch
-        P_curtail_batch = self.P_curtail_batch
-        e_penalty_batch = self.e_penalty_batch
-
-        # delta variables for absolute battery power change cost
-        delta = {}
-        for i in range(N_t_batch - 1):
-            t = time_batch[i]
-            delta[t] = solver.NumVar(0.0, solver.infinity(), f"delta_{i}")
-
-        self.delta = delta
-
-        # --- defaults
-        # e_penalty == e_peak_period_expected - sum(P_HPP over peak hours)
-        # Sum of P_HPP over peak hours
-        expr = (
-            solver.Sum(
-                [P_HPP_batch[time_batch[int(idx)]] for idx in peak_hours_index_batch]
-            )
-            if len(peak_hours_index_batch) > 0
-            else 0.0
-        )
-
-        # Define e_penalty
-        e_penalty_batch = solver.NumVar(
-            -solver.infinity(), solver.infinity(), "e_penalty_batch"
-        )
-        solver.Add(e_penalty_batch == float(e_peak_period_expected_batch) - expr)
-
-        # Linearize f_pos = max(0, e_penalty)
-        f_pos = solver.NumVar(0.0, solver.infinity(), "f_pos")
-        solver.Add(f_pos >= e_penalty_batch)
-
-        # Penalty = price_peak * f_pos
-        solver.Add(self.penalty_batch == float(self.price_peak_batch) * f_pos)
-
-        # p_nonneg >= e_penalty  (and p_nonneg >= 0 by var bound)
-        solver.Add(p_nonneg_batch >= e_penalty_batch)
-
-        # Per-time constraints
-        for i, t in enumerate(time_batch):
-            # power balance: P_HPP = wind + solar - curtail + (P_dis - P_ch)
-            solver.Add(
-                P_HPP_batch[t] == -P_curtail_batch[t], name=f"P_HPP_t_balance{t}"
-            )
-
-    def ortools_objective(self, solver):
-        """ """
-        # --- defaults
-        objective = solver.Objective()
-        for t in self.time_batch:
-            objective.SetCoefficient(
-                self.P_HPP_batch[t], float(self.price_ts_batch.loc[t])
-            )
-
-        if self.penalty_batch is not None:
-            objective.SetCoefficient(self.penalty_batch, -1.0)
-        # penalty term (note penalty = price_peak * p_nonneg; objective subtracts it)
-        objective.SetCoefficient(self.p_nonneg_batch, -float(self.price_peak_batch))
-
-        objective.SetMaximization()
-
-    def ortools_outputs(self):
-        """ """
-        batch = self.batch
-        time_batch = self.time_batch
-        N_t_batch = self.N_t_batch
-        price_peak_batch = self.price_peak_batch
-        p_nonneg_batch = self.p_nonneg_batch
-        P_HPP_batch = self.P_HPP_batch
-        P_curtail_batch = self.P_curtail_batch
-
-        # --- defaults
-        P_HPP_ts_batch = np.array([P_HPP_batch[t].solution_value() for t in time_batch])
-        P_curtail_ts_batch = np.array(
-            [P_curtail_batch[t].solution_value() for t in time_batch]
-        )
-
-        penalty_val_batch = float(price_peak_batch * p_nonneg_batch.solution_value())
-        penalty_ts_batch = np.ones(N_t_batch) * (penalty_val_batch / float(N_t_batch))
-
-        self.P_HPP_ts[batch] = P_HPP_ts_batch
-        self.P_curtailment_ts[batch] = P_curtail_ts_batch
-        self.penalty_ts[batch] = penalty_ts_batch
-
     def pyomo_variables(self, mdl, **kwargs) -> Dict[str, Any]:
         """ """
+        mdl = pyo.ConcreteModel()
         # --- defaults
         time_batch = self.time_batch
 
@@ -380,6 +282,10 @@ class EMSCoreDefaults(EMSCoreInterface):
         self.add_to_objective_pyomo(mdl, addition_expr=electricity_income)
         self.add_to_objective_pyomo(mdl, addition_expr=penalty)
 
+    def pyomo_solve(self, mdl):
+        solver = pyo.SolverFactory("cplex")  # glpk
+        result = solver.solve(mdl, tee=False)  # tee=True if you want solver log
+
     def pyomo_outputs(self, mdl, **kwargs):
         """ """
         N_t = self.N_t_batch
@@ -411,3 +317,148 @@ class EMSCoreDefaults(EMSCoreInterface):
         self.P_HPP_ts[batch] = P_HPP_ts_batch
         self.P_curtailment_ts[batch] = P_curtailment_ts_batch
         self.penalty_ts[batch] = penalty_ts_batch
+
+    def ortools_variables(self, solver):
+        """ """
+        solver = pywraplp.Solver.CreateSolver("GLOP")
+        if solver is None:
+            raise RuntimeError(
+                "OR-Tools GLOP solver not available. Install ortools or choose another solver backend."
+            )
+        time_batch = self.time_batch
+        hpp_grid_connection = self.hpp_grid_connection
+
+        # --- defaults
+        P_HPP_batch = {
+            t: solver.NumVar(0.0, float(hpp_grid_connection), f"P_HPP_{i}")
+            for i, t in enumerate(time_batch)
+        }
+
+        P_curtail_batch = {
+            t: solver.NumVar(0.0, solver.infinity(), f"P_curt_{i}")
+            for i, t in enumerate(time_batch)
+        }
+
+        penalty_el_batch = solver.NumVar(
+            -solver.infinity(), solver.infinity(), "penalty_el"
+        )
+
+        e_penalty_batch = solver.NumVar(
+            -solver.infinity(), solver.infinity(), "e_penalty"
+        )
+
+        p_nonneg_batch = solver.NumVar(
+            0.0, solver.infinity(), "p_nonneg"
+        )  # represents max(0, e_penalty)
+
+        self.P_HPP_batch = P_HPP_batch
+        self.p_nonneg_batch = p_nonneg_batch
+        self.P_curtail_batch = P_curtail_batch
+        self.penalty_el_batch = penalty_el_batch
+        self.e_penalty_batch = e_penalty_batch
+
+    def ortools_constraints(self, solver):
+        """ """
+        time_batch = self.time_batch
+        N_t_batch = self.N_t_batch
+        e_peak_period_expected_batch = self.e_peak_period_expected_batch
+        peak_hours_index_batch = self.peak_hours_index_batch
+
+        P_HPP_batch = self.P_HPP_batch
+        p_nonneg_batch = self.p_nonneg_batch
+        P_curtail_batch = self.P_curtail_batch
+        e_penalty_batch = self.e_penalty_batch
+        penalty_el_batch = self.penalty_el_batch
+
+        # delta variables for absolute battery power change cost
+        delta = {}
+        for i in range(N_t_batch - 1):
+            t = time_batch[i]
+            delta[t] = solver.NumVar(0.0, solver.infinity(), f"delta_{i}")
+
+        self.delta = delta
+
+        # --- defaults
+        # e_penalty == e_peak_period_expected - sum(P_HPP over peak hours)
+        # Sum of P_HPP over peak hours
+        expr = (
+            solver.Sum(
+                [P_HPP_batch[time_batch[int(idx)]] for idx in peak_hours_index_batch]
+            )
+            if len(peak_hours_index_batch) > 0
+            else 0.0
+        )
+
+        # Define e_penalty
+
+        solver.Add(e_penalty_batch == float(e_peak_period_expected_batch) - expr)
+
+        # Linearize f_pos = max(0, e_penalty)
+        f_pos = solver.NumVar(0.0, solver.infinity(), "f_pos")
+        solver.Add(f_pos >= e_penalty_batch)
+
+        # Penalty = price_peak * f_pos
+        solver.Add(penalty_el_batch == float(self.price_peak_batch) * f_pos)
+
+        # p_nonneg >= e_penalty  (and p_nonneg >= 0 by var bound)
+        solver.Add(p_nonneg_batch >= e_penalty_batch)
+
+        # Per-time constraints
+        for i, t in enumerate(time_batch):
+            # power balance: P_HPP = wind + solar - curtail + (P_dis - P_ch)
+            solver.Add(
+                P_HPP_batch[t] == -P_curtail_batch[t], name=f"P_HPP_t_balance{t}"
+            )
+
+    def ortools_objective(self, solver):
+        """ """
+        # --- defaults
+        objective = solver.Objective()
+        for t in self.time_batch:
+            objective.SetCoefficient(
+                self.P_HPP_batch[t], float(self.price_ts_batch.loc[t])
+            )
+
+        if self.penalty_el_batch is not None:
+            objective.SetCoefficient(self.penalty_el_batch, -1.0)
+        # penalty term (note penalty = price_peak * p_nonneg; objective subtracts it)
+        # objective.SetCoefficient(self.p_nonneg_batch, -float(self.price_peak_batch))
+
+        objective.SetMaximization()
+
+    def ortools_outputs(self):
+        """ """
+        batch = self.batch
+        time_batch = self.time_batch
+        N_t_batch = self.N_t_batch
+        price_peak_batch = self.price_peak_batch
+        p_nonneg_batch = self.p_nonneg_batch
+        P_HPP_batch = self.P_HPP_batch
+        P_curtail_batch = self.P_curtail_batch
+
+        # --- defaults
+        P_HPP_ts_batch = np.array([P_HPP_batch[t].solution_value() for t in time_batch])
+        P_curtail_ts_batch = np.array(
+            [P_curtail_batch[t].solution_value() for t in time_batch]
+        )
+
+        penalty_el_val_batch = float(price_peak_batch * p_nonneg_batch.solution_value())
+        penalty_el_ts_batch = np.ones(N_t_batch) * (
+            penalty_el_val_batch / float(N_t_batch)
+        )
+
+        penalty_ts_batch = penalty_el_ts_batch
+
+        self.P_HPP_ts[batch] = P_HPP_ts_batch
+        self.P_curtailment_ts[batch] = P_curtail_ts_batch
+        self.penalty_ts[batch] = penalty_ts_batch
+
+    def update_final_outputs(self, out):
+        """ """
+        # --- defaults
+        out_defaults = {
+            "P_HPP_ts": self.P_HPP_ts,
+            "P_curtailment_ts": self.P_curtailment_ts,
+            "penalty_ts": self.penalty_ts,
+        }
+        out.update(out_defaults)

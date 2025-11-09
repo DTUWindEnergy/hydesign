@@ -7,6 +7,7 @@ import pyomo.environ as pyo
 
 from hydesign.ems_modular.modules.ems_core_helpers import (
     EMSCoreInterface,
+    add_piecewise_relation_ortools,
     series_from_indexed_var,
 )
 
@@ -42,7 +43,7 @@ class EMSCoreP2x(EMSCoreInterface):
     def final_process(self, **kwargs) -> Dict[str, Any]:
         kwargs["LoS_H2_ts"][-1] = kwargs["LoS_H2_ts"][0]
 
-    def solver_init(self, batch, **kwargs) -> Dict[str, Any]:
+    def batch_data(self, batch, **kwargs) -> Dict[str, Any]:
         self.price_H2_batch = self.price_H2  # .iloc[batch]
         self.m_H2_demand_ts_batch = self.m_H2_demand_ts.iloc[batch]
         self.H2_storage_t_batch = self.H2_storage_t.iloc[batch]
@@ -499,14 +500,15 @@ class EMSCoreP2x(EMSCoreInterface):
             if self.H2_storage_t_batch[t] == 0:
                 solver.Add(m_H2_offtake_t_batch[t] == m_H2_t_batch[t])
 
-            # Hydrogen production equality
-            # solver.Add(m_H2_t_batch[t] == H2_prod[t])
-            # Create the piecewise linear constraint for H2 production
-
-            solver.add_element(
-                m_H2_t_batch[t],
+            # estimate H2_P relation as a single line
+            slope = (H2_curve_list[-2][1] - H2_curve_list[1][1]) / (
+                H2_curve_list[-2][0] - H2_curve_list[1][0]
             )
-            solver.Add(m_H2_t_batch[t] == 16 * P_ptg_t_batch[t])
+
+            solver.Add(
+                self.m_H2_t_batch[t]
+                == slope * self.P_ptg_t_batch[t] + H2_curve_list[1][0]
+            )
 
         # Penalty construction: unmet H2 demand sum (identical formula)
         unmet_sum = solver.Sum(

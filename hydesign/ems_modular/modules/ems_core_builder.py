@@ -3,6 +3,7 @@
 ems_core generator - multi-file merge (refactored)
 Preserves original behavior and output.
 """
+
 from __future__ import annotations
 
 import ast
@@ -246,15 +247,67 @@ def build_combined_class_text_multi(
         parts.append("    pass\n")
         return "".join(parts)
 
+    methods_maps = {
+        "solve",
+        "batch",
+        "cplex",
+        "pyomo",
+        "ortools",
+        "update_final_outputs",
+    }
+    #
+    print(ordered)
+    ordered = [
+        "__init__",
+        "solve",
+        "batch_data",
+        "cplex_variables",
+        "cplex_constraints",
+        "cplex_opjective",
+        "cplex_solve",
+        "cplex_outputs",
+        "pyomo_variables",
+        "pyomo_constraints",
+        "pyomo_opjective",
+        "pyomo_solve",
+        "pyomo_outputs",
+        "ortools_variables",
+        "ortools_constraints",
+        "ortools_objective",
+        "ortools_solve",
+        "ortools_outputs",
+        "update_final_outputs",
+    ]
     for mname in ordered:
+        # print(mname)
+
         # choose header from first file that has it (prefer primary)
         chosen_header = ""
-        for methods_map in all_methods_per_file:
-            if mname in methods_map:
-                _, h, _ = methods_map[mname]
-                chosen_header = h
-                break
+        if mname in {
+            "__init__",
+            "solve",
+            "final_process",
+        }:
+            chosen_header = f"    def {mname}(self, **kwargs):"
+
+        elif mname == "batch_data":
+            chosen_header = f"    def {mname}(self, batch):"
+
+        elif mname == "update_final_outputs":
+            chosen_header = f"    def {mname}(self, out):"
+        else:
+            prefix = mname.split("_", 1)[0]
+            if prefix in methods_maps:
+                # print("True")
+                # print(prefix)
+                # print(methods_maps)
+
+                chosen_header = f"    def {prefix}(self, **kwarg):"
+                # print(methods_maps)
+                methods_maps.remove(prefix)
+            # break
         chosen_header = _ensure_trailing_newline(chosen_header).rstrip("\n") + "\n"
+        # print(chosen_header)
         parts.append(chosen_header)
 
         appended_any = False

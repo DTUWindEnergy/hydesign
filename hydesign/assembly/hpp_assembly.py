@@ -430,7 +430,7 @@ class hpp_model(hpp_base):
         ems_script = sim_pars.get("ems_script", "static")
 
         ems_modular_regenerate = sim_pars.get("ems_modular_regenerate", False)
-        technologies = sim_pars.get("technologies", ("wind", "solar", "battery"))
+        technologies = ("wind", "solar", "battery")
         ems_solver = sim_pars.get("ems_solver", "cplex")
         batch_size = sim_pars.get("batch_size", 110)
 

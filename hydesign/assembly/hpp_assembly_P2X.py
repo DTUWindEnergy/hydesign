@@ -72,7 +72,7 @@ class hpp_model_P2X(hpp_base):
         ems_script = sim_pars.get("ems_script", "static")
 
         ems_modular_regenerate = sim_pars.get("ems_modular_regenerate", False)
-        technologies = sim_pars.get("technologies", ("wind", "solar", "battery", "p2x"))
+        technologies = ("wind", "solar", "battery", "p2x")
         ems_solver = sim_pars.get("ems_solver", "cplex")
         batch_size = sim_pars.get("batch_size", 110)
 

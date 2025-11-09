@@ -17,7 +17,7 @@ class EMSCoreSolar(EMSCoreInterface):
     def __init__(self, **kwargs) -> Dict[str, Any]:
         self.solar_ts = kwargs["solar_ts"]
 
-    def solver_init(self, batch, **kwargs) -> Dict[str, Any]:
+    def batch_data(self, batch, **kwargs) -> Dict[str, Any]:
         self.solar_ts_batch = self.solar_ts.iloc[batch]
 
     def cplex_constraints(self, mdl, **kwargs) -> Dict[str, Any]:

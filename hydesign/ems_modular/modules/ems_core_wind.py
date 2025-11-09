@@ -15,7 +15,7 @@ class EMSCoreWind(EMSCoreInterface):
     def __init__(self, **kwargs) -> Dict[str, Any]:
         self.wind_ts = kwargs["wind_ts"]
 
-    def solver_init(self, batch, **kwargs) -> Dict[str, Any]:
+    def batch_data(self, batch, **kwargs) -> Dict[str, Any]:
         self.wind_ts_batch = self.wind_ts.iloc[batch]
 
     def cplex_constraints(self, mdl, **kwargs) -> Dict[str, Any]:

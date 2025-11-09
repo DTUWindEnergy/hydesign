@@ -27,12 +27,7 @@ class EMSCoreBattery(EMSCoreInterface):
         self.P_charge_discharge_ts = np.zeros(self.n_ts)
         self.E_SOC_ts = np.zeros(self.n_ts + 1)
 
-    def final_process(self, **kwargs) -> Dict[str, Any]:
-        # set last SOC element equal to initial SOC.
-        kwargs["E_SOC_ts"][-1] = kwargs["E_SOC_ts"][0]
-        # return kwargs
-
-    def solver_init(self, batch, **kwargs) -> Dict[str, Any]:
+    def batch_data(self, batch, **kwargs) -> Dict[str, Any]:
         self.E_batt_MWh_t_batch = self.E_batt_MWh_t.iloc[batch]
 
     def cplex_variables(self, mdl, **kwargs) -> Dict[str, Any]:
@@ -90,44 +85,10 @@ class EMSCoreBattery(EMSCoreInterface):
         self.P_ch_batch = P_ch_batch
         self.E_SOC_batch = E_SOC_batch
 
-    def pyomo_variables(self, mdl, **kwargs) -> Dict[str, Any]:
-        time_batch = self.time_batch
-        SOCtime_batch = self.SOCtime_batch
-        P_batt_MW = self.P_batt_MW
-        charge_efficiency = self.charge_efficiency
-
-        peak_hours_index_batch = self.peak_hours_index_batch
-        mdl.IDX3 = [t for t in range(len(time_batch)) if t in peak_hours_index_batch]
-        mdl.IDX4 = range(len(SOCtime_batch))
-        mdl.IDX5 = range(len(time_batch) - 1)
-        # Power charge/discharge from battery with Lower/Upper bounds
-        mdl.P_charge_discharge_t = pyo.Var(
-            mdl.IDX1,
-            domain=pyo.Reals,
-            bounds=(-2 * P_batt_MW, 2 * P_batt_MW),  # excess bounds
-        )
-        # Battery energy level
-        mdl.E_SOC_t = pyo.Var(
-            mdl.IDX4, domain=pyo.NonNegativeReals, bounds=(0, 1e12)
-        )  # bounds=(0,E_batt_MWh))
-
-        mdl.P_charge_discharge_with_eff_t = pyo.Var(
-            mdl.IDX1,
-            domain=pyo.Reals,
-            bounds=(-P_batt_MW / charge_efficiency, P_batt_MW * charge_efficiency),
-        )
-
-        # Battery delta for battery operation constraints
-        mdl.P_battery_delta = pyo.Var(mdl.IDX5, domain=pyo.Reals, bounds=(-1e12, 1e12))
-
-        mdl.P_battery_delta_abs_pw = pyo.Var(
-            mdl.IDX5, domain=pyo.Reals, bounds=(0, 1e12)
-        )
-
     def cplex_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
         # Intitial and end SOC
         mdl.add_constraint(
-            self.E_SOC_t_batch[self.SOCtime_batch[0]]
+            self.E_SOC_t_batch[self.SOCtime_batch[-1]]
             == 0.5 * self.E_batt_MWh_t_batch[self.time_batch[0]]
         )
 
@@ -255,105 +216,6 @@ class EMSCoreBattery(EMSCoreInterface):
             * float(self.E_batt_MWh_t_batch.loc[time_batch[-1]])
         )
 
-    def pyomo_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
-        time_batch = self.time_batch
-        SOCtime_batch = self.SOCtime_batch
-
-        battery_depth_of_discharge = self.battery_depth_of_discharge
-        E_batt_MWh_t_batch = self.E_batt_MWh_t_batch
-
-        for t in range(0, len(time_batch)):
-            # battery
-            self.update_constraint_rhs_pyomo(
-                mdl,
-                "power_constraint",
-                added_value=mdl.P_charge_discharge_with_eff_t[t],
-                idx=t,
-            )
-
-        mdl.charge_discharge_constraint = pyo.ConstraintList()
-        mdl.battery_energy_constraint = pyo.ConstraintList()
-        mdl.battery_energy_min_constraint = pyo.ConstraintList()
-        mdl.battery_dynamics_constraint = pyo.ConstraintList()
-
-        mdl.SOC_initial_condition = pyo.Constraint(
-            expr=mdl.E_SOC_t[0] == 0.5 * E_batt_MWh_t_batch.iloc[0]
-        )
-
-        # SOC at the end of the year has to be equal to SOC at the beginning of the year
-        mdl.SOC_final = pyo.Constraint(
-            expr=mdl.E_SOC_t[len(time_batch) - 1]
-            == 0.5 * E_batt_MWh_t_batch.iloc[len(time_batch) - 1]
-        )
-
-        # Delta_t of 1 hour
-        dt = 1
-        for t in range(0, len(time_batch)):
-            # Constraining battery energy level to maximum battery level
-            mdl.battery_energy_constraint.add(
-                mdl.E_SOC_t[t] <= E_batt_MWh_t_batch.iloc[t]
-            )
-            # Constraining battery energy level to minimum battery level
-            mdl.battery_energy_min_constraint.add(
-                mdl.E_SOC_t[t]
-                >= (1 - battery_depth_of_discharge) * E_batt_MWh_t_batch.iloc[t]
-            )
-            # print(battery_depth_of_discharge)
-
-        # Battery dynamics with efficiency charge =! discharge
-        for t in range(1, len(time_batch)):
-            mdl.battery_dynamics_constraint.add(
-                mdl.E_SOC_t[t]
-                == mdl.E_SOC_t[t - 1] - mdl.P_charge_discharge_with_eff_t[t] * dt
-            )
-
-        # for t in mdl.IDX5:
-        #     mdl.power_constraint.add(
-        #         mdl.P_battery_delta[t]
-        #         == mdl.P_charge_discharge_with_eff_t[t + 1]
-        #         - mdl.P_charge_discharge_with_eff_t[t]
-        #     )
-
-        # x-values of the piece-wise function
-        f_piecewise_x_vals = [-self.P_batt_MW, 0, self.P_batt_MW]
-        # y-values of the piece-wise function
-        f_piecewise_y_vals = [
-            -self.P_batt_MW / self.charge_efficiency,
-            0,
-            self.P_batt_MW * self.charge_efficiency,
-        ]
-        mdl.battery_eff_constraint = pyo.Piecewise(
-            mdl.IDX1,
-            mdl.P_charge_discharge_with_eff_t,
-            mdl.P_charge_discharge_t,
-            pw_pts=f_piecewise_x_vals,
-            f_rule=f_piecewise_y_vals,
-            pw_constr_type="EQ",
-            # pw_repn='SOS2',
-            # pw_repn='CC',
-            # pw_repn='DCC',
-            pw_repn="DLOG",
-            force_pw=False,
-            warn_domain_coverage=False,
-            unbounded_domain_var=True,
-        )
-
-        mdl.P_battery_delta_abs_pw_constr = pyo.Piecewise(
-            mdl.IDX5,
-            mdl.P_battery_delta_abs_pw,
-            mdl.P_battery_delta,
-            pw_pts=[-1e12, 0, 1e12],
-            f_rule=[1e12, 0, 1e12],
-            pw_constr_type="EQ",
-            # pw_repn='SOS2',
-            # pw_repn='CC',
-            # pw_repn='DCC',
-            pw_repn="DLOG",
-            force_pw=False,
-            warn_domain_coverage=False,
-            # unbounded_domain_var=True
-        )
-
     def cplex_opjective(self, mdl):
         # Piecewise function for "absolute value" function
         self.fabs = mdl.piecewise(-1, [(0, 0)], 1)
@@ -437,6 +299,138 @@ class EMSCoreBattery(EMSCoreInterface):
         self.P_charge_discharge_ts[self.batch] = P_charge_discharge_ts_batch
         self.E_SOC_ts[self.batch] = E_SOC_ts_batch[:-1]
 
+    def pyomo_variables(self, mdl, **kwargs) -> Dict[str, Any]:
+        time_batch = self.time_batch
+        SOCtime_batch = self.SOCtime_batch
+        P_batt_MW = self.P_batt_MW
+        charge_efficiency = self.charge_efficiency
+
+        peak_hours_index_batch = self.peak_hours_index_batch
+        mdl.IDX3 = [t for t in range(len(time_batch)) if t in peak_hours_index_batch]
+        mdl.IDX4 = range(len(SOCtime_batch))
+        mdl.IDX5 = range(len(time_batch) - 1)
+        # Power charge/discharge from battery with Lower/Upper bounds
+        mdl.P_charge_discharge_t = pyo.Var(
+            mdl.IDX1,
+            domain=pyo.Reals,
+            bounds=(-2 * P_batt_MW, 2 * P_batt_MW),  # excess bounds
+        )
+        # Battery energy level
+        mdl.E_SOC_t = pyo.Var(
+            mdl.IDX4, domain=pyo.NonNegativeReals, bounds=(0, 1e12)
+        )  # bounds=(0,E_batt_MWh))
+
+        mdl.P_charge_discharge_with_eff_t = pyo.Var(
+            mdl.IDX1,
+            domain=pyo.Reals,
+            bounds=(-P_batt_MW / charge_efficiency, P_batt_MW * charge_efficiency),
+        )
+
+        # Battery delta for battery operation constraints
+        mdl.P_battery_delta = pyo.Var(mdl.IDX5, domain=pyo.Reals, bounds=(-1e12, 1e12))
+
+        mdl.P_battery_delta_abs_pw = pyo.Var(
+            mdl.IDX5, domain=pyo.Reals, bounds=(0, 1e12)
+        )
+
+    def pyomo_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
+        time_batch = self.time_batch
+        SOCtime_batch = self.SOCtime_batch
+
+        battery_depth_of_discharge = self.battery_depth_of_discharge
+        E_batt_MWh_t_batch = self.E_batt_MWh_t_batch
+
+        for t in range(0, len(time_batch)):
+            # battery
+            self.update_constraint_rhs_pyomo(
+                mdl,
+                "power_constraint",
+                added_value=mdl.P_charge_discharge_with_eff_t[t],
+                idx=t,
+            )
+
+        mdl.charge_discharge_constraint = pyo.ConstraintList()
+        mdl.battery_energy_constraint = pyo.ConstraintList()
+        mdl.battery_energy_min_constraint = pyo.ConstraintList()
+        mdl.battery_dynamics_constraint = pyo.ConstraintList()
+
+        mdl.SOC_initial_condition = pyo.Constraint(
+            expr=mdl.E_SOC_t[mdl.IDX4[0]] == 0.5 * E_batt_MWh_t_batch.iloc[0]
+        )
+
+        # SOC at the end of the year has to be equal to SOC at the beginning of the year
+        mdl.SOC_final = pyo.Constraint(
+            expr=mdl.E_SOC_t[mdl.IDX4[-1]] == 0.5 * E_batt_MWh_t_batch.iloc[0]
+        )
+
+        # Delta_t of 1 hour
+        dt = 1
+        for t in range(0, len(time_batch)):
+            # Constraining battery energy level to maximum battery level
+            mdl.battery_energy_constraint.add(
+                mdl.E_SOC_t[t] <= E_batt_MWh_t_batch.iloc[t]
+            )
+            # Constraining battery energy level to minimum battery level
+            mdl.battery_energy_min_constraint.add(
+                mdl.E_SOC_t[t]
+                >= (1 - battery_depth_of_discharge) * E_batt_MWh_t_batch.iloc[t]
+            )
+            # print(battery_depth_of_discharge)
+
+        # Battery dynamics with efficiency charge =! discharge
+        for t in range(1, len(time_batch)):
+            mdl.battery_dynamics_constraint.add(
+                mdl.E_SOC_t[t]
+                == mdl.E_SOC_t[t - 1] - mdl.P_charge_discharge_with_eff_t[t] * dt
+            )
+
+        # for t in mdl.IDX5:
+        #     mdl.power_constraint.add(
+        #         mdl.P_battery_delta[t]
+        #         == mdl.P_charge_discharge_with_eff_t[t + 1]
+        #         - mdl.P_charge_discharge_with_eff_t[t]
+        #     )
+
+        # x-values of the piece-wise function
+        f_piecewise_x_vals = [-self.P_batt_MW, 0, self.P_batt_MW]
+        # y-values of the piece-wise function
+        f_piecewise_y_vals = [
+            -self.P_batt_MW / self.charge_efficiency,
+            0,
+            self.P_batt_MW * self.charge_efficiency,
+        ]
+        mdl.battery_eff_constraint = pyo.Piecewise(
+            mdl.IDX1,
+            mdl.P_charge_discharge_with_eff_t,
+            mdl.P_charge_discharge_t,
+            pw_pts=f_piecewise_x_vals,
+            f_rule=f_piecewise_y_vals,
+            pw_constr_type="EQ",
+            # pw_repn='SOS2',
+            # pw_repn='CC',
+            # pw_repn='DCC',
+            pw_repn="DLOG",
+            force_pw=False,
+            warn_domain_coverage=False,
+            unbounded_domain_var=True,
+        )
+
+        mdl.P_battery_delta_abs_pw_constr = pyo.Piecewise(
+            mdl.IDX5,
+            mdl.P_battery_delta_abs_pw,
+            mdl.P_battery_delta,
+            pw_pts=[-1e12, 0, 1e12],
+            f_rule=[1e12, 0, 1e12],
+            pw_constr_type="EQ",
+            # pw_repn='SOS2',
+            # pw_repn='CC',
+            # pw_repn='DCC',
+            pw_repn="DLOG",
+            force_pw=False,
+            warn_domain_coverage=False,
+            # unbounded_domain_var=True
+        )
+
     def pyomo_outputs(self, mdl, **kwargs):
         batch = self.batch
         time_batch = self.time_batch
@@ -460,6 +454,8 @@ class EMSCoreBattery(EMSCoreInterface):
         self.E_SOC_ts[batch] = E_SOC_ts_batch[:-1]
 
     def update_final_outputs(self, out):
+        # set last SOC element equal to initial SOC.
+        self.E_SOC_ts[-1] = self.E_SOC_ts[0]
         out_battery = {
             "P_charge_discharge_ts": self.P_charge_discharge_ts,
             "E_SOC_ts": self.E_SOC_ts,

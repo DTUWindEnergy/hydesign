@@ -22,7 +22,7 @@ def ems_core(**kwargs):
             mdl.context.cplex_parameters.emphasis.mip = 1
 
             #
-            ems_core_combined.solver_init(batch, **kwargs)
+            ems_core_combined.batch(batch, **kwargs)
             ems_core_combined.cplex_variables(mdl)
             ems_core_combined.cplex_opjective(mdl)
             ems_core_combined.cplex_constraints(mdl)
@@ -40,7 +40,7 @@ def ems_core(**kwargs):
                 )
 
             #
-            ems_core_combined.solver_init(batch, **kwargs)
+            ems_core_combined.batch(batch, **kwargs)
             ems_core_combined.ortools_variables(solver)
             ems_core_combined.ortools_objective(solver)
             ems_core_combined.ortools_constraints(solver)
@@ -59,7 +59,7 @@ def ems_core(**kwargs):
             ## cplex share
             mdl = pyo.ConcreteModel()
 
-            ems_core_combined.solver_init(batch, **kwargs)
+            ems_core_combined.batch(batch, **kwargs)
             ems_core_combined.pyomo_variables(mdl)
             ems_core_combined.pyomo_constraints(mdl)
             ems_core_combined.pyomo_opjective(mdl)

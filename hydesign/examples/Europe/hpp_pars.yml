@@ -4,9 +4,8 @@
 
 ems_script: "modular" # static or modular
 ems_modular_regenerate: true
-#technologies: [wind, solar, battery]
-ems_solver: "pyomo"
-batch_size: 50 #110
+ems_solver: "ortools"
+batch_size: 110 #110
 
 # --------------------------------------------------------------------------------------------
 # HPP Global
