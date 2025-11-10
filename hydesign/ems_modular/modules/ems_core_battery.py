@@ -229,15 +229,10 @@ class EMSCoreBattery(EMSCoreInterface):
         )
 
     def cplex_opjective(self, mdl):
-        # Piecewise function for "absolute value" function
-        self.fabs = mdl.piecewise(-1, [(0, 0)], 1)
 
-        self.add_to_objective(mdl, addition_expr=-cost_fluc_batt_batch)
-        # self.add_to_objective(mdl, addition_expr=-battery_penalty)
+        objective_expr -= cost_fluc_batt_batch
 
     def ortools_objective(self, solver):
-        objective = solver.Objective()
-
         # battery fluctuation cost
         for i in range(self.N_t_batch - 1):
             t = time_batch[i]
@@ -247,8 +242,6 @@ class EMSCoreBattery(EMSCoreInterface):
             )
             objective.SetCoefficient(self.delta[t], coef)
 
-        objective.SetMaximization()
-
     def pyomo_opjective(self, mdl, **kwargs):
         cost_of_battery_P_fluct_in_peak_price_ratio = (
             self.cost_of_battery_P_fluct_in_peak_price_ratio
@@ -257,14 +250,14 @@ class EMSCoreBattery(EMSCoreInterface):
         price_ts_to_max = self.price_ts_to_max_batch
 
         # battery
-        battery_cost = sum(
+        battery_fluc_cost = sum(
             mdl.P_battery_delta_abs_pw[t]
             * cost_of_battery_P_fluct_in_peak_price_ratio
             * price_ts_to_max.iloc[t]
             for t in mdl.IDX5
         )
 
-        self.add_to_objective_pyomo(mdl, addition_expr=-battery_cost)
+        objective_expr -= battery_fluc_cost
 
     def cplex_outputs(self, sol):
         P_charge_discharge_ts_df = pd.DataFrame.from_dict(

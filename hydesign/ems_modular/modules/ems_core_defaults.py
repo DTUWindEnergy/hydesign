@@ -100,6 +100,7 @@ class EMSCoreDefaults(EMSCoreInterface):
 
         # get required data from self
         time_batch = self.time_batch
+
         # ------------
         # Variables
         # ------------
@@ -150,27 +151,23 @@ class EMSCoreDefaults(EMSCoreInterface):
             ctname="penalty_el",
         )
 
-        # for t in time_batch:
-        #     mdl.add_constraint(
-        #         P_HPP_t_batch[t] == -P_curtailment_t_batch[t],
-        #         ctname=f"P_HPP_t_balance{t}",
-        #     )
-
     def cplex_opjective(self, mdl):
         """ """
         # ------------
         # Objective
         # ------------
-        # --- default
-        fabs = mdl.piecewise(-1, [(0, 0)], 1)
-        mdl.maximize(0)
 
+        # --- default
         revenue_el = mdl.sum(
             self.price_ts_batch[t] * P_HPP_t_batch[t] for t in time_batch
         )
-        self.add_to_objective(mdl, addition_expr=revenue_el)
 
-        self.add_to_objective(mdl, addition_expr=-penalty_el_batch)
+        objective_expr = revenue_el - penalty_el_batch
+
+    def cplex_set_objective(self, mdl):
+        """ """
+        # pass objective to cplex model
+        mdl.maximize(objective_expr)
 
     def cplex_solve(self, mdl):
         """ """
@@ -253,17 +250,12 @@ class EMSCoreDefaults(EMSCoreInterface):
         # ------------
         # Constraints
         # ------------
-
         for t in mdl.IDX1:
             mdl.power_constraint[t] = mdl.P_HPP_t[t] == P_total[t]
 
         # --- defaults
-
         e_peak_period_expected_batch = self.e_peak_period_expected_batch
         price_peak_batch = self.price_peak_batch
-
-        # mdl.curtailment_constraint = pyo.ConstraintList()
-        # mdl.power_constraint = pyo.ConstraintList()
 
         mdl.penalty_constraint = pyo.ConstraintList()
 
@@ -296,21 +288,19 @@ class EMSCoreDefaults(EMSCoreInterface):
         # --- defaults
         price_ts_batch = self.price_ts_batch
 
-        mdl.OBJ = pyo.Objective(
-            # revenues and OPEX
-            expr=0,
-            sense=pyo.maximize,
-        )
-
         electricity_income = sum(
             price_ts_batch.iloc[t] * mdl.P_HPP_t[t] for t in mdl.IDX1
         )
         penalty = -mdl.penalty[0]
-
-        self.add_to_objective_pyomo(mdl, addition_expr=electricity_income)
-        self.add_to_objective_pyomo(mdl, addition_expr=penalty)
+        objective_expr = electricity_income - penalty
 
     def pyomo_solve(self, mdl):
+
+        mdl.OBJ = pyo.Objective(
+            # revenues and OPEX
+            expr=objective_expr,
+            sense=pyo.maximize,
+        )
         """ """
         # ------------
         # solve
@@ -403,7 +393,7 @@ class EMSCoreDefaults(EMSCoreInterface):
         # ------------
         # Constraints
         # ------------
-        # Per-time constraints
+        # P_HPP_t_balance constraints
         for i, t in enumerate(time_batch):
             # power balance: P_HPP = wind + solar - curtail + (P_dis - P_ch)
             solver.Add(P_HPP_batch[t] == P_total[t], name=f"P_HPP_t_balance{t}")
@@ -430,8 +420,6 @@ class EMSCoreDefaults(EMSCoreInterface):
             else 0.0
         )
 
-        # Define e_penalty
-
         solver.Add(e_penalty_batch == float(e_peak_period_expected_batch) - expr)
 
         # Linearize f_pos = max(0, e_penalty)
@@ -456,13 +444,9 @@ class EMSCoreDefaults(EMSCoreInterface):
 
         if penalty_el_batch is not None:
             objective.SetCoefficient(penalty_el_batch, -1.0)
-        # penalty term (note penalty = price_peak * p_nonneg; objective subtracts it)
-        # objective.SetCoefficient(self.p_nonneg_batch, -float(self.price_peak_batch))
-
-        objective.SetMaximization()
 
     def ortools_solve(self, solver):
-        """ """
+        objective.SetMaximization()
         # ------------
         # solve
         # ------------
@@ -477,7 +461,6 @@ class EMSCoreDefaults(EMSCoreInterface):
         # ------------
         # Outputs
         # ------------
-
         batch = self.batch
         N_t_batch = self.N_t_batch
         price_peak_batch = self.price_peak_batch

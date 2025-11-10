@@ -263,6 +263,7 @@ def build_combined_class_text_multi(
         "cplex_powerbalance",
         "cplex_constraints",
         "cplex_opjective",
+        "cplex_set_objective",
         "cplex_solve",
         "cplex_outputs",
         "pyomo_variables",
