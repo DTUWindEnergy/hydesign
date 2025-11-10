@@ -62,6 +62,10 @@ def split_method_header_body(
 ) -> Tuple[str, str]:
     """
     Extract header (decorators + def signature lines) and body (the rest) for a function node.
+    Behavior change: if there are comment or blank lines immediately after the def signature
+    (and before the first real body statement), move those lines into the body text so that
+    they will be treated as part of the function body in the merged output.
+
     Returns (header_text, body_text) with preserved newlines.
     """
     lines = module_src.splitlines(keepends=True)
@@ -78,8 +82,25 @@ def split_method_header_body(
         # fallback: assume body starts on the same line as def (empty function)
         first_body_lineno = func_node.lineno
 
+    # slice header and body as before
     header_lines = lines[header_start:first_body_lineno]
     body_lines = lines[first_body_lineno : func_node.end_lineno]
+
+    # --- NEW: move trailing comment/blank lines from header_lines into the start of body_lines
+    # walk backwards over header_lines collecting contiguous comment/blank lines at the end
+    move_idx = len(header_lines)  # exclusive index of start of moved segment
+    for i in range(len(header_lines) - 1, -1, -1):
+        ln = header_lines[i]
+        if ln.strip() == "" or ln.lstrip().startswith("#"):
+            move_idx = i
+        else:
+            break
+
+    if move_idx < len(header_lines):
+        # move header_lines[move_idx:] into the front of body_lines
+        moved = header_lines[move_idx:]
+        header_lines = header_lines[:move_idx]
+        body_lines = moved + body_lines
 
     header_text = "".join(header_lines)
     body_text = "".join(body_lines)
@@ -229,7 +250,7 @@ def build_combined_class_text_multi(
                 bases = b
                 break
     if not bases:
-        bases = ["EMSCoreInterface"]
+        bases = ["EMSCoreABC"]
 
     bases_text = "(" + ", ".join(bases) + ")"
 
@@ -263,7 +284,6 @@ def build_combined_class_text_multi(
         "cplex_powerbalance",
         "cplex_constraints",
         "cplex_opjective",
-        "cplex_set_objective",
         "cplex_solve",
         "cplex_outputs",
         "pyomo_variables",

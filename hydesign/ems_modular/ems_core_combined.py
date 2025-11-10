@@ -11,13 +11,13 @@ from docplex.mp.model import Model
 from ortools.linear_solver import pywraplp
 
 from hydesign.ems_modular.modules.ems_core_helpers import (
-    EMSCoreInterface,
+    EMSCoreABC,
     series_from_indexed_var,
     split_in_batch,
 )
 
 
-class EMSCoreCombined(EMSCoreInterface):
+class EMSCoreCombined(EMSCoreABC):
     """Auto-generated combined class (merged bodies of multiple classes)
 
     NOTE: bodies are concatenated (primary class then others). Please review for semantic issues.

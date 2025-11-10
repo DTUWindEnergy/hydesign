@@ -1,7 +1,4 @@
-# basic libraries
-from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List
-
+# imports
 import numpy as np
 import pandas as pd
 import pyomo.environ as pyo
@@ -9,19 +6,19 @@ from docplex.mp.model import Model
 from ortools.linear_solver import pywraplp
 
 from hydesign.ems_modular.modules.ems_core_helpers import (
-    EMSCoreInterface,
+    EMSCoreABC,
     series_from_indexed_var,
     split_in_batch,
 )
 
 
-class EMSCoreDefaults(EMSCoreInterface):
+class EMSCoreDefaults(EMSCoreABC):
     """
     Concrete EMS core implementation based on original EMSCoreBase code.
     Methods follow the original logic but are instance methods.
     """
 
-    def __init__(self, **kwargs) -> Dict[str, Any]:
+    def __init__(self, **kwargs):
         """ """
         # --- defaults
         self.ems_solver = kwargs["ems_solver"]
@@ -34,16 +31,14 @@ class EMSCoreDefaults(EMSCoreInterface):
         self.batch_size = kwargs.get("batch_size", 110)
         n_ts = len(self.price_ts)
         self.n_ts = n_ts
-
-        # split in batches
-        batches_all = split_in_batch(list(range(n_ts)), self.batch_size)
-        self.batches = batches_all
-
         self.P_HPP_ts = np.zeros(n_ts)
         self.P_curtailment_ts = np.zeros(n_ts)
         self.penalty_ts = np.zeros(n_ts)
 
+        self.batches = split_in_batch(list(range(n_ts)), self.batch_size)
+
     def solve(self, **kwargs):
+        """ """
         out_ems = {}
         ems_solver = self.ems_solver
         for ib, batch in enumerate(self.batches):
@@ -57,7 +52,7 @@ class EMSCoreDefaults(EMSCoreInterface):
             self.update_final_outputs(out_ems)
         return out_ems
 
-    def batch_data(self, batch, **kwargs) -> Dict[str, Any]:
+    def batch_data(self, batch, **kwargs):
         """ """
         # --- defaults
         self.price_ts_batch = self.price_ts.iloc[batch]
@@ -91,15 +86,14 @@ class EMSCoreDefaults(EMSCoreInterface):
 
         self.price_ts_to_max_batch = price_ts_to_max_batch
 
-    def cplex_variables(self, mdl, **kwargs) -> Dict[str, Any]:
+    def cplex_variables(self, mdl, **kwargs):
         """ """
+        time_batch = self.time_batch
+        SOCtime_batch = self.SOCtime_batch
         # create cplex model
         mdl = Model(name="EMS")
         mdl.context.cplex_parameters.threads = 1
         mdl.context.cplex_parameters.emphasis.mip = 1
-
-        # get required data from self
-        time_batch = self.time_batch
 
         # ------------
         # Variables
@@ -115,8 +109,7 @@ class EMSCoreDefaults(EMSCoreInterface):
         penalty_el_batch = mdl.continuous_var(name="penalty", lb=-1e12)
         e_penalty_batch = mdl.continuous_var(name="e_penalty", lb=-1e12)
 
-    def cplex_powerbalance(self, **kwargs) -> Dict[str, Any]:
-        """ """
+    def cplex_powerbalance(self, **kwargs):
         # ------------
         # Power balance
         # ------------
@@ -124,8 +117,7 @@ class EMSCoreDefaults(EMSCoreInterface):
         for t in time_batch:
             P_total[t] = -P_curtailment_t_batch[t]
 
-    def cplex_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
-        """ """
+    def cplex_constraints(self, mdl, **kwargs):
         # ------------
         # Constraints
         # ------------
@@ -152,7 +144,6 @@ class EMSCoreDefaults(EMSCoreInterface):
         )
 
     def cplex_opjective(self, mdl):
-        """ """
         # ------------
         # Objective
         # ------------
@@ -164,20 +155,16 @@ class EMSCoreDefaults(EMSCoreInterface):
 
         objective_expr = revenue_el - penalty_el_batch
 
-    def cplex_set_objective(self, mdl):
-        """ """
+    def cplex_solve(self, mdl):
         # pass objective to cplex model
         mdl.maximize(objective_expr)
 
-    def cplex_solve(self, mdl):
-        """ """
         # ------------
         # solve
         # ------------
         sol = mdl.solve(log_output=False)
 
     def cplex_outputs(self, sol):
-        """ """
         # ------------
         # Outputs
         # ------------
@@ -214,16 +201,16 @@ class EMSCoreDefaults(EMSCoreInterface):
         self.P_curtailment_ts[self.batch] = P_curtailment_ts_batch
         self.penalty_ts[self.batch] = penalty_el_ts_batch
 
-    def pyomo_variables(self, mdl, **kwargs) -> Dict[str, Any]:
+    def pyomo_variables(self, mdl, **kwargs):
         """ """
+        time_batch = self.time_batch
+        SOCtime_batch = self.SOCtime_batch
+        hpp_grid_connection = self.hpp_grid_connection
         # ------------
         # Variables
         # ------------
         mdl = pyo.ConcreteModel()
         # --- defaults
-        time_batch = self.time_batch
-
-        hpp_grid_connection = self.hpp_grid_connection
 
         mdl.IDX1 = range(len(time_batch))
         mdl.IDX2 = range(1)
@@ -236,8 +223,7 @@ class EMSCoreDefaults(EMSCoreInterface):
         mdl.penalty = pyo.Var(mdl.IDX2, domain=pyo.Reals, bounds=(-1e12, 1e12))
         mdl.e_penalty = pyo.Var(mdl.IDX2, domain=pyo.Reals, bounds=(-1e12, 1e12))
 
-    def pyomo_powerbalance(self, **kwargs) -> Dict[str, Any]:
-        """ """
+    def pyomo_powerbalance(self, **kwargs):
         # ------------
         # Power balance
         # ------------
@@ -245,8 +231,7 @@ class EMSCoreDefaults(EMSCoreInterface):
         for t in mdl.IDX1:
             P_total[t] -= mdl.P_curtailment_t_batch[t]
 
-    def pyomo_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
-        """ """
+    def pyomo_constraints(self, mdl, **kwargs):
         # ------------
         # Constraints
         # ------------
@@ -281,7 +266,6 @@ class EMSCoreDefaults(EMSCoreInterface):
         )
 
     def pyomo_opjective(self, mdl, **kwargs):
-        """ """
         # ------------
         # Objective
         # ------------
@@ -295,13 +279,12 @@ class EMSCoreDefaults(EMSCoreInterface):
         objective_expr = electricity_income - penalty
 
     def pyomo_solve(self, mdl):
-
         mdl.OBJ = pyo.Objective(
             # revenues and OPEX
             expr=objective_expr,
             sense=pyo.maximize,
         )
-        """ """
+
         # ------------
         # solve
         # ------------
@@ -309,7 +292,6 @@ class EMSCoreDefaults(EMSCoreInterface):
         result = solver.solve(mdl, tee=False)  # tee=True if you want solver log
 
     def pyomo_outputs(self, mdl, **kwargs):
-        """ """
         # ------------
         # Outputs
         # ------------
@@ -379,8 +361,7 @@ class EMSCoreDefaults(EMSCoreInterface):
             0.0, solver.infinity(), "p_nonneg"
         )  # represents max(0, e_penalty)
 
-    def ortools_powerbalance(self, **kwargs) -> Dict[str, Any]:
-        """ """
+    def ortools_powerbalance(self, **kwargs):
         # ------------
         # Power balance
         # ------------
@@ -389,7 +370,6 @@ class EMSCoreDefaults(EMSCoreInterface):
             P_total[t] -= P_curtail_batch[t]
 
     def ortools_constraints(self, solver):
-        """ """
         # ------------
         # Constraints
         # ------------
@@ -433,7 +413,6 @@ class EMSCoreDefaults(EMSCoreInterface):
         solver.Add(p_nonneg_batch >= e_penalty_batch)
 
     def ortools_objective(self, solver):
-        """ """
         # ------------
         # Objective
         # ------------
@@ -447,6 +426,7 @@ class EMSCoreDefaults(EMSCoreInterface):
 
     def ortools_solve(self, solver):
         objective.SetMaximization()
+
         # ------------
         # solve
         # ------------
@@ -457,7 +437,6 @@ class EMSCoreDefaults(EMSCoreInterface):
             )
 
     def ortools_outputs(self):
-        """ """
         # ------------
         # Outputs
         # ------------

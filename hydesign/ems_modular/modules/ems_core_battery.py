@@ -6,12 +6,12 @@ import pandas as pd
 import pyomo.environ as pyo
 
 from hydesign.ems_modular.modules.ems_core_helpers import (
-    EMSCoreInterface,
+    EMSCoreABC,
     series_from_indexed_var,
 )
 
 
-class EMSCoreBattery(EMSCoreInterface):
+class EMSCoreBattery(EMSCoreABC):
     """
     EMSCoreBattery
     """
@@ -42,7 +42,7 @@ class EMSCoreBattery(EMSCoreInterface):
         )
         # Battery energy level, energy stored
         E_SOC_t_batch = mdl.continuous_var_dict(
-            self.SOCtime_batch,
+            SOCtime_batch,
             lb=0,
             name="Energy level",  # ub=E_batt_MWh_t.max(),
         )
@@ -88,13 +88,13 @@ class EMSCoreBattery(EMSCoreInterface):
     def cplex_constraints(self, mdl, **kwargs) -> Dict[str, Any]:
         # Intitial and end SOC
         mdl.add_constraint(
-            E_SOC_t_batch[self.SOCtime_batch[0]]
+            E_SOC_t_batch[SOCtime_batch[0]]
             == 0.5 * self.E_batt_MWh_t_batch[time_batch[0]]
         )
 
         # SOC at the end of the year has to be equal to SOC at the beginning of the year
         mdl.add_constraint(
-            E_SOC_t_batch[self.SOCtime_batch[-1]]
+            E_SOC_t_batch[SOCtime_batch[-1]]
             == 0.5 * self.E_batt_MWh_t_batch[time_batch[0]]
         )
 
@@ -124,12 +124,6 @@ class EMSCoreBattery(EMSCoreInterface):
             tt = t + pd.Timedelta("1hour")
             # Delta_t of 1 hour
             dt = 1
-
-            # self.update_constraint_rhs(
-            #     mdl,
-            #     constraint_name=f"P_HPP_t_balance{t}",
-            #     added_value=+P_charge_discharge_batch[t],
-            # )
 
             # charge/dischrage equation
             mdl.add_constraint(
@@ -273,7 +267,7 @@ class EMSCoreBattery(EMSCoreInterface):
         P_charge_discharge_ts_batch = P_charge_discharge_ts_df.reindex(
             time_batch, fill_value=0
         ).values
-        E_SOC_ts_batch = E_SOC_ts_df.reindex(self.SOCtime_batch, fill_value=0).values
+        E_SOC_ts_batch = E_SOC_ts_df.reindex(SOCtime_batch, fill_value=0).values
 
         self.P_charge_discharge_ts[self.batch] = P_charge_discharge_ts_batch
         self.E_SOC_ts[self.batch] = E_SOC_ts_batch[:-1]
@@ -295,7 +289,7 @@ class EMSCoreBattery(EMSCoreInterface):
 
     def pyomo_variables(self, mdl, **kwargs) -> Dict[str, Any]:
         time_batch = time_batch
-        SOCtime_batch = self.SOCtime_batch
+        SOCtime_batch = SOCtime_batch
         P_batt_MW = self.P_batt_MW
         charge_efficiency = self.charge_efficiency
 
@@ -336,15 +330,6 @@ class EMSCoreBattery(EMSCoreInterface):
         battery_depth_of_discharge = self.battery_depth_of_discharge
         E_batt_MWh_t_batch = self.E_batt_MWh_t_batch
 
-        # for t in range(0, len(time_batch)):
-        #     # battery
-        #     self.update_constraint_rhs_pyomo(
-        #         mdl,
-        #         "power_constraint",
-        #         added_value=mdl.P_charge_discharge_with_eff_t[t],
-        #         idx=t,
-        #     )
-
         mdl.battery_energy_constraint = pyo.ConstraintList()
         mdl.battery_energy_min_constraint = pyo.ConstraintList()
         mdl.battery_dynamics_constraint = pyo.ConstraintList()
@@ -378,13 +363,6 @@ class EMSCoreBattery(EMSCoreInterface):
                 mdl.E_SOC_t[t]
                 == mdl.E_SOC_t[t - 1] - mdl.P_charge_discharge_with_eff_t[t] * dt
             )
-
-        # for t in mdl.IDX5:
-        #     mdl.power_constraint.add(
-        #         mdl.P_battery_delta[t]
-        #         == mdl.P_charge_discharge_with_eff_t[t + 1]
-        #         - mdl.P_charge_discharge_with_eff_t[t]
-        #     )
 
         # x-values of the piece-wise function
         f_piecewise_x_vals = [-self.P_batt_MW, 0, self.P_batt_MW]
@@ -433,14 +411,12 @@ class EMSCoreBattery(EMSCoreInterface):
         P_charge_discharge_ts_batch_df = series_from_indexed_var(
             mdl.P_charge_discharge_t, time_batch
         )
-        E_SOC_ts_batch_df = series_from_indexed_var(mdl.E_SOC_t, self.SOCtime_batch)
+        E_SOC_ts_batch_df = series_from_indexed_var(mdl.E_SOC_t, SOCtime_batch)
 
         P_charge_discharge_ts_batch = P_charge_discharge_ts_batch_df.reindex(
             time_batch, fill_value=0
         ).values
-        E_SOC_ts_batch = E_SOC_ts_batch_df.reindex(
-            self.SOCtime_batch, fill_value=0
-        ).values
+        E_SOC_ts_batch = E_SOC_ts_batch_df.reindex(SOCtime_batch, fill_value=0).values
 
         self.P_charge_discharge_ts[batch] = P_charge_discharge_ts_batch
         self.E_SOC_ts[batch] = E_SOC_ts_batch[:-1]

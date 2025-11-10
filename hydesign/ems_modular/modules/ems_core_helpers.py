@@ -10,7 +10,7 @@ from docplex.mp.constants import ComparisonType
 from docplex.mp.model import Model
 
 
-class EMSCoreInterface(ABC):
+class EMSCoreABC(ABC):
     """
     Abstract interface for EMS core classes.
     Concrete implementations must provide:

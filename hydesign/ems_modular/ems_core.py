@@ -1,8 +1,7 @@
 # Auto-generated combined module
 # Generated from: ems_core_defaults.py, ems_core_wind.py, ems_core_solar.py, ems_core_battery.py, ems_core_p2x.py
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
@@ -11,14 +10,13 @@ from docplex.mp.model import Model
 from ortools.linear_solver import pywraplp
 
 from hydesign.ems_modular.modules.ems_core_helpers import (
-    EMSCoreInterface,
-    add_piecewise_relation_ortools,
+    EMSCoreABC,
     series_from_indexed_var,
     split_in_batch,
 )
 
 
-class EMSCore(EMSCoreInterface):
+class EMSCore(EMSCoreABC):
     """Auto-generated combined class (merged bodies of multiple classes)
 
     NOTE: Please review for semantic issues.
@@ -37,14 +35,11 @@ class EMSCore(EMSCoreInterface):
         self.batch_size = kwargs.get("batch_size", 110)
         n_ts = len(self.price_ts)
         self.n_ts = n_ts
-
-        # split in batches
-        batches_all = split_in_batch(list(range(n_ts)), self.batch_size)
-        self.batches = batches_all
-
         self.P_HPP_ts = np.zeros(n_ts)
         self.P_curtailment_ts = np.zeros(n_ts)
         self.penalty_ts = np.zeros(n_ts)
+
+        self.batches = split_in_batch(list(range(n_ts)), self.batch_size)
 
         # --- content from ems_core_wind.py ---
         self.wind_ts = kwargs["wind_ts"]
@@ -84,9 +79,9 @@ class EMSCore(EMSCoreInterface):
         self.P_ptg_SB_ts = np.zeros_like(self.P_ptg_ts)
         self.m_H2_ts = np.zeros(self.n_ts)
         self.m_H2_offtake_ts = np.zeros(self.n_ts)
-        print(self.batch_size)
 
     def solve(self, **kwargs):
+        """ """
         out_ems = {}
         ems_solver = self.ems_solver
         for ib, batch in enumerate(self.batches):
@@ -150,13 +145,12 @@ class EMSCore(EMSCoreInterface):
 
     def cplex(self, **kwarg):
         """ """
+        time_batch = self.time_batch
+        SOCtime_batch = self.SOCtime_batch
         # create cplex model
         mdl = Model(name="EMS")
         mdl.context.cplex_parameters.threads = 1
         mdl.context.cplex_parameters.emphasis.mip = 1
-
-        # get required data from self
-        time_batch = self.time_batch
 
         # ------------
         # Variables
@@ -173,6 +167,9 @@ class EMSCore(EMSCoreInterface):
         e_penalty_batch = mdl.continuous_var(name="e_penalty", lb=-1e12)
 
         # --- content from ems_core_battery.py ---
+        # Power charge/discharge from battery
+        # Lower bound as large negative number in order to allow the variable to
+        # have either positive or negative values
         P_charge_discharge_batch = mdl.continuous_var_dict(
             time_batch,
             lb=-self.P_batt_MW / self.charge_efficiency,
@@ -181,7 +178,7 @@ class EMSCore(EMSCoreInterface):
         )
         # Battery energy level, energy stored
         E_SOC_t_batch = mdl.continuous_var_dict(
-            self.SOCtime_batch,
+            SOCtime_batch,
             lb=0,
             name="Energy level",  # ub=E_batt_MWh_t.max(),
         )
@@ -194,7 +191,7 @@ class EMSCore(EMSCoreInterface):
         H2_storage_t_batch = self.H2_storage_t_batch
         # Hydrogen storgae level
         LoS_H2_t_batch = mdl.continuous_var_dict(
-            self.SOCtime_batch, lb=0, name="Hydrogen storage level"
+            SOCtime_batch, lb=0, name="Hydrogen storage level"
         )
 
         # Power to gas plant power consumption, produced hydrogen, electrolyzer efficiency
@@ -214,7 +211,6 @@ class EMSCore(EMSCoreInterface):
 
         penalty_p2x_batch = mdl.continuous_var(name="penalty_p2x", lb=-1e12)
 
-        """ """
         # ------------
         # Power balance
         # ------------
@@ -238,7 +234,6 @@ class EMSCore(EMSCoreInterface):
         for t in time_batch:
             P_total[t] -= P_ptg_t_batch[t]
 
-        """ """
         # ------------
         # Constraints
         # ------------
@@ -265,14 +260,15 @@ class EMSCore(EMSCoreInterface):
         )
 
         # --- content from ems_core_battery.py ---
+        # Intitial and end SOC
         mdl.add_constraint(
-            E_SOC_t_batch[self.SOCtime_batch[0]]
+            E_SOC_t_batch[SOCtime_batch[0]]
             == 0.5 * self.E_batt_MWh_t_batch[time_batch[0]]
         )
 
         # SOC at the end of the year has to be equal to SOC at the beginning of the year
         mdl.add_constraint(
-            E_SOC_t_batch[self.SOCtime_batch[-1]]
+            E_SOC_t_batch[SOCtime_batch[-1]]
             == 0.5 * self.E_batt_MWh_t_batch[time_batch[0]]
         )
 
@@ -303,12 +299,6 @@ class EMSCore(EMSCoreInterface):
             # Delta_t of 1 hour
             dt = 1
 
-            # self.update_constraint_rhs(
-            #     mdl,
-            #     constraint_name=f"P_HPP_t_balance{t}",
-            #     added_value=+P_charge_discharge_batch[t],
-            # )
-
             # charge/dischrage equation
             mdl.add_constraint(
                 E_SOC_t_batch[tt]
@@ -333,8 +323,9 @@ class EMSCore(EMSCoreInterface):
             )
 
         # --- content from ems_core_p2x.py ---
-        mdl.add_constraint(LoS_H2_t_batch[self.SOCtime_batch[0]] == 0)
-        mdl.add_constraint(LoS_H2_t_batch[self.SOCtime_batch[-1]] == 0)
+        # Intitial and end LoS_H2
+        mdl.add_constraint(LoS_H2_t_batch[SOCtime_batch[0]] == 0)
+        mdl.add_constraint(LoS_H2_t_batch[SOCtime_batch[-1]] == 0)
 
         # piecewise linear representation of H2 storage vs offtake effciency
         f3 = mdl.piecewise(1 / self.storage_eff, [(0, 0)], self.storage_eff)
@@ -366,12 +357,6 @@ class EMSCore(EMSCoreInterface):
             ctname="penalty_p2x",
         )
 
-        # self.update_constraint_rhs(
-        #     mdl,
-        #     constraint_name="penalty_el",
-        #     added_value=penalty_p2x,
-        # )
-
         for t in time_batch:
             # Time index for successive time step
             tt = t + pd.Timedelta("1hour")
@@ -395,7 +380,6 @@ class EMSCore(EMSCoreInterface):
             # Calculating Hydrogen production with HPC
             mdl.add_constraint(m_H2_t_batch[t] == H2_prod(P_ptg_t_batch[t]))
 
-        """ """
         # ------------
         # Objective
         # ------------
@@ -408,6 +392,7 @@ class EMSCore(EMSCoreInterface):
         objective_expr = revenue_el - penalty_el_batch
 
         # --- content from ems_core_battery.py ---
+
         objective_expr -= cost_fluc_batt_batch
 
         # --- content from ems_core_p2x.py ---
@@ -416,17 +401,14 @@ class EMSCore(EMSCoreInterface):
         )
         objective_expr += revenue_p2x - penalty_p2x_batch
 
-        """ """
         # pass objective to cplex model
         mdl.maximize(objective_expr)
 
-        """ """
         # ------------
         # solve
         # ------------
         sol = mdl.solve(log_output=False)
 
-        """ """
         # ------------
         # Outputs
         # ------------
@@ -477,7 +459,7 @@ class EMSCore(EMSCoreInterface):
         P_charge_discharge_ts_batch = P_charge_discharge_ts_df.reindex(
             time_batch, fill_value=0
         ).values
-        E_SOC_ts_batch = E_SOC_ts_df.reindex(self.SOCtime_batch, fill_value=0).values
+        E_SOC_ts_batch = E_SOC_ts_df.reindex(SOCtime_batch, fill_value=0).values
 
         self.P_charge_discharge_ts[self.batch] = P_charge_discharge_ts_batch
         self.E_SOC_ts[self.batch] = E_SOC_ts_batch[:-1]
@@ -521,14 +503,14 @@ class EMSCore(EMSCoreInterface):
 
     def pyomo(self, **kwarg):
         """ """
+        time_batch = self.time_batch
+        SOCtime_batch = self.SOCtime_batch
+        hpp_grid_connection = self.hpp_grid_connection
         # ------------
         # Variables
         # ------------
         mdl = pyo.ConcreteModel()
         # --- defaults
-        time_batch = self.time_batch
-
-        hpp_grid_connection = self.hpp_grid_connection
 
         mdl.IDX1 = range(len(time_batch))
         mdl.IDX2 = range(1)
@@ -543,7 +525,7 @@ class EMSCore(EMSCoreInterface):
 
         # --- content from ems_core_battery.py ---
         time_batch = time_batch
-        SOCtime_batch = self.SOCtime_batch
+        SOCtime_batch = SOCtime_batch
         P_batt_MW = self.P_batt_MW
         charge_efficiency = self.charge_efficiency
 
@@ -598,7 +580,6 @@ class EMSCore(EMSCoreInterface):
             mdl.IDX2, domain=pyo.Reals, bounds=(-1e12, 1e12)
         )
 
-        """ """
         # ------------
         # Power balance
         # ------------
@@ -608,11 +589,11 @@ class EMSCore(EMSCoreInterface):
 
         # --- content from ems_core_wind.py ---
         for t in mdl.IDX1:
-            P_total[t] += self.wind_ts_batch[t]
+            P_total[t] += self.wind_ts_batch.iloc[t]
 
         # --- content from ems_core_solar.py ---
         for t in mdl.IDX1:
-            P_total[t] += self.solar_ts_batch[t]
+            P_total[t] += self.solar_ts_batch.iloc[t]
 
         # --- content from ems_core_battery.py ---
         for t in mdl.IDX1:
@@ -622,7 +603,6 @@ class EMSCore(EMSCoreInterface):
         for t in mdl.IDX1:
             P_total[t] -= mdl.P_ptg_t_batch[t]
 
-        """ """
         # ------------
         # Constraints
         # ------------
@@ -657,17 +637,9 @@ class EMSCore(EMSCoreInterface):
         )
 
         # --- content from ems_core_battery.py ---
+
         battery_depth_of_discharge = self.battery_depth_of_discharge
         E_batt_MWh_t_batch = self.E_batt_MWh_t_batch
-
-        # for t in range(0, len(time_batch)):
-        #     # battery
-        #     self.update_constraint_rhs_pyomo(
-        #         mdl,
-        #         "power_constraint",
-        #         added_value=mdl.P_charge_discharge_with_eff_t[t],
-        #         idx=t,
-        #     )
 
         mdl.battery_energy_constraint = pyo.ConstraintList()
         mdl.battery_energy_min_constraint = pyo.ConstraintList()
@@ -702,13 +674,6 @@ class EMSCore(EMSCoreInterface):
                 mdl.E_SOC_t[t]
                 == mdl.E_SOC_t[t - 1] - mdl.P_charge_discharge_with_eff_t[t] * dt
             )
-
-        # for t in mdl.IDX5:
-        #     mdl.power_constraint.add(
-        #         mdl.P_battery_delta[t]
-        #         == mdl.P_charge_discharge_with_eff_t[t + 1]
-        #         - mdl.P_charge_discharge_with_eff_t[t]
-        #     )
 
         # x-values of the piece-wise function
         f_piecewise_x_vals = [-self.P_batt_MW, 0, self.P_batt_MW]
@@ -751,11 +716,12 @@ class EMSCore(EMSCoreInterface):
         )
 
         # --- content from ems_core_p2x.py ---
+        # Initial and end LoS_H2 (use integer indices 0 and last index)
         mdl.LoS_H2_t_batch_constraint_start = pyo.Constraint(
             expr=mdl.LoS_H2_t_batch[0] == 0
         )
         mdl.LoS_H2_t_batch_constraint_end = pyo.Constraint(
-            expr=mdl.LoS_H2_t_batch[len(self.SOCtime_batch) - 1] == 0
+            expr=mdl.LoS_H2_t_batch[len(SOCtime_batch) - 1] == 0
         )
 
         # Build H2 production piecewise map P_ptg_t_batch -> m_H2_t_batch over IDX1 (if IDX1 non-empty)
@@ -774,18 +740,18 @@ class EMSCore(EMSCoreInterface):
                 'Available options are ["production", "efficiency"]'
             )
 
-        pw_inputs = [pt[0] for pt in H2_curve_list]
-        pw_outputs = [pt[1] for pt in H2_curve_list]
-
-        if len(mdl.IDX1) > 0:
-            mdl.H2_prod_pw = pyo.Piecewise(
-                mdl.IDX1,
-                mdl.m_H2_t_batch,
-                mdl.P_ptg_t_batch,
-                pw_pts=pw_inputs,
-                f_rule=pw_outputs,
-                pw_constr_type="EQ",
-            )
+            # Electrolyzer production curve (piecewise)
+        H2_curve_x = [pt[0] for pt in H2_curve_list]
+        H2_curve_y = [pt[1] for pt in H2_curve_list]
+        mdl.H2_prod_constraint = pyo.Piecewise(
+            mdl.IDX1,
+            mdl.m_H2_t_batch,
+            mdl.P_ptg_t_batch,
+            pw_pts=H2_curve_x,
+            f_rule=H2_curve_y,
+            pw_constr_type="EQ",
+            pw_repn="DLOG",
+        )
 
         # Create ConstraintLists to collect per-time constraints
         mdl.h2_storage_eq = pyo.ConstraintList()
@@ -795,7 +761,7 @@ class EMSCore(EMSCoreInterface):
 
         # Precompute helper lookups mapping timestamps -> integer indices
         time_to_idx = {tt: i for i, tt in enumerate(time_batch)}
-        soctime_to_idx = {tt: i for i, tt in enumerate(self.SOCtime_batch)}
+        soctime_to_idx = {tt: i for i, tt in enumerate(SOCtime_batch)}
 
         for t in time_batch:
             # integer index for current time
@@ -809,14 +775,14 @@ class EMSCore(EMSCoreInterface):
                 i_soc = soctime_to_idx[t]
             except KeyError:
                 raise KeyError(
-                    f"Time {t!r} not found in self.SOCtime_batch; can't index LoS_H2_t_batch."
+                    f"Time {t!r} not found in SOCtime_batch; can't index LoS_H2_t_batch."
                 )
 
             try:
                 j_soc = soctime_to_idx[tt_time]
             except KeyError:
                 raise KeyError(
-                    f"Successor time {tt_time!r} (t+1h) not found in self.SOCtime_batch; "
+                    f"Successor time {tt_time!r} (t+1h) not found in SOCtime_batch; "
                     "ensure SOCtime_batch contains successive timesteps."
                 )
 
@@ -840,7 +806,7 @@ class EMSCore(EMSCoreInterface):
             # m_H2_offtake <= demand (only when var exists) -> add to ConstraintList
             if k in mdl.IDX1:
                 mdl.h2_offtake_demand.add(
-                    mdl.m_H2_offtake_t_batch[k] <= m_H2_demand_ts_batch[t]
+                    mdl.m_H2_offtake_t_batch[k] <= m_H2_demand_ts_batch.iloc[k]
                 )
 
             # When H2 storage is zero: enforce equality if the variables exist for this k -> add to ConstraintList
@@ -849,17 +815,14 @@ class EMSCore(EMSCoreInterface):
                     mdl.m_H2_offtake_t_batch[k] == mdl.m_H2_t_batch[k]
                 )
 
-        # penalty term for this time t (use model var if available, otherwise treat off-take as 0)
-
         penalty_p2x = sum(
             self.penalty_factor_H2
-            * (m_H2_demand_ts_batch[t] - mdl.m_H2_offtake_t_batch[t])
+            * (m_H2_demand_ts_batch.iloc[t] - mdl.m_H2_offtake_t_batch[t])
             for t in mdl.IDX1
         )
 
         mdl.penalty_constraint.add(mdl.penalty_p2x_batch[0] == penalty_p2x)
 
-        """ """
         # ------------
         # Objective
         # ------------
@@ -893,7 +856,7 @@ class EMSCore(EMSCoreInterface):
         revenue_p2x = sum(
             price_H2_batch * mdl.m_H2_offtake_t_batch[t] for t in mdl.IDX1
         )
-        penalty_p2x = -mdl.penalty_p2x_batch[0]
+        penalty_p2x = mdl.penalty_p2x_batch[0]
         objective_expr += revenue_p2x - penalty_p2x
 
         mdl.OBJ = pyo.Objective(
@@ -901,14 +864,13 @@ class EMSCore(EMSCoreInterface):
             expr=objective_expr,
             sense=pyo.maximize,
         )
-        """ """
+
         # ------------
         # solve
         # ------------
         solver = pyo.SolverFactory("cplex")  # glpk
         result = solver.solve(mdl, tee=False)  # tee=True if you want solver log
 
-        """ """
         # ------------
         # Outputs
         # ------------
@@ -942,22 +904,24 @@ class EMSCore(EMSCoreInterface):
         self.penalty_ts[batch] = penalty_ts_batch
 
         # --- content from ems_core_battery.py ---
+
+        # Extract time series as pandas Series (index = your time_batch items)
+
         P_charge_discharge_ts_batch_df = series_from_indexed_var(
             mdl.P_charge_discharge_t, time_batch
         )
-        E_SOC_ts_batch_df = series_from_indexed_var(mdl.E_SOC_t, self.SOCtime_batch)
+        E_SOC_ts_batch_df = series_from_indexed_var(mdl.E_SOC_t, SOCtime_batch)
 
         P_charge_discharge_ts_batch = P_charge_discharge_ts_batch_df.reindex(
             time_batch, fill_value=0
         ).values
-        E_SOC_ts_batch = E_SOC_ts_batch_df.reindex(
-            self.SOCtime_batch, fill_value=0
-        ).values
+        E_SOC_ts_batch = E_SOC_ts_batch_df.reindex(SOCtime_batch, fill_value=0).values
 
         self.P_charge_discharge_ts[batch] = P_charge_discharge_ts_batch
         self.E_SOC_ts[batch] = E_SOC_ts_batch[:-1]
 
         # --- content from ems_core_p2x.py ---
+        # Extract Pyomo solution values as dictionaries
         P_ptg_ts_dict = series_from_indexed_var(mdl.P_ptg_t_batch, time_batch)
         m_H2_ts_dict = series_from_indexed_var(mdl.m_H2_t_batch, time_batch)
         LoS_H2_ts_dict = series_from_indexed_var(mdl.LoS_H2_t_batch, time_batch)
@@ -1030,6 +994,11 @@ class EMSCore(EMSCoreInterface):
         )  # represents max(0, e_penalty)
 
         # --- content from ems_core_battery.py ---
+
+        # Decompose battery power into discharge and charge parts (both >=0)
+        # Bounds chosen to reflect original asymmetric bounds:
+        # original ub for P (positive) = P_batt_MW * self.charge_efficiency
+        # original lb for P (negative) = - P_batt_MW / self.charge_efficiency
         P_dis_batch = {
             t: solver.NumVar(
                 0.0, float(self.P_batt_MW * self.charge_efficiency), f"P_dis_{i}"
@@ -1063,7 +1032,7 @@ class EMSCore(EMSCoreInterface):
         # State-of-storage variables indexed by SOCtime_batch (as in CPLEX)
         LoS_H2_t_batch = {
             t: solver.NumVar(0.0, solver.infinity(), f"H2_storage_{t}")
-            for t in self.SOCtime_batch
+            for t in SOCtime_batch
         }
 
         # P_ptg, H2 production, H2 offtake for each time in time_batch
@@ -1082,15 +1051,7 @@ class EMSCore(EMSCoreInterface):
         }
 
         penalty_p2x_batch = solver.NumVar(0.0, solver.infinity(), "penalty_p2x_batch")
-        """ # lambda variables placeholders (will be filled per timestep in constraints)
-        self.lambdas_ptg_batch = {t: [] for t in time_batch}
-        self.lambdas_H2_batch = {t: [] for t in time_batch}
 
-        # penalty variables
-        self.penalty_batch = solver.NumVar(0.0, solver.infinity(), "penalty_batch")
-        self.e_penalty_batch = solver.NumVar(0.0, solver.infinity(), "e_penalty_batch") """
-
-        """ """
         # ------------
         # Power balance
         # ------------
@@ -1114,7 +1075,6 @@ class EMSCore(EMSCoreInterface):
         for i, t in enumerate(time_batch):
             P_total[t] -= P_ptg_t_batch[t]
 
-        """ """
         # ------------
         # Constraints
         # ------------
@@ -1228,11 +1188,11 @@ class EMSCore(EMSCoreInterface):
         )
 
         # --- content from ems_core_p2x.py ---
-        solver.Add(LoS_H2_t_batch[self.SOCtime_batch[0]] == 0.0)
-        solver.Add(LoS_H2_t_batch[self.SOCtime_batch[-1]] == 0.0)
+        # initial and terminal LoS constraints (matching cplex)
+        solver.Add(LoS_H2_t_batch[SOCtime_batch[0]] == 0.0)
+        solver.Add(LoS_H2_t_batch[SOCtime_batch[-1]] == 0.0)
 
         # Build electrolyser piecewise points depending on chosen type (match CPLEX)
-
         # Storage efficiency linear function
         storage_eff = self.storage_eff
 
@@ -1254,7 +1214,6 @@ class EMSCore(EMSCoreInterface):
                 f'electrolyzer_eff_curve_type is: "{self.electrolyzer_eff_curve_type}". Available options are ["production", "efficiency"]'
             )
 
-        # --- Constraints ---
         for t in time_batch:
             tt = t + pd.Timedelta("1hour")
 
@@ -1293,7 +1252,6 @@ class EMSCore(EMSCoreInterface):
 
         solver.Add(penalty_p2x_batch == unmet_sum)
 
-        """ """
         # ------------
         # Objective
         # ------------
@@ -1304,14 +1262,8 @@ class EMSCore(EMSCoreInterface):
 
         if penalty_el_batch is not None:
             objective.SetCoefficient(penalty_el_batch, -1.0)
-        # penalty term (note penalty = price_peak * p_nonneg; objective subtracts it)
-        # objective.SetCoefficient(self.p_nonneg_batch, -float(self.price_peak_batch))
-
-        objective.SetMaximization()
 
         # --- content from ems_core_battery.py ---
-        objective = solver.Objective()
-
         # battery fluctuation cost
         for i in range(self.N_t_batch - 1):
             t = time_batch[i]
@@ -1320,8 +1272,6 @@ class EMSCore(EMSCoreInterface):
                 * self.price_ts_to_max_batch.loc[t]
             )
             objective.SetCoefficient(self.delta[t], coef)
-
-        objective.SetMaximization()
 
         # --- content from ems_core_p2x.py ---
         for t in time_batch[:-1]:
@@ -1336,7 +1286,8 @@ class EMSCore(EMSCoreInterface):
         # subtract penalty (same sign as CPLEX; CPLEX added penalty to objective with negative sign)
         objective.SetCoefficient(penalty_p2x_batch, -1.0)
 
-        """ """
+        objective.SetMaximization()
+
         # ------------
         # solve
         # ------------
@@ -1346,7 +1297,6 @@ class EMSCore(EMSCoreInterface):
                 f"Solver failed or returned infeasible (status {result_status})."
             )
 
-        """ """
         # ------------
         # Outputs
         # ------------
@@ -1371,6 +1321,7 @@ class EMSCore(EMSCoreInterface):
         self.penalty_ts[batch] = penalty_ts_batch
 
         # --- content from ems_core_battery.py ---
+
         P_charge_discharge_ts_batch = np.array(
             [
                 (P_dis_batch[t].solution_value() - P_ch_batch[t].solution_value())
@@ -1385,6 +1336,7 @@ class EMSCore(EMSCoreInterface):
         self.E_SOC_ts[self.batch] = E_SOC_ts_batch[:-1]
 
         # --- content from ems_core_p2x.py ---
+        # collect solution values in the same structure style as cplex_outputs
         P_ptg_ts_batch = [P_ptg_t_batch[t].solution_value() for t in time_batch]
         m_H2_ts_batch = [m_H2_t_batch[t].solution_value() for t in time_batch]
         LoS_H2_ts_batch = [
@@ -1419,6 +1371,7 @@ class EMSCore(EMSCoreInterface):
         out.update(out_defaults)
 
         # --- content from ems_core_battery.py ---
+        # set last SOC element equal to initial SOC.
         self.E_SOC_ts[-1] = self.E_SOC_ts[0]
         out_battery = {
             "P_charge_discharge_ts": self.P_charge_discharge_ts,
