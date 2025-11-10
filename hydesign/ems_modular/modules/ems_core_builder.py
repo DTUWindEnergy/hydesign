@@ -260,16 +260,19 @@ def build_combined_class_text_multi(
         "solve",
         "batch_data",
         "cplex_variables",
+        "cplex_powerbalance",
         "cplex_constraints",
         "cplex_opjective",
         "cplex_solve",
         "cplex_outputs",
         "pyomo_variables",
+        "pyomo_powerbalance",
         "pyomo_constraints",
         "pyomo_opjective",
         "pyomo_solve",
         "pyomo_outputs",
         "ortools_variables",
+        "ortools_powerbalance",
         "ortools_constraints",
         "ortools_objective",
         "ortools_solve",
@@ -444,4 +447,4 @@ def generate_ems_core(
 
 
 if __name__ == "__main__":
-    generate_ems_core_combined(technologies=("wind", "solar", "battery"))
+    generate_ems_core(technologies=("wind", "solar", "battery"))

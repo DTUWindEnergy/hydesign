@@ -160,11 +160,11 @@ class EMSCoreP2x(EMSCoreInterface):
 
     def cplex_opjective(self, mdl):
 
-        H2_revenue = mdl.sum(
+        revenue_p2x = mdl.sum(
             self.price_H2_batch * self.m_H2_offtake_t_batch[t] for t in self.time_batch
         )
 
-        self.add_to_objective(mdl, addition_expr=H2_revenue)
+        self.add_to_objective(mdl, addition_expr=revenue_p2x)
 
         self.add_to_objective(mdl, addition_expr=-self.penalty_p2x_batch)
 
@@ -363,11 +363,11 @@ class EMSCoreP2x(EMSCoreInterface):
         mdl.penalty_constraint.add(mdl.penalty_p2x_batch[0] == penalty_p2x)
 
     def pyomo_opjective(self, mdl, **kwargs):
-        H2_revenue = sum(
+        revenue_p2x = sum(
             self.price_H2_batch * mdl.m_H2_offtake_t_batch[t] for t in mdl.IDX1
         )
 
-        self.add_to_objective_pyomo(mdl, addition_expr=H2_revenue)
+        self.add_to_objective_pyomo(mdl, addition_expr=revenue_p2x)
 
         penalty_p2x = -mdl.penalty_p2x_batch[0]
         self.add_to_objective_pyomo(mdl, addition_expr=penalty_p2x)
