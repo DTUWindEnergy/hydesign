@@ -732,7 +732,6 @@ class EMSCore(EMSCoreABC):
         mdl.h2_storage_capacity = pyo.ConstraintList()
         mdl.h2_offtake_demand = pyo.ConstraintList()
         mdl.h2_offtake_storage_zero = pyo.ConstraintList()
-        # mdl.H2_prod_constraint = pyo.ConstraintList()
 
         # Precompute helper lookups mapping timestamps -> integer indices
         time_to_idx = {tt: i for i, tt in enumerate(time_batch)}
@@ -766,10 +765,6 @@ class EMSCore(EMSCoreABC):
         H2_curve_x = [pt[0] for pt in H2_curve_list]
         H2_curve_y = [pt[1] for pt in H2_curve_list]
 
-        slope = (H2_curve_list[-2][1] - H2_curve_list[1][1]) / (
-            H2_curve_list[-2][0] - H2_curve_list[1][0]
-        )
-
         mdl.H2_prod_constraint = pyo.Piecewise(
             mdl.IDX1,
             mdl.m_H2_t_batch,
@@ -784,8 +779,6 @@ class EMSCore(EMSCoreABC):
         for t in time_batch:
             # integer index for current time
             k = time_to_idx[t]
-
-            # mdl.H2_prod_constraint.add(mdl.m_H2_t_batch[k] == slope * mdl.P_ptg_t_batch[k] + H2_curve_list[1][1])
 
             # successor timestamp t+1h
             tt_time = t + pd.Timedelta("1hour")
