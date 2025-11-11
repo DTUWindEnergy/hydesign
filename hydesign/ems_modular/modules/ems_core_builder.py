@@ -275,7 +275,6 @@ def build_combined_class_text_multi(
         "update_final_outputs",
     }
     #
-    print(ordered)
     ordered = [
         "__init__",
         "solve",

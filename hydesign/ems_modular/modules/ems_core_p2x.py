@@ -180,15 +180,22 @@ class EMSCoreP2x(EMSCoreABC):
         H2_storage_t_batch = self.H2_storage_t_batch
         # Hydrogen storage level (use IDX4 for SOCtime index)
         mdl.LoS_H2_t_batch = pyo.Var(mdl.IDX4, domain=pyo.NonNegativeReals)
-
         # Power to gas plant consumption (use IDX1 for peak hours or full time range)
         mdl.P_ptg_t_batch = pyo.Var(
             mdl.IDX1,
-            bounds=(self.min_power_standby * self.ptg_MW, self.ptg_MW),
+            # bounds=(self.min_power_standby * self.ptg_MW, self.ptg_MW),
+            bounds=(
+                self.eff_curve[0][0] * self.ptg_MW,
+                self.eff_curve[-1][0] * self.ptg_MW,
+            ),
         )
 
         # Produced hydrogen (use IDX1)
-        mdl.m_H2_t_batch = pyo.Var(mdl.IDX1, domain=pyo.NonNegativeReals)
+        mdl.m_H2_t_batch = pyo.Var(
+            mdl.IDX1,
+            domain=pyo.NonNegativeReals,
+            bounds=(self.eff_curve[0][1] * self.ptg_MW, None),
+        )
 
         # Hydrogen offtake (use IDX1)
         mdl.m_H2_offtake_t_batch = pyo.Var(mdl.IDX1, domain=pyo.NonNegativeReals)
@@ -202,6 +209,17 @@ class EMSCoreP2x(EMSCoreABC):
             P_total[t] -= mdl.P_ptg_t_batch[t]
 
     def pyomo_constraints(self, mdl, **kwargs):
+
+        # Create ConstraintLists
+        mdl.h2_storage_eq = pyo.ConstraintList()
+        mdl.h2_storage_capacity = pyo.ConstraintList()
+        mdl.h2_offtake_demand = pyo.ConstraintList()
+        mdl.h2_offtake_storage_zero = pyo.ConstraintList()
+
+        # Precompute helper lookups mapping timestamps -> integer indices
+        time_to_idx = {tt: i for i, tt in enumerate(time_batch)}
+        soctime_to_idx = {tt: i for i, tt in enumerate(SOCtime_batch)}
+
         # Initial and end LoS_H2 (use integer indices 0 and last index)
         mdl.LoS_H2_t_batch_constraint_start = pyo.Constraint(
             expr=mdl.LoS_H2_t_batch[0] == 0
@@ -229,6 +247,7 @@ class EMSCoreP2x(EMSCoreABC):
             # Electrolyzer production curve (piecewise)
         H2_curve_x = [pt[0] for pt in H2_curve_list]
         H2_curve_y = [pt[1] for pt in H2_curve_list]
+
         mdl.H2_prod_constraint = pyo.Piecewise(
             mdl.IDX1,
             mdl.m_H2_t_batch,
@@ -236,18 +255,9 @@ class EMSCoreP2x(EMSCoreABC):
             pw_pts=H2_curve_x,
             f_rule=H2_curve_y,
             pw_constr_type="EQ",
+            # pw_repn="SOS2",
             pw_repn="DLOG",
         )
-
-        # Create ConstraintLists to collect per-time constraints
-        mdl.h2_storage_eq = pyo.ConstraintList()
-        mdl.h2_storage_capacity = pyo.ConstraintList()
-        mdl.h2_offtake_demand = pyo.ConstraintList()
-        mdl.h2_offtake_storage_zero = pyo.ConstraintList()
-
-        # Precompute helper lookups mapping timestamps -> integer indices
-        time_to_idx = {tt: i for i, tt in enumerate(time_batch)}
-        soctime_to_idx = {tt: i for i, tt in enumerate(SOCtime_batch)}
 
         for t in time_batch:
             # integer index for current time
@@ -434,7 +444,7 @@ class EMSCoreP2x(EMSCoreABC):
             )
 
             solver.Add(
-                m_H2_t_batch[t] == slope * P_ptg_t_batch[t] + H2_curve_list[1][0]
+                m_H2_t_batch[t] == slope * P_ptg_t_batch[t] + H2_curve_list[1][1]
             )
 
         # Penalty construction: unmet H2 demand sum (identical formula)

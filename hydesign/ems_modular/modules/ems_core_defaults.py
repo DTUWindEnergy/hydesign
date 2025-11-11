@@ -206,12 +206,15 @@ class EMSCoreDefaults(EMSCoreABC):
         time_batch = self.time_batch
         SOCtime_batch = self.SOCtime_batch
         hpp_grid_connection = self.hpp_grid_connection
+
+        # create pyomo model
+        mdl = pyo.ConcreteModel()
+
         # ------------
         # Variables
         # ------------
-        mdl = pyo.ConcreteModel()
-        # --- defaults
 
+        # --- defaults
         mdl.IDX1 = range(len(time_batch))
         mdl.IDX2 = range(1)
 
@@ -288,7 +291,7 @@ class EMSCoreDefaults(EMSCoreABC):
         # ------------
         # solve
         # ------------
-        solver = pyo.SolverFactory("cplex")  # glpk
+        solver = pyo.SolverFactory("highs")  # glpk
         result = solver.solve(mdl, tee=False)  # tee=True if you want solver log
 
     def pyomo_outputs(self, mdl, **kwargs):
