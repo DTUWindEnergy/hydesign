@@ -19,6 +19,7 @@ dependencies = [
     "xarray",
     "openmdao",
     "smt==2.9.2",
+    "jenn==1.0.8",
     "cplex",
     "docplex",
     "numpy-financial",

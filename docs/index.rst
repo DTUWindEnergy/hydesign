@@ -22,6 +22,8 @@ Getting Started
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 The :ref:`Quickstart </notebooks/Quickstart.ipynb>` section shows how to set up and perform some basic operations in hydesign.
 
+For an in-depth explanation of how to work with HyDesign, please see :download:`Working with HyDesign <HyDesign_Instructions.pdf>`.
+
 Explanations of hydesign's core objects can be found in the following tutorials:
 
 
