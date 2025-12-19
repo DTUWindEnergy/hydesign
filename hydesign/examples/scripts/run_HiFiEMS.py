@@ -41,7 +41,7 @@ parameter_dict = {
     # interval parameters: note that DI must <= SI
     "dispatch_interval": 1 / 4,
     "settlement_interval": 1 / 4,
-    "imbalance_fee": 0.13,  # DK: 0.13 €/MWh, other Nordic countries: , others: 0.001
+    "imbalance_fee": 0.13,  # DK: 0.13 Euro/MWh, other Nordic countries: , others: 0.001
 }
 
 simulation_dict = {

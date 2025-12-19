@@ -5,12 +5,13 @@ Created on Thu Sep  8 13:05:20 2022
 @author: ruzhu
 """
 
-import DEMS as EMS
 import pandas as pd
-import utils
+
+# import DEMS as EMS
 from matplotlib import pyplot as plt
 
 from hydesign.examples import examples_filepath
+from hydesign.HiFiEMS.EMS_assembly import EMS
 
 parameter_dict = {
     # hpp parameters
@@ -18,7 +19,7 @@ parameter_dict = {
     # hpp wind parameters
     "wind_capacity": 120,  # in MW
     # hpp solar parameters
-    "solar_capacity": 10,  # in MW
+    "solar_capacity": 0,  # in MW
     # hpp battery parameters
     "battery_energy_capacity": 120,  # in MWh
     "battery_power_capacity": 40,  # in MW
@@ -41,7 +42,9 @@ parameter_dict = {
     # interval parameters: note that DI must <= SI
     "dispatch_interval": 1 / 4,
     "settlement_interval": 1 / 4,
-    "imbalance_fee": 0.13,  # DK: 0.13 €/MWh, other Nordic countries: , others: 0.001
+    "offer_interval": 1,  # keep it as 1 for now
+    "imbalance_fee": 0.13,  # DK: 0.13 Euro/MWh, other Nordic countries: , others: 0.001
+    "deviation": 100,  # Allowed deviation
 }
 
 dic = {
@@ -58,34 +61,41 @@ simulation_dict = {
     "wind_as_component": 1,
     "solar_as_component": 1,  # The code does not support for solar power plant
     "battery_as_component": 1,
-    "start_date": "1/1/21",
-    "number_of_run_day": 50,  #
+    "start_date": "2/1/21",
+    "number_of_run_day": 10,  #
     "out_dir": "./test/",
-    "DA_wind": "DA",  # DA, Measurement
-    "HA_wind": "HA",  # HA, Measurement
-    "FMA_wind": "RT",  # 5min_ahead, Measurement
-    "DA_solar": "DA",
-    "HA_solar": "HA",
-    "FMA_solar": "RT",
-    "SP": "SM_forecast",  # SM_forecast;SM_cleared
-    "RP": "reg_forecast",  # reg_cleared;reg_forecast_pre
-    "BP": 1,  # 1:forecast value 2: perfect value
     # Data
     "wind_df": Wind_data,
     "solar_df": Solar_data,
     "market_df": Market_data,
+    # For DEMS
+    "DA_wind": "DA_1",  # DA, Measurement
+    "HA_wind": "HA",  # HA, Measurement
+    "FMA_wind": "RT",  # 5min_ahead, Measurement
+    "DA_solar": "DA_1",
+    "HA_solar": "HA",
+    "FMA_solar": "RT",
+    "SP": "SM_forecast_1",  # SM_forecast;SM_cleared
+    "RP": "reg_forecast_1",  # reg_cleared;reg_forecast_pre
+    "BP": 1,  # 1:forecast value 2: perfect value
     # for DDEMS (spot market) -- Historical data
-    "history_wind_fn": examples_filepath + "HiFiEMS_inputs/Winddata2022_15min.csv",
-    "history_market_fn": examples_filepath + "HiFiEMS_inputs/Market2021.csv",
+    "history_wind_fn": examples_filepath
+    + "HiFiEMS_inputs/Power/Winddata2021_15min.csv",
+    "history_solar_fn": examples_filepath
+    + "HiFiEMS_inputs/Power/Solardata2021_15min.csv",
+    "history_market_fn": examples_filepath + "HiFiEMS_inputs/Market/Market2021.csv",
+    "N_Samples": 10,
+    "epsilon": 85,  # for DRO
+    "epsilon1": 0.05,  # for uncertainty set
     # for REMS (balancing market)
-    "HA_wind_error_ub": "5%_fc_error",
-    "HA_wind_error_lb": "95%_fc_error",
-    # for SEMS
-    #'wind_scenario_fn': "../Data/Winddata2022_15min.csv",  # "../Data/probabilistic_wind2022.csv"
-    "price_scenario_fn": None,  # "../Data/xxx.csv", if None then use the build in method to generate price scenarios
-    "number_of_wind_scenario": 3,
-    "number_of_price_scenario": 3,
+    "wind_error_ub": "HA_ub",
+    "wind_error_lb": "HA_lb",
+    "Cp": 2000,
+    # for SEMS and DDEMS
+    "number_of_scenario": 3,
+    "probability": None,
 }
+
 
 out_keys = [
     "P_HPP_SM_t_opt",
@@ -104,13 +114,17 @@ out_keys = [
     "P_cha_RT_ts",
     "SoC_ts",
 ]
-res = utils.run(
+
+config = {
+    "SMOpt": "DO",
+    "BMOpt": None,
+    "RDOpt": None,
+}
+EMS_model = EMS(config=config)
+
+res = EMS_model.run(
     parameter_dict=parameter_dict,
     simulation_dict=simulation_dict,
-    EMS=EMS,
-    EMStype="DEMS",
-    BM_model=False,
-    RD_model=False,
 )  # run EMS with only spot market optimization
 
 lst = []
@@ -136,17 +150,3 @@ df = pd.DataFrame(lst)
 13          P_cha_RT_ts  1.799773e+02  1.874764e+00    96
 14               SoC_ts  2.664831e+01  2.775866e-01    96
 """
-# EMS.run_SM_RD(
-#        parameter_dict = parameter_dict,
-#        simulation_dict = simulation_dict
-#       )   # run EMS with spot market optimization and re-dispatch optimization
-
-# EMS.run_SM_BM(
-#        parameter_dict = parameter_dict,
-#        simulation_dict = simulation_dict
-#       )   # run EMS with spot market optimization and balancing market optimization
-
-# EMS.run(
-#        parameter_dict = parameter_dict,
-#        simulation_dict = simulation_dict
-#       )   # run EMS with all optimization models

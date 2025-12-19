@@ -10,24 +10,12 @@ def main():
     if __name__ == "__main__":
         import os
 
-        from hydesign.assembly.hpp_assembly_hifi_dems import hpp_model
+        from hydesign.assembly.hpp_assembly_hifi import hpp_model
         from hydesign.examples import examples_filepath
 
         sim_pars_fn = os.path.join(examples_filepath, "Europe/hpp_pars_HiFiEMS.yml")
         hpp = hpp_model(
             sim_pars_fn=sim_pars_fn,
-            input_ts_da=os.path.join(
-                examples_filepath, "HiFiEMS_inputs/Weather/input_ts_DA.csv"
-            ),
-            input_ts_ha=os.path.join(
-                examples_filepath, "HiFiEMS_inputs/Weather/input_ts_HA.csv"
-            ),
-            input_ts_rt=os.path.join(
-                examples_filepath, "HiFiEMS_inputs/Weather/input_ts_RT.csv"
-            ),
-            market_fn=os.path.join(
-                examples_filepath, "HiFiEMS_inputs/Market/Market2021.csv"
-            ),
         )
         inputs = dict(
             clearance=20,

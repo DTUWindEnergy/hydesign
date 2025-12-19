@@ -6,7 +6,7 @@ import pandas as pd
 from hydesign.assembly.hpp_assembly import hpp_model
 from hydesign.assembly.hpp_assembly_BM import hpp_model as hpp_model_BM
 from hydesign.assembly.hpp_assembly_constantoutput import hpp_model_constant_output
-from hydesign.assembly.hpp_assembly_hifi_dems import hpp_model as hpp_model_hifi_ems
+from hydesign.assembly.hpp_assembly_hifi import hpp_model as hpp_model_hifi_ems
 from hydesign.assembly.hpp_assembly_P2X import hpp_model_P2X
 from hydesign.assembly.hpp_assembly_P2X_bidrectional import hpp_model_P2X_bidirectional
 from hydesign.assembly.hpp_assembly_solarX import hpp_model_solarX
@@ -185,29 +185,10 @@ def run_evaluation(out_name, name, design_name, tmp_name, case, **kwargs):
         sim_pars_fn = os.path.join(examples_filepath, "Europe/hpp_pars_HiFiEMS.yml")
         hpp = hpp_model_hifi_ems(
             sim_pars_fn=sim_pars_fn,
-            input_ts_da=os.path.join(
-                examples_filepath, "HiFiEMS_inputs/Weather/input_ts_DA.csv"
-            ),
-            input_ts_ha=os.path.join(
-                examples_filepath, "HiFiEMS_inputs/Weather/input_ts_HA.csv"
-            ),
-            input_ts_rt=os.path.join(
-                examples_filepath, "HiFiEMS_inputs/Weather/input_ts_RT.csv"
-            ),
-            market_fn=os.path.join(
-                examples_filepath, "HiFiEMS_inputs/Market/Market2021.csv"
-            ),
         )
         x = [
-            20,
-            350,
+            120,
             10,
-            12,
-            6,
-            10,
-            25,
-            180,
-            1.5,
             40,
             3,
         ]

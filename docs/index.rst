@@ -62,6 +62,12 @@ Explanations of hydesign's core objects can be found in the following tutorials:
        
 
     .. toctree::
+        :maxdepth: 1
+	:caption: HiFi EMS
+
+	notebooks/HiFiEMS
+
+    .. toctree::
         :glob:
         :maxdepth: 1
 	:caption: Publications

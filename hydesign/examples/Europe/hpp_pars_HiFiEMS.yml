@@ -156,8 +156,10 @@ battery_hour_charge_efficiency: 0.975
 battery_self_discharge_efficiency: 0
 
 # hpp battery degradation parameters
+battery_initial_degradation: 0
 battery_marginal_degradation_cost: 142_000 # in EUR/MWh
 battery_capital_cost: 142_000 # in EUR/MWh
+degradation_in_optimization: 0
 
 # bid parameters
 max_up_bid: 50
@@ -168,35 +170,57 @@ min_dw_bid: 5
 # interval parameters: note that DI must <= SI
 dispatch_interval: 0.25
 settlement_interval: 0.25
+offer_interval: 1
 
-imbalance_fee: 0.13  # DK: 0.13 €/MWh, other Nordic countries: , others: 0.001
+imbalance_fee: 0.13  # DK: 0.13 Euro/MWh, other Nordic countries: , others: 0.001
+deviation: 100
 
-
-## SIMULATION KEYS
-
-start_date: '1/1/21'
-number_of_run_day: 50   # 
-out_dir: './test/'
-DA_wind: 'DA'   #DA, Measurement
-HA_wind: 'HA'  #HA, Measurement
-FMA_wind: 'RT'  #5min_ahead, Measurement
-DA_solar: 'DA'
-HA_solar: 'HA'
-FMA_solar: 'RT'
-SP: 'SM_forecast'  # SM_forecast;SM_cleared
-RP: 'reg_forecast' #reg_cleared;reg_forecast_pre
-BP: 1 #1:forecast value 2: perfect value
 
 # Data
 data_dir: null
-input_ts_da: 'HiFiEMS_inputs/Weather/input_ts_DA.csv'
-input_ts_ha: 'HiFiEMS_inputs/Weather/input_ts_HA.csv'
-input_ts_rt: 'HiFiEMS_inputs/Weather/input_ts_RT.csv'
-input_ts_measurement: 'HiFiEMS_inputs/Weather/input_ts_Measurement.csv'
-market_fn: 'HiFiEMS_inputs/Market/Market2021.csv'
+wind_fn:  "HiFiEMS_inputs/Power/Winddata2021_15min.csv"
+solar_fn: "HiFiEMS_inputs/Power/Solardata2021_15min.csv"
+market_fn: "HiFiEMS_inputs/Market/Market2021.csv"
 
+## SIMULATION KEYS
 
+wind_as_component: 1
+solar_as_component: 1  # The code does not support for solar power plant
+battery_as_component: 1
+start_date: "2/1/21"
+number_of_run_day: 10  #
+out_dir: "./test/"
+# For DEMS
+DA_wind: "DA_1"  # DA, Measurement
+HA_wind: "HA"  # HA, Measurement
+FMA_wind: "RT"  # 5min_ahead, Measurement
+DA_solar: "DA_1"
+HA_solar: "HA"
+FMA_solar: "RT"
+SP: "SM_forecast_1"  # SM_forecast;SM_cleared
+RP: "reg_forecast_1"  # reg_cleared;reg_forecast_pre
+BP: 1  # 1:forecast value 2: perfect value
+# for DDEMS (spot market) -- Historical data
+history_wind_fn: "HiFiEMS_inputs/Power/Winddata2021_15min.csv"
+history_solar_fn: "HiFiEMS_inputs/Power/Solardata2021_15min.csv"
+history_market_fn: "HiFiEMS_inputs/Market/Market2021.csv"
+N_Samples: 10
+epsilon: 85  # for DRO
+epsilon1: 0.05  # for uncertainty set
+# for REMS (balancing market)
+wind_error_ub: "HA_ub"
+wind_error_lb: "HA_lb"
+Cp: 2000
+# for SEMS and DDEMS
+number_of_scenario: 3
+probability: null
 
+# config
+SMOpt: 'DO'
+BMOpt: null
+RDOpt: null
+BM_model: 0
+RD_model: 1
 
 
 
