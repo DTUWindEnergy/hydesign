@@ -64,6 +64,8 @@ intersphinx_mapping = {
 
 # Auto API conf.:
 autoapi_dirs = ['../hydesign']
+autoapi_add_toctree_entry = True         # ensures TOC entries appear
+autoapi_generate_api_docs = True         # explicit
 
 # Spinx tags
 tags_create_tags = True
