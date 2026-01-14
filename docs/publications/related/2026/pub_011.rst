@@ -1,0 +1,19 @@
+.. pub_11:
+
+Optimal sizing of renewable hybrid power plants considering component reliability as a multi-discipline optimization under uncertainty
+=======================================================================================================================================
+
+**Abstract**
+
+The sizing of grid-connected hybrid power plants (HPPs), integrating wind, photovoltaics (PV), and battery storage, is critical for optimizing economic performance. Traditional sizing approaches typically assume ideal component availability, neglecting failure and repair processes, which can lead to overestimated financial projections. This paper develops a stochastic reliability model to simulate component availability time series over the plant’s lifetime, considering wind turbines, PV strings, PV inverters, battery systems, and transformers. The sizing problem is formulated as a multi-disciplinary optimization under uncertainty, incorporating 13 design variables, including wind turbine rated power, number of turbines, installation density, PV capacity, inverter size etc. The optimization aims to maximize the weighted average of expected net present value (NPV) over capital expenditure (CAPEX) and the conditional value-at-risk of NPV over CAPEX. The proposed methodology is applied to case studies at a Danish and a French site with diverse weather conditions to compare deterministic and stochastic sizing approaches. The out-of-sample experiments demonstrate that incorporating component reliability in the sizing process increases the mean NPV-to-CAPEX ratio, evaluated over 100 reliability scenarios, by 2.5 % and 2.8 % for the two sites, respectively, indicating enhanced investment efficiency.
+
+**Cite this**
+
+Zhu R, Murcia Leon JP, Friis-Møller M, Gupta M, Das K. Optimal sizing of renewable hybrid power plants considering component reliability as a multi-discipline optimization under uncertainty. Applied Energy. 2026;404:127138. doi: 10.1016/j.apenergy.2025.127138
+
+**Link**
+
+Download `here
+<https://orbit.dtu.dk/en/publications/optimal-sizing-of-renewable-hybrid-power-plants-considering-compo/>`_.
+
+.. tags:: Hybrid power plants, Component sizing, Component reliability, Multi-disciplinary optimization, Stochastic optimization
