@@ -438,13 +438,74 @@ class EMSCoreP2x(EMSCoreABC):
             if H2_storage_t_batch[t] == 0:
                 solver.Add(m_H2_offtake_t_batch[t] == m_H2_t_batch[t])
 
-            # estimate H2_P relation as a single line
-            slope = (H2_curve_list[-2][1] - H2_curve_list[1][1]) / (
-                H2_curve_list[-2][0] - H2_curve_list[1][0]
+            # estimate H2_P relation
+
+            # first method: using lambdas
+            # x_points = [pt[0] for pt in H2_curve_list]
+            # y_points = [pt[1] for pt in H2_curve_list]
+            # n = len(x_points)
+            # lam = [solver.NumVar(0, 1, f"lam_{i}") for i in range(n)]
+
+            # # Sum of lambdas must be 1
+            # solver.Add(sum(lam) == 1)
+
+            # # P and mH2 are convex combinations of the breakpoints
+            # solver.Add(P_ptg_t_batch[t] == sum(lam[i] * x_points[i] for i in range(n)))
+            # solver.Add(m_H2_t_batch[t] == sum(lam[i] * y_points[i] for i in range(n)))
+
+            # second method (estimate as a line):
+            # slope = (H2_curve_list[-2][1] - H2_curve_list[1][1]) / (
+            #     H2_curve_list[-2][0] - H2_curve_list[1][0]
+            # )
+
+            # solver.Add(
+            #     m_H2_t_batch[t] == slope * P_ptg_t_batch[t] + H2_curve_list[1][1]
+            # )
+
+            # third method:
+            x_points = [p[0] for p in H2_curve_list]
+            y_points = [p[1] for p in H2_curve_list]
+
+            if x_points[0] > 0:
+                x_points = [0.0] + x_points
+                y_points = [0.0] + y_points
+
+            n = len(x_points)
+            assert n >= 2
+
+            # segments are between i and i+1
+            nseg = n - 1
+            name = "pw"
+
+            # binary segment selectors
+            z = [solver.IntVar(0, 1, f"{name}_z_{i}") for i in range(nseg)]
+
+            # interpolation position in the selected segment
+            theta = [solver.NumVar(0, 1, f"{name}_theta_{i}") for i in range(nseg)]
+
+            # only one segment can be active
+            solver.Add(sum(z) == 1)
+
+            # theta can only be used if segment active
+            for i in range(nseg):
+                solver.Add(theta[i] <= z[i])
+
+            # x = sum over segments of (x_i * z_i + (x_{i+1}-x_i) * theta_i)
+            solver.Add(
+                P_ptg_t_batch[t]
+                == sum(
+                    x_points[i] * z[i] + (x_points[i + 1] - x_points[i]) * theta[i]
+                    for i in range(nseg)
+                )
             )
 
+            # y = sum over segments of (y_i * z_i + (y_{i+1}-y_i) * theta_i)
             solver.Add(
-                m_H2_t_batch[t] == slope * P_ptg_t_batch[t] + H2_curve_list[1][1]
+                m_H2_t_batch[t]
+                == sum(
+                    y_points[i] * z[i] + (y_points[i + 1] - y_points[i]) * theta[i]
+                    for i in range(nseg)
+                )
             )
 
         # Penalty construction: unmet H2 demand sum (identical formula)
