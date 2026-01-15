@@ -1,0 +1,16 @@
+.. pub_12:
+
+Hybrid Renewable Power Plants for Green Ammonia Production: Optimal Operation and Economic Assessment
+=======================================================================================================================================
+
+
+**Cite this**
+
+Gupta M, Baize-Roch F, Das K. Hybrid Renewable Power Plants for Green Ammonia Production: Optimal Operation and Economic Assessment. In Proceedings of 2025 Wind Energy Science Conference. European Academy of Wind Energy. 2025
+
+**Link**
+
+Download `here
+<https://orbit.dtu.dk/en/publications/hybrid-renewable-power-plants-for-green-ammonia-production-optima/>`_.
+
+.. tags:: Green ammonia, Energy management system, Hybrid power plant, Power-to-X, Haber-Bosch process, Solid oxide electrolyzer cell

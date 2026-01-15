@@ -2,42 +2,38 @@
 longitude;8.594398
 latitude;56.227322
 altitude;85.0
-clearance [m];20.0
-sp [W/m2];350.0
-p_rated [MW];10.0
-Nwt;12.0
+clearance [m];27.5
+sp [W/m2];302.7918061201338
+p_rated [MW];5.0
+Nwt;24.0
 wind_MW_per_km2 [MW/km2];6.0
+wind_MW [MW];120.0
 solar_MW [MW];10.0
-surface_tilt [deg];25.0
-surface_azimuth [deg];180.0
-DC_AC_ratio;1.5
 b_P [MW];40.0
 b_E_h [h];3.0
-NPV_over_CAPEX;1.2608611514501775
-NPV [MEuro];173.0072177371264
-IRR;0.13526323626453896
-LCOE [Euro/MWh];9.356122891485926
-Revenues [MEuro];19.10245117177261
-CAPEX [MEuro];137.21353658818214
-OPEX [MEuro];5.114226704499598
-Wind CAPEX [MEuro];103.92953658818213
-Wind OPEX [MEuro];5.046726704499598
-PV CAPEX [MEuro];3.35
-PV OPEX [MEuro];0.0675
+NPV_over_CAPEX;1.4903802051463981
+NPV [MEuro];209.00197768849998
+IRR;0.14713713721232957
+LCOE [Euro/MWh];30.89804378217375
+Revenues [MEuro];17.439381796275647
+CAPEX [MEuro];140.234
+OPEX [MEuro];1.604304
+Wind CAPEX [MEuro];108.0
+Wind OPEX [MEuro];1.559304
+PV CAPEX [MEuro];2.3
+PV OPEX [MEuro];0.045
 Batt CAPEX [MEuro];6.94
 Batt OPEX [MEuro];0.0
 Shared CAPEX [MEuro];22.994
 Shared OPEX [MEuro];0.0
-Mean Annual Electricity Sold [GWh];1636.2982278597942
-GUF;1.8679203514381213
+Mean Annual Electricity Sold [GWh];389.0703973097149
+GUF;0.44414428916634124
 grid [MW];100.0
 wind [MW];120.0
 solar [MW];10.0
 Battery Energy [MWh];120.0
 Battery Power [MW];40.0
 Awpp [km2];20.0
-Apvp [km2];0.1226
+Apvp [km2];1.0
 Plant area [km2];20.0
-Rotor diam [m];190.73089080355845
-Hub height [m];115.36544540177923
-Break-even PPA price [Euro/MWh];31.00061095426359
+Break-even PPA price [Euro/MWh];24.231789357462997

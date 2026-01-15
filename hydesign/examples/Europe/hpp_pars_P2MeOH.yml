@@ -114,8 +114,8 @@ MeOH_reactor_capex_cost: 10_981_694 #[EUR/MWelec] https://ens.dk/sites/ens.dk/fi
 MeOH_reactor_opex_cost: 329_451 #[EUR/MWelec] https://ens.dk/sites/ens.dk/files/Analyser/technology_data_for_renewable_fuels.pdf p245
 m_MeOH_tank_flow_max_kg: 69_000 #[kg/h] p.49 https://utw10182.utweb.utexas.edu/eldridge/ChE473K/drop_folder/Methanol%20Magic%20Senior%20Design%20Report.pdf
 charging_efficiency_MeOH_tank: 0.975 #https://www.nature.com/articles/s41929-021-00696-w
-MeOH_tank_capex_cost: 0.46 #[€/kgMeOH] p.46 https://utw10182.utweb.utexas.edu/eldridge/ChE473K/drop_folder/Methanol%20Magic%20Senior%20Design%20Report.pdf
-MeOH_tank_opex_cost: 0.023 #€/kgMeOH 5% CAPEX https://utw10182.utweb.utexas.edu/eldridge/ChE473K/drop_folder/Methanol%20Magic%20Senior%20Design%20Report.pdf
+MeOH_tank_capex_cost: 0.46 #[Euro/kgMeOH] p.46 https://utw10182.utweb.utexas.edu/eldridge/ChE473K/drop_folder/Methanol%20Magic%20Senior%20Design%20Report.pdf
+MeOH_tank_opex_cost: 0.023 #[Euro/kgMeOH] 5% CAPEX https://utw10182.utweb.utexas.edu/eldridge/ChE473K/drop_folder/Methanol%20Magic%20Senior%20Design%20Report.pdf
 w: 1 #parameter for the multi-objective EMS operation
 
 MeOH_demand_scheme: 'infinite'

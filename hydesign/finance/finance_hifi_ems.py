@@ -259,9 +259,7 @@ class finance:
         outputs["NPV_over_CAPEX"] = NPV / CAPEX
 
         level_costs = np.sum(OPEX / (1 + hpp_discount_factor) ** iy) + CAPEX
-        AEP_per_year = (
-            df.groupby("i_year").hpp_t.mean() * 365 * 24 * self.intervals_per_hour
-        )
+        AEP_per_year = df.groupby("i_year").hpp_t.mean() * 365 * 24
         level_AEP = np.sum(AEP_per_year / (1 + hpp_discount_factor) ** iy)
 
         mean_AEP_per_year = np.mean(AEP_per_year)

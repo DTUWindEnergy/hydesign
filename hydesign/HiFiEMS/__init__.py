@@ -1,0 +1,1 @@
+HIFIEMS_PACKAGE = __name__

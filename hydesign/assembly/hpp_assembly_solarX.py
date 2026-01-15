@@ -603,7 +603,7 @@ class hpp_model_solarX(hpp_base):
             price_el[h_start:h_end],
             where="mid",
             color="green",
-            label="Electricity [€/MWh]",
+            label="Electricity [Euro/MWh]",
         )
         axs[0][0].step(
             range(len(price_h2[h_start:h_end])),
@@ -611,10 +611,10 @@ class hpp_model_solarX(hpp_base):
             where="mid",
             color="purple",
             linestyle="--",
-            label="H2 [€/kg]",
+            label="H2 [Euro/kg]",
         )
 
-        axs[0][0].set_ylabel("Price [€]")
+        axs[0][0].set_ylabel("Price [Euro]")
         axs[0][0].legend(loc="upper left")
         axs[0][0].set_xticklabels([])
         axs[0][0].set_xlim(0, n_hours - 1)
