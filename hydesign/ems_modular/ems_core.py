@@ -1246,16 +1246,13 @@ class EMSCore(EMSCoreABC):
                 solver.Add(m_H2_offtake_t_batch[t] == m_H2_t_batch[t])
 
             # estimate H2_P relation
-
             # first method: using lambdas
             # x_points = [pt[0] for pt in H2_curve_list]
             # y_points = [pt[1] for pt in H2_curve_list]
             # n = len(x_points)
             # lam = [solver.NumVar(0, 1, f"lam_{i}") for i in range(n)]
-
             # # Sum of lambdas must be 1
             # solver.Add(sum(lam) == 1)
-
             # # P and mH2 are convex combinations of the breakpoints
             # solver.Add(P_ptg_t_batch[t] == sum(lam[i] * x_points[i] for i in range(n)))
             # solver.Add(m_H2_t_batch[t] == sum(lam[i] * y_points[i] for i in range(n)))
@@ -1264,7 +1261,6 @@ class EMSCore(EMSCoreABC):
             # slope = (H2_curve_list[-2][1] - H2_curve_list[1][1]) / (
             #     H2_curve_list[-2][0] - H2_curve_list[1][0]
             # )
-
             # solver.Add(
             #     m_H2_t_batch[t] == slope * P_ptg_t_batch[t] + H2_curve_list[1][1]
             # )
@@ -1278,10 +1274,12 @@ class EMSCore(EMSCoreABC):
                 y_points = [0.0] + y_points
 
             n = len(x_points)
-            assert n >= 2
+            assert (
+                n >= 2
+            )  # The curve needs at least 2 points, otherwise no segment exists.
 
-            # segments are between i and i+1
-            nseg = n - 1
+            #
+            nseg = n - 1  # segment i is between points i and i+1
             name = "pw"
 
             # binary segment selectors
@@ -1297,7 +1295,7 @@ class EMSCore(EMSCoreABC):
             for i in range(nseg):
                 solver.Add(theta[i] <= z[i])
 
-            # x = sum over segments of (x_i * z_i + (x_{i+1}-x_i) * theta_i)
+            # linear interpolation of X-axis (P(t)) within the active segment k (P(t) = x_k + (x_{k+1}-x_k) * theta_k)
             solver.Add(
                 P_ptg_t_batch[t]
                 == sum(
@@ -1306,7 +1304,7 @@ class EMSCore(EMSCoreABC):
                 )
             )
 
-            # y = sum over segments of (y_i * z_i + (y_{i+1}-y_i) * theta_i)
+            # linear interpolation of Y-axis (mH2(t)) within the active segment k (mH2(t) = y_k + (y_{k+1}-y_k) * theta_k)
             solver.Add(
                 m_H2_t_batch[t]
                 == sum(
@@ -1315,7 +1313,7 @@ class EMSCore(EMSCoreABC):
                 )
             )
 
-        # Penalty construction: unmet H2 demand sum (identical formula)
+        # Penalty construction: unmet H2 demand sum
         unmet_sum = solver.Sum(
             [
                 self.penalty_factor_H2
