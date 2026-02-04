@@ -4,6 +4,7 @@ import pandas as pd
 import pyomo.environ as pyo
 from docplex.mp.model import Model
 from ortools.linear_solver import pywraplp
+from pyomo.opt import SolverStatus, TerminationCondition
 
 from hydesign.ems_modular.modules.ems_core_helpers import (
     EMSCoreABC,
@@ -292,7 +293,24 @@ class EMSCoreDefaults(EMSCoreABC):
         # solve
         # ------------
         solver = pyo.SolverFactory("highs")  # glpk
+
+        solver.options["mip_rel_gap"] = 0.05
+        # solver.options["log_to_console"] = True
+        solver.options["time_limit"] = 20
+
         result = solver.solve(mdl, tee=False)  # tee=True if you want solver log
+
+        # tc = result.solver.termination_condition
+        # st = result.solver.status
+
+        # try:
+        #     obj = pyo.value(mdl.OBJ)
+        #     print("✅ Objective evaluated:", obj)
+        #     print("Status:", st)
+        #     print("Termination:", tc)
+        # except Exception as e:
+        #     print("❌ Solver failed: objective not available")
+        #     print(e)
 
     def pyomo_outputs(self, mdl, **kwargs):
         # ------------

@@ -4,7 +4,7 @@
 
 ems_script: "static" # static or modular
 ems_modular_regenerate: true
-ems_solver: "ortools" # "cplex" #
+ems_solver: "pyomo" # "cplex" #
 batch_size: 60 #110
 
 # --------------------------------------------------------------------------------------------
