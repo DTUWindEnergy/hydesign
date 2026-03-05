@@ -821,20 +821,24 @@ def ems_cplex_parts_P2X(
     mdl.end()
 
     # Cplex sometimes returns missing values :O
-    P_HPP_ts = P_HPP_ts_df.reindex(time, fill_value=0).values
-    P_curtailment_ts = P_curtailment_ts_df.reindex(time, fill_value=0).values
-    P_charge_discharge_ts = P_charge_discharge_ts_df.reindex(time, fill_value=0).values
-    E_SOC_ts = E_SOC_ts_df.reindex(SOCtime, fill_value=0).values
-    P_ptg_ts = P_ptg_ts_df.reindex(time, fill_value=0).values
-    m_H2_ts = m_H2_ts_df.reindex(time, fill_value=0).values
-    LoS_H2_ts = LoS_H2_ts_df.reindex(time, fill_value=0).values
-    m_H2_offtake_ts = m_H2_offtake_ts_df.reindex(time, fill_value=0).values
+    P_HPP_ts = P_HPP_ts_df.reindex(time, fill_value=0).to_numpy(copy=True)
+    P_curtailment_ts = P_curtailment_ts_df.reindex(time, fill_value=0).to_numpy(
+        copy=True
+    )
+    P_charge_discharge_ts = P_charge_discharge_ts_df.reindex(
+        time, fill_value=0
+    ).to_numpy(copy=True)
+    E_SOC_ts = E_SOC_ts_df.reindex(SOCtime, fill_value=0).to_numpy(copy=True)
+    P_ptg_ts = P_ptg_ts_df.reindex(time, fill_value=0).to_numpy(copy=True)
+    m_H2_ts = m_H2_ts_df.reindex(time, fill_value=0).to_numpy(copy=True)
+    LoS_H2_ts = LoS_H2_ts_df.reindex(time, fill_value=0).to_numpy(copy=True)
+    m_H2_offtake_ts = m_H2_offtake_ts_df.reindex(time, fill_value=0).to_numpy(copy=True)
 
     if len(P_HPP_ts_df) < len(wind_ts):
         # print('recomputing p_hpp')
         P_HPP_ts = (
-            wind_ts.values
-            + solar_ts.values
+            wind_ts.to_numpy(copy=True)
+            + solar_ts.to_numpy(copy=True)
             + -P_curtailment_ts
             + P_charge_discharge_ts
             - P_ptg_ts

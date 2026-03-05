@@ -80,5 +80,4 @@ Explanations of hydesign's core objects can be found in the following tutorials:
     .. toctree::
         :maxdepth: 1
 	:caption: API reference
-        autoapi/index
     
