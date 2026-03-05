@@ -1,0 +1,56 @@
+{
+  "project_name": "wind_solar_battery_cplex",
+  "project_slug": "wind_solar_battery_cplex",
+  "technologies": [
+    "wind",
+    "solar",
+    "battery"
+  ],
+  "artifacts": [
+    "ems",
+    "costs",
+    "finance",
+    "assembly",
+    "weather",
+    "wind",
+    "pv",
+    "battery_degradation",
+    "ems_long_term",
+    "reliability"
+  ],
+  "builder_version": "0.2",
+  "generated_files": [
+    "__init__.py",
+    "assembly.py",
+    "battery_degradation.py",
+    "costs.py",
+    "ems.py",
+    "ems_long_term.py",
+    "finance.py",
+    "pv.py",
+    "reliability.py",
+    "weather.py",
+    "wind.py"
+  ],
+  "source_hashes": {
+    "hydesign/ems/ems.py": "ffb3c294fd1b004c9357a90058b05ba9164b8597547dfb080e8efb38bbd5502f",
+    "hydesign/costs/costs.py": "f34b2f9f163d6b6bf970037ed1a153f4c6f9549df078c336a0b9236e367a9654",
+    "hydesign/finance/finance.py": "6f29f3134b400c575cb2e54e3623a23aa27137ee9c754c56e4674502a0334bf3",
+    "hydesign/assembly/hpp_assembly.py": "86331361deed151dfc718f7035e4e5a3e69c8a891ec73ed075b697c06a00d829",
+    "hydesign/modules/assembly/contracts.py": "6c32eccb859b634acef391a2efa04f3d1937ba23e13adf5e4f16645709497e75",
+    "hydesign/modules/assembly/base.py": "620dbf097ee9a665f577d507f919171ecee7b2152572818879bfe182aa9c63cf",
+    "hydesign/modules/assembly/wind.py": "775ed258c12a4eaaaf0b6b524b4f83ae708850ed24b935b75f07b5f2d72c249f",
+    "hydesign/modules/assembly/solar.py": "f54217b00acb7dedad4a3a56d39d8d98e1d26a329dcfcf8b820e348a80004740",
+    "hydesign/modules/assembly/battery.py": "1a21e04121e2658a0d01a2eb438a9c69a0cc4a158554a0bbc214e0e8ec8bb648",
+    "hydesign/modules/assembly/operations.py": "9c5f29a5d64493527766dcff95a3cf74b10ef88ee3c135c75564ffe9859faa39",
+    "hydesign/modules/assembly/finance.py": "a357f79fef27b5ae911c73c7dd8f449a920d2db546cc7fa5d6fc3839c7f83dd8",
+    "hydesign/modules/assembly/registry.py": "34df2242c2bc590eebd63cd9cef479892a13d0f0daec9c3f283b7580437dccdf",
+    "hydesign/modules/assembly/artifact_codegen.py": "847a6eba148e8bda0a781a84f0042c0512442dcf21d1ab166ec7f46824a8d1da",
+    "hydesign/weather/weather.py": "78231b74c1a044a4b60f178889b04f1e975f20c15e9adec589be2f377c6e1d26",
+    "hydesign/wind/wind.py": "0b5696e7a2acb2bf503f712b5d1f6fbbe116f6ee469f7f0c029c47ba2de59f8e",
+    "hydesign/pv/pv.py": "5e895bd13141ec32e65fb2155a52dab32454724d124c9eb7c53db23c3236509d",
+    "hydesign/battery_degradation.py": "5b81d06c3b6c4549b0dc57d243d33908f4554bcd7c028e0e797a68c72beb8ca8",
+    "hydesign/reliability.py": "20e0e90fc4342fc26f62aab7032ca607342f447b480d33519960f6337c022c39"
+  },
+  "built_at_utc": "2026-03-05T22:59:39.273986+00:00"
+}
