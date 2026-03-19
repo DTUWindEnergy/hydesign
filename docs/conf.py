@@ -54,6 +54,7 @@ extensions = [
     #'sphinx.ext.imgconverter',
     'autoapi.extension',
     "sphinx_tags",
+    'sphinxcontrib.youtube',
 ]
 
 intersphinx_mapping = {
@@ -66,6 +67,20 @@ intersphinx_mapping = {
 autoapi_dirs = ['../hydesign']
 autoapi_add_toctree_entry = True         # ensures TOC entries appear
 autoapi_generate_api_docs = True         # explicit
+autoapi_options = [
+    'members',
+    'undoc-members',
+    'show-inheritance',
+    'show-module-summary',
+]
+autoapi_ignore = [
+    '*/tests/*',
+    '*/examples/scripts/*',
+    '*/examples/HiFiEMS_inputs/*',
+    '*/assembly/run_*',
+    '*_ipynb.py',
+    '*.bak',
+]
 
 # Spinx tags
 tags_create_tags = True

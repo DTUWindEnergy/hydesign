@@ -24,6 +24,21 @@ The :ref:`Quickstart </notebooks/Quickstart.ipynb>` section shows how to set up 
 
 For an in-depth explanation of how to work with HyDesign, please see :download:`Working with HyDesign <HyDesign_Instructions.pdf>`.
 
+A series of tutorial videos are available to assist you in working with HyDesign:
+
+Working with HyDesign tool:
+
+.. youtube:: bggJUsrfplY
+
+HyDesign using Google Colab:
+
+.. youtube:: tQ5vryIjzn4
+
+Introduction - Hybrid Power Plant and HyDesign
+
+.. youtube:: cJe21EpM46Y
+
+
 Explanations of hydesign's core objects can be found in the following tutorials:
 
 
