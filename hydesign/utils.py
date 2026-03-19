@@ -104,7 +104,7 @@ class hybridization_shifted:
         # life_h = self.life_h
 
         # SoH = inputs['SoH']
-        delta_life = int(delta_life)
+        delta_life = int(delta_life[0])
 
         SoH_shifted = np.concatenate(
             (

@@ -227,7 +227,7 @@ class finance:
         """
 
         # delta_life = int(inputs['delta_life'][0])
-        delta_life = int(delta_life)
+        delta_life = int(delta_life[0])
 
         N_limit = int(self.N_limit)
         life_y = int(self.life_y)
@@ -536,7 +536,9 @@ def calculate_NPV_IRR(
     """
 
     # yr = np.arange(len(Net_revenue_t))  # extra year to start at 0 and end at end of lifetime.
-
+    tax_rate = np.asarray(tax_rate)[
+        0
+    ]  # to avoid issues if it is a list or array of length 1
     # EBITDA: earnings before interest and taxes in nominal prices
     EBITDA = (Net_revenue_t - maintenance_cost_per_year) * inflation_index
 

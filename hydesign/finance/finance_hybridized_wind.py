@@ -136,7 +136,7 @@ class finance:
         penalty_lifetime : total penalty
         """
 
-        delta_life = int(delta_life)
+        delta_life = int(delta_life[0])
 
         N_limit = int(self.N_limit)
         life_y = int(self.life_y)
@@ -187,9 +187,10 @@ class finance:
         )
 
         # Construction of the CAPEX vector along the lifetime
-        CAPEX_only_wind = CAPEX_w + CAPEX_el_w
+        CAPEX_only_wind = float(np.squeeze(CAPEX_w + CAPEX_el_w))
 
         CAPEX_pv = CAPEX_s + CAPEX_el_s + CAPEX_b
+        CAPEX_pv = float(np.squeeze(CAPEX_pv))
 
         CAPEX = (
             CAPEX_pv + CAPEX_only_wind
@@ -432,6 +433,9 @@ def calculate_NPV_IRR(
     """
 
     # yr = np.arange(len(Net_revenue_t))  # extra year to start at 0 and end at end of lifetime.
+    tax_rate = np.asarray(tax_rate)[
+        0
+    ]  # to avoid issues if it is a list or array of length 1
 
     # EBITDA: earnings before interest and taxes in nominal prices
     EBITDA = (Net_revenue_t - maintenance_cost_per_year) * inflation_index

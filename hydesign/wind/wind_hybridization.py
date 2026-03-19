@@ -74,6 +74,7 @@ class wpp_with_degradation:
         # pcw = inputs['pcw']
         # wst = inputs['wst']
         # delta_life = inputs['delta_life'][0]
+        delta_life = np.asarray(delta_life)[0]
 
         N_limit = self.N_limit
         life_y = self.life_y

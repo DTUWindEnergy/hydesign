@@ -191,7 +191,7 @@ class sf:
             )
 
         else:
-            max_solar_flux_cpv_t = 0
+            max_solar_flux_cpv_t = np.zeros(self.N_time)
 
         if area_cst_receiver_m2 > 0:
             max_solar_flux_cst_t = self.calculate_flux_sf(
@@ -204,7 +204,7 @@ class sf:
                 dni,
             )
         else:
-            max_solar_flux_cst_t = 0
+            max_solar_flux_cst_t = np.zeros(self.N_time)
 
         if area_dni_reactor_biogas_h2 > 0:
             max_solar_flux_biogas_h2_t = self.calculate_flux_sf(
@@ -217,7 +217,7 @@ class sf:
                 dni,
             )
         else:
-            max_solar_flux_biogas_h2_t = 0
+            max_solar_flux_biogas_h2_t = np.zeros(self.N_time)
 
         # Assign computed fluxes to the outputs
         outputs["max_solar_flux_cpv_t"] = max_solar_flux_cpv_t  # MW for cpv
@@ -314,10 +314,10 @@ class sf:
                 efficiency = 0  # Default to 0 if extrapolation fails
             effective_flux_sf.append(dni_value * efficiency * sf_area)  # Calculate flux
 
-        # Convert the list to a Pandas Series for further calculations
-        flux_sf_t = pd.Series(effective_flux_sf, index=dni.index)
+        # # Convert the list to a Pandas Series for further calculations
+        # flux_sf_t = pd.Series(effective_flux_sf, index=dni.index)
 
-        return flux_sf_t
+        return np.squeeze(effective_flux_sf)
 
 
 class sf_comp(ComponentWrapper):

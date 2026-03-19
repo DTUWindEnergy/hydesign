@@ -58,7 +58,7 @@ class pvp_with_degradation:
 
         # delta_life = inputs['delta_life'][0]
         # solar_t_ext = inputs['solar_t_ext']
-
+        delta_life = np.asarray(delta_life)[0]
         t_over_year = np.arange(self.life_h) / (365 * 24)
         pv_deg_yr = [
             0,
