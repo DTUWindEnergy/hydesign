@@ -1,7 +1,7 @@
 .. related_pub_019:
 
 Optimal Sizing of Hybrid Power Plants Considering Multiple Electricity Market Participation
-============================================================
+===========================================================================================
 
 **Abstract**
 

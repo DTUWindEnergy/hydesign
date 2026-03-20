@@ -1,7 +1,7 @@
 .. thesis_008:
 
 Sizing and design optimization of hybrid power plants with Power-to-Hydrogen: techno-economic and environmental assessment
-================================================================================
+==========================================================================================================================
 
 **Abstract**
 

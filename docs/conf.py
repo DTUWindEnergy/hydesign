@@ -14,8 +14,14 @@
 #
 import os
 import sys
+import warnings
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.append('..')
+
+warnings.filterwarnings(
+    'ignore',
+    message='Sphinx 9 will drop support for representing paths as strings.*',
+)
 
 from hydesign import __version__
 from hydesign import __release__
@@ -82,6 +88,12 @@ autoapi_ignore = [
     '*.bak',
 ]
 
+suppress_warnings = [
+    'autoapi.python_import_resolution',
+    'toc.duplicate_entry',
+    'toc.not_included',
+]
+
 # Spinx tags
 tags_create_tags = True
 
@@ -111,6 +123,7 @@ exclude_patterns = [
     #'notebooks/neural_network_with_tfds_data.ipynb',
     # ipynb checkpoints
     'notebooks/.ipynb_checkpoints/*.ipynb',
+    '_tags/*',
     'build/*'
 ]
 
