@@ -16,6 +16,7 @@ from docplex.mp.conflict_refiner import ConflictRefiner
 from docplex.mp.model import Model
 from ortools.linear_solver import pywraplp
 
+from hydesign.ems.ems import solution_series
 from hydesign.openmdao_wrapper import ComponentWrapper
 
 # import copy
@@ -1826,49 +1827,31 @@ def ems_cplex_parts(
     # print("Objective Value for SM + BM:", sol.objective_value)
     # print("Status for SM + BM:", sol.solve_status)
 
-    P_HPP_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_HPP_t), orient="index"
-    ).loc[:, 0]
-    P_HPP_BM_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_HPP_BM_t), orient="index"
-    ).loc[:, 0]
-    P_curtailment_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_curtailment_t), orient="index"
-    ).loc[:, 0]
-    P_curtailment_BM_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_curtailment_BM_t), orient="index"
-    ).loc[:, 0]
-    price_penalty_BM_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(price_penalty_t), orient="index"
-    ).loc[:, 0]
+    if sol is None:
+        details = mdl.get_solve_details()
+        mdl.end()
+        raise RuntimeError(
+            f"EMS BM CPLEX returned no solution. Status: {details.status} "
+            f"(code {details.status_code})."
+        )
 
-    P_charge_BM_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_charge_BM_t), orient="index"
-    ).loc[:, 0]
-    P_discharge_BM_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_discharge_BM_t), orient="index"
-    ).loc[:, 0]
-    P_charge_SM_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_charge_SM_t), orient="index"
-    ).loc[:, 0]
-    P_discharge_SM_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_discharge_SM_t), orient="index"
-    ).loc[:, 0]
+    P_HPP_ts_df = solution_series(sol, P_HPP_t, time)
+    P_HPP_BM_ts_df = solution_series(sol, P_HPP_BM_t, time)
+    P_curtailment_ts_df = solution_series(sol, P_curtailment_t, time)
+    P_curtailment_BM_ts_df = solution_series(sol, P_curtailment_BM_t, time)
+    price_penalty_BM_ts_df = solution_series(sol, price_penalty_t, time)
 
-    E_SOC_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(E_SOC_t), orient="index"
-    ).loc[:, 0]
-    E_SOC_BM_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(E_SOC_BM_t), orient="index"
-    ).loc[:, 0]
+    P_charge_BM_ts_df = solution_series(sol, P_charge_BM_t, time)
+    P_discharge_BM_ts_df = solution_series(sol, P_discharge_BM_t, time)
+    P_charge_SM_ts_df = solution_series(sol, P_charge_SM_t, time)
+    P_discharge_SM_ts_df = solution_series(sol, P_discharge_SM_t, time)
+
+    E_SOC_ts_df = solution_series(sol, E_SOC_t, SOCtime)
+    E_SOC_BM_ts_df = solution_series(sol, E_SOC_BM_t, SOCtime)
     # z_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(z_t), orient='index').loc[:,0]
 
-    P_up_reg_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_up_reg_t), orient="index"
-    ).loc[:, 0]
-    P_dwn_reg_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_dwn_reg_t), orient="index"
-    ).loc[:, 0]
+    P_up_reg_ts_df = solution_series(sol, P_up_reg_t, time)
+    P_dwn_reg_ts_df = solution_series(sol, P_dwn_reg_t, time)
 
     # Cplex sometimes returns missing values :O
     P_HPP_ts = P_HPP_ts_df.reindex(time, fill_value=0).values
@@ -2618,26 +2601,22 @@ def operation_wind_batt_deg_parts(
     # print("Number of variables:", mdl.number_of_variables)
     # print("Number of constraints:", mdl.number_of_constraints)
     # # print("Objective Value for EMS_LT:", sol.objective_value)
+    if sol is None:
+        details = mdl.get_solve_details()
+        mdl.end()
+        raise RuntimeError(
+            f"EMS BM LT CPLEX returned no solution. Status: {details.status} "
+            f"(code {details.status_code})."
+        )
+
     print("Status for EMS-LT:", sol.solve_status)
 
-    Hpp_deg_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(Hpp_deg), orient="index"
-    ).loc[:, 0]
-    P_curt_deg_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_curt_deg), orient="index"
-    ).loc[:, 0]
-    b_t_deg_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(b_t_deg), orient="index"
-    ).loc[:, 0]
-    b_E_SOC_t_deg_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(b_E_SOC_t_deg), orient="index"
-    ).loc[:, 0]
-    Hpp_up_deg_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(Hpp_up_deg), orient="index"
-    ).loc[:, 0]
-    Hpp_dwn_deg_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(Hpp_dwn_deg), orient="index"
-    ).loc[:, 0]
+    Hpp_deg_df = solution_series(sol, Hpp_deg, time)
+    P_curt_deg_df = solution_series(sol, P_curt_deg, time)
+    b_t_deg_df = solution_series(sol, b_t_deg, time)
+    b_E_SOC_t_deg_df = solution_series(sol, b_E_SOC_t_deg, SOCtime)
+    Hpp_up_deg_df = solution_series(sol, Hpp_up_deg, time)
+    Hpp_dwn_deg_df = solution_series(sol, Hpp_dwn_deg, time)
     # penalty_deg_df = pd.DataFrame.from_dict(sol.get_value_dict(penalty_deg), orient='index').loc[:,0]
 
     # Cplex sometimes returns missing values :O

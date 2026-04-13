@@ -226,6 +226,8 @@ def extreme_around_point(x):
 
 
 def perturbe_around_point(x, step=0.1):
+    # Accept scalar-like values (e.g. np.array([0.1])) and use a true scalar.
+    step = float(np.asarray(step).reshape(-1)[0])
     ndims = x.shape[1]
     xcand = np.tile(x.T, ndims * 2).T
     for i in range(ndims):
@@ -619,7 +621,7 @@ class EfficientGlobalOptimizationDriver(Driver):
                 np.random.seed(
                     kwargs["n_seed"] * 100 + itr
                 )  # to have a different refinement per iteration
-                step = np.random.uniform(low=0.05, high=0.25, size=1)
+                step = np.random.uniform(low=0.05, high=0.25)
                 xopt_iter = perturbe_around_point(xopt, step=step)
             else:
                 # add extremes on each opt_var (one at a time) around the opt

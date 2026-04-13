@@ -14,7 +14,7 @@ import yaml
 from docplex.mp.model import Model
 from numpy import newaxis as na
 
-from hydesign.ems.ems import expand_to_lifetime, split_in_batch
+from hydesign.ems.ems import expand_to_lifetime, solution_series, split_in_batch
 from hydesign.openmdao_wrapper import ComponentWrapper
 
 
@@ -870,6 +870,14 @@ def ems_cplex_parts_P2X_bidirectional(
     # Solving the problem
     sol = mdl.solve(log_output=False)
     # log_output=True)
+
+    if sol is None:
+        details = mdl.get_solve_details()
+        mdl.end()
+        raise RuntimeError(
+            f"EMS P2X bidirectional CPLEX returned no solution. Status: {details.status} "
+            f"(code {details.status_code})."
+        )
     # aa = mdl.get_solve_details()
     # print(aa.status)
     # if not aa.status=='integer optimal solution':
@@ -878,45 +886,18 @@ def ems_cplex_parts_P2X_bidirectional(
     # print(mdl.export_to_string())
     # sol.display()
 
-    P_HPP_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_HPP_t), orient="index"
-    ).loc[:, 0]
+    P_HPP_ts_df = solution_series(sol, P_HPP_t, time)
+    P_curtailment_ts_df = solution_series(sol, P_curtailment_t, time)
+    P_charge_discharge_ts_df = solution_series(sol, P_charge_discharge, time)
+    E_SOC_ts_df = solution_series(sol, E_SOC_t, SOCtime)
+    P_ptg_ts_df = solution_series(sol, P_ptg_t, time)
+    m_H2_ts_df = solution_series(sol, m_H2_t, time)
+    m_H2_offtake_ts_df = solution_series(sol, m_H2_offtake_t, time)
+    LoS_H2_ts_df = solution_series(sol, LoS_H2_t, time)
 
-    P_curtailment_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_curtailment_t), orient="index"
-    ).loc[:, 0]
+    m_H2_grid_ts_df = solution_series(sol, m_H2_grid_t, time)
 
-    P_charge_discharge_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_charge_discharge), orient="index"
-    ).loc[:, 0]
-
-    E_SOC_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(E_SOC_t), orient="index"
-    ).loc[:, 0]
-
-    P_ptg_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_ptg_t), orient="index"
-    ).loc[:, 0]
-
-    m_H2_ts_df = pd.DataFrame.from_dict(sol.get_value_dict(m_H2_t), orient="index").loc[
-        :, 0
-    ]
-
-    m_H2_offtake_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(m_H2_offtake_t), orient="index"
-    ).loc[:, 0]
-
-    LoS_H2_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(LoS_H2_t), orient="index"
-    ).loc[:, 0]
-
-    m_H2_grid_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(m_H2_grid_t), orient="index"
-    ).loc[:, 0]
-
-    P_ptg_grid_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_ptg_grid_t), orient="index"
-    ).loc[:, 0]
+    P_ptg_grid_ts_df = solution_series(sol, P_ptg_grid_t, time)
 
     # make a time series like P_HPP with a constant penalty
     penalty_2 = sol.get_value(penalty)

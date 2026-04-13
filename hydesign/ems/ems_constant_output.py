@@ -8,7 +8,7 @@ import pandas as pd
 # import xarray as xr
 from docplex.mp.model import Model
 
-from hydesign.ems.ems import expand_to_lifetime, split_in_batch
+from hydesign.ems.ems import expand_to_lifetime, solution_series, split_in_batch
 from hydesign.openmdao_wrapper import ComponentWrapper
 
 # import yaml
@@ -817,6 +817,13 @@ def ems_cplex_parts_constantoutput(
     sol = mdl.solve(log_output=False)
     # log_output=True)
     aa = mdl.get_solve_details()
+
+    if sol is None:
+        mdl.end()
+        raise RuntimeError(
+            f"EMS CPLEX returned no solution. Status: {aa.status} "
+            f"(code {aa.status_code})."
+        )
     # print(aa.status)
     # if not aa.status=='integer optimal solution':
     #   print(aa.status)
@@ -825,21 +832,10 @@ def ems_cplex_parts_constantoutput(
     # print(mdl.export_to_string())
     # sol.display()
 
-    P_HPP_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_HPP_t), orient="index"
-    ).loc[:, 0]
-
-    P_curtailment_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_curtailment_t), orient="index"
-    ).loc[:, 0]
-
-    P_charge_discharge_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_charge_discharge), orient="index"
-    ).loc[:, 0]
-
-    E_SOC_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(E_SOC_t), orient="index"
-    ).loc[:, 0]
+    P_HPP_ts_df = solution_series(sol, P_HPP_t, time)
+    P_curtailment_ts_df = solution_series(sol, P_curtailment_t, time)
+    P_charge_discharge_ts_df = solution_series(sol, P_charge_discharge, time)
+    E_SOC_ts_df = solution_series(sol, E_SOC_t, SOCtime)
 
     # make a time series like P_HPP with a constant penalty
     penalty_2 = sol.get_value(penalty)

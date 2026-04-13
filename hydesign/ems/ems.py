@@ -887,24 +887,21 @@ def ems_cplex_parts(
     sol = mdl.solve(log_output=False)
     # log_output=True)
 
+    if sol is None:
+        details = mdl.get_solve_details()
+        mdl.end()
+        raise RuntimeError(
+            f"EMS CPLEX returned no solution. Status: {details.status} "
+            f"(code {details.status_code})."
+        )
+
     # print(mdl.export_to_string())
     # sol.display()
 
-    P_HPP_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_HPP_t), orient="index"
-    ).loc[:, 0]
-
-    P_curtailment_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_curtailment_t), orient="index"
-    ).loc[:, 0]
-
-    P_charge_discharge_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_charge_discharge), orient="index"
-    ).loc[:, 0]
-
-    E_SOC_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(E_SOC_t), orient="index"
-    ).loc[:, 0]
+    P_HPP_ts_df = solution_series(sol, P_HPP_t, time)
+    P_curtailment_ts_df = solution_series(sol, P_curtailment_t, time)
+    P_charge_discharge_ts_df = solution_series(sol, P_charge_discharge, time)
+    E_SOC_ts_df = solution_series(sol, E_SOC_t, SOCtime)
 
     # make a time series like P_HPP with a constant penalty
     penalty_2 = sol.get_value(penalty)
@@ -1183,6 +1180,13 @@ def ems_cplex_parts_constantoutput(
     sol = mdl.solve(log_output=False)
     # log_output=True)
     aa = mdl.get_solve_details()
+
+    if sol is None:
+        mdl.end()
+        raise RuntimeError(
+            f"EMS CPLEX returned no solution. Status: {aa.status} "
+            f"(code {aa.status_code})."
+        )
     # print(aa.status)
     # if not aa.status=='integer optimal solution':
     #   print(aa.status)
@@ -1191,21 +1195,10 @@ def ems_cplex_parts_constantoutput(
     # print(mdl.export_to_string())
     # sol.display()
 
-    P_HPP_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_HPP_t), orient="index"
-    ).loc[:, 0]
-
-    P_curtailment_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_curtailment_t), orient="index"
-    ).loc[:, 0]
-
-    P_charge_discharge_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(P_charge_discharge), orient="index"
-    ).loc[:, 0]
-
-    E_SOC_ts_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(E_SOC_t), orient="index"
-    ).loc[:, 0]
+    P_HPP_ts_df = solution_series(sol, P_HPP_t, time)
+    P_curtailment_ts_df = solution_series(sol, P_curtailment_t, time)
+    P_charge_discharge_ts_df = solution_series(sol, P_charge_discharge, time)
+    E_SOC_ts_df = solution_series(sol, E_SOC_t, SOCtime)
 
     # make a time series like P_HPP with a constant penalty
     penalty_2 = sol.get_value(penalty)
@@ -2008,3 +2001,8 @@ def operation_constant_output(
     penalty_ts = load_min_penalty_factor * fneg(Hpp_deg + tol - load_min)
 
     return Hpp_deg, P_curt_deg, b_t_sat, b_E_SOC_t_sat, penalty_ts
+
+
+def solution_series(solution, variables, index):
+    values = solution.get_value_dict(variables)
+    return pd.Series(values, dtype=float).reindex(index, fill_value=0.0)

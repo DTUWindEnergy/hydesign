@@ -7,6 +7,7 @@ import pandas as pd
 # import openmdao.api as om
 from docplex.mp.model import Model
 
+from hydesign.ems.ems import solution_series
 from hydesign.openmdao_wrapper import ComponentWrapper
 
 
@@ -1774,70 +1775,46 @@ def ems_cplex_solarX_parts(
     # Solve the model and retrieve solution values
     sol = mdl.solve(log_output=False)
 
+    if sol is None:
+        details = mdl.get_solve_details()
+        mdl.end()
+        raise RuntimeError(
+            f"EMS SolarX CPLEX returned no solution. Status: {details.status} "
+            f"(code {details.status_code})."
+        )
+
     # Extract results from the solution
     # hpp
-    p_hpp_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(p_hpp_t), orient="index"
-    ).loc[:, 0]
-    p_curtailment_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(p_curtailment_t), orient="index"
-    ).loc[:, 0]
+    p_hpp_t_df = solution_series(sol, p_hpp_t, time)
+    p_curtailment_t_df = solution_series(sol, p_curtailment_t, time)
 
     # cpv
-    alpha_cpv_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(alpha_cpv_t), orient="index"
-    ).loc[:, 0]
-    p_cpv_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(p_cpv_t), orient="index"
-    ).loc[:, 0]
+    alpha_cpv_t_df = solution_series(sol, alpha_cpv_t, time)
+    p_cpv_t_df = solution_series(sol, p_cpv_t, time)
 
     # cst
-    alpha_cst_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(alpha_cst_t), orient="index"
-    ).loc[:, 0]
-    flow_ms_heat_exchanger_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(flow_ms_heat_exchanger_t), orient="index"
-    ).loc[:, 0]
-    flow_steam_st_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(flow_steam_st_t), orient="index"
-    ).loc[:, 0]
-    flow_ms_q_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(flow_ms_q_t), orient="index"
-    ).loc[:, 0]
-    p_st_t_df = pd.DataFrame.from_dict(sol.get_value_dict(p_st_t), orient="index").loc[
-        :, 0
-    ]
-    q_t_df = pd.DataFrame.from_dict(sol.get_value_dict(q_t), orient="index").loc[:, 0]
-    penalty_q_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(penalty_q_t), orient="index"
-    ).loc[:, 0]
-    v_hot_ms_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(v_hot_ms_t), orient="index"
-    ).loc[:, 0]
+    alpha_cst_t_df = solution_series(sol, alpha_cst_t, time)
+    flow_ms_heat_exchanger_t_df = solution_series(sol, flow_ms_heat_exchanger_t, time)
+    flow_steam_st_t_df = solution_series(sol, flow_steam_st_t, time)
+    flow_ms_q_t_df = solution_series(sol, flow_ms_q_t, time)
+    p_st_t_df = solution_series(sol, p_st_t, time)
+    q_t_df = solution_series(sol, q_t, time)
+    penalty_q_t_df = solution_series(sol, penalty_q_t, time)
+    v_hot_ms_t_df = solution_series(sol, v_hot_ms_t, time)
 
     # biogas_h2
-    alpha_h2_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(alpha_h2_t), orient="index"
-    ).loc[:, 0]
-    biogas_h2_procuded_h2_kg_in_dni_reactor_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(biogas_h2_procuded_h2_kg_in_dni_reactor_t), orient="index"
-    ).loc[:, 0]
-    biogas_h2_procuded_h2_kg_in_el_reactor_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(biogas_h2_procuded_h2_kg_in_el_reactor_t), orient="index"
-    ).loc[:, 0]
-    h2_t_df = pd.DataFrame.from_dict(sol.get_value_dict(h2_t), orient="index").loc[:, 0]
-    p_biogas_h2_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(p_biogas_h2_t), orient="index"
-    ).loc[:, 0]
-    consumed_biogas_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(consumed_biogas_t), orient="index"
-    ).loc[:, 0]
-    consumed_water_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(consumed_water_t), orient="index"
-    ).loc[:, 0]
-    consumed_co2_t_df = pd.DataFrame.from_dict(
-        sol.get_value_dict(consumed_co2_t), orient="index"
-    ).loc[:, 0]
+    alpha_h2_t_df = solution_series(sol, alpha_h2_t, time)
+    biogas_h2_procuded_h2_kg_in_dni_reactor_t_df = solution_series(
+        sol, biogas_h2_procuded_h2_kg_in_dni_reactor_t, time
+    )
+    biogas_h2_procuded_h2_kg_in_el_reactor_t_df = solution_series(
+        sol, biogas_h2_procuded_h2_kg_in_el_reactor_t, time
+    )
+    h2_t_df = solution_series(sol, h2_t, time)
+    p_biogas_h2_t_df = solution_series(sol, p_biogas_h2_t, time)
+    consumed_biogas_t_df = solution_series(sol, consumed_biogas_t, time)
+    consumed_water_t_df = solution_series(sol, consumed_water_t, time)
+    consumed_co2_t_df = solution_series(sol, consumed_co2_t, time)
 
     # make a time series like p_hpp with a constant penalty
     penalty_2 = sol.get_value(penalty)

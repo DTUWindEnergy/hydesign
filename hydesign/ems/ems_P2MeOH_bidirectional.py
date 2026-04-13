@@ -14,7 +14,7 @@ import yaml
 from docplex.mp.model import Model
 from numpy import newaxis as na
 
-from hydesign.ems.ems import expand_to_lifetime, split_in_batch
+from hydesign.ems.ems import expand_to_lifetime, solution_series, split_in_batch
 from hydesign.openmdao_wrapper import ComponentWrapper
 
 
@@ -1410,33 +1410,26 @@ def ems_cplex_parts_P2MeOH_bidirectional(
     # print(mdl.export_to_string())
     # sol.display()
     if sol is None:
-        print("Model couldn't find a solution")
+        details = mdl.get_solve_details()
+        mdl.end()
+        raise RuntimeError(
+            f"EMS P2MeOH bidirectional CPLEX returned no solution. Status: {details.status} "
+            f"(code {details.status_code})."
+        )
 
     else:
 
-        P_HPP_ts_df = pd.DataFrame.from_dict(
-            sol.get_value_dict(P_HPP_ts), orient="index"
-        ).loc[:, 0]
+        P_HPP_ts_df = solution_series(sol, P_HPP_ts, time)
 
-        P_curtailment_ts_df = pd.DataFrame.from_dict(
-            sol.get_value_dict(P_curtailment_ts), orient="index"
-        ).loc[:, 0]
+        P_curtailment_ts_df = solution_series(sol, P_curtailment_ts, time)
 
-        P_charge_discharge_ts_df = pd.DataFrame.from_dict(
-            sol.get_value_dict(P_charge_discharge_ts), orient="index"
-        ).loc[:, 0]
+        P_charge_discharge_ts_df = solution_series(sol, P_charge_discharge_ts, time)
 
-        E_SOC_ts_df = pd.DataFrame.from_dict(
-            sol.get_value_dict(E_SOC_ts), orient="index"
-        ).loc[:, 0]
+        E_SOC_ts_df = solution_series(sol, E_SOC_ts, SOCtime)
 
-        P_SOEC_green_ts_df = pd.DataFrame.from_dict(
-            sol.get_value_dict(P_SOEC_green_ts), orient="index"
-        ).loc[:, 0]
+        P_SOEC_green_ts_df = solution_series(sol, P_SOEC_green_ts, time)
 
-        P_SOEC_grid_ts_df = pd.DataFrame.from_dict(
-            sol.get_value_dict(P_SOEC_grid_ts), orient="index"
-        ).loc[:, 0]
+        P_SOEC_grid_ts_df = solution_series(sol, P_SOEC_grid_ts, time)
 
         m_H2_green_value_dict = sol.get_value_dict(m_H2_green_ts)
         m_H2_green_value_full_value_dict = {
@@ -1454,13 +1447,9 @@ def ems_cplex_parts_P2MeOH_bidirectional(
             m_H2_grid_value_full_value_dict, orient="index"
         ).loc[:, 0]
 
-        P_green_heater_ts_df = pd.DataFrame.from_dict(
-            sol.get_value_dict(P_green_heater_ts), orient="index"
-        ).loc[:, 0]
+        P_green_heater_ts_df = solution_series(sol, P_green_heater_ts, time)
 
-        P_grid_heater_ts_df = pd.DataFrame.from_dict(
-            sol.get_value_dict(P_grid_heater_ts), orient="index"
-        ).loc[:, 0]
+        P_grid_heater_ts_df = solution_series(sol, P_grid_heater_ts, time)
 
         m_green_CO2_value_dict = sol.get_value_dict(m_green_CO2_ts)
         m_green_CO2_value_full_value_dict = {
@@ -1478,13 +1467,9 @@ def ems_cplex_parts_P2MeOH_bidirectional(
             m_grid_CO2_value_full_value_dict, orient="index"
         ).loc[:, 0]
 
-        Q_green_DAC_ts_df = pd.DataFrame.from_dict(
-            sol.get_value_dict(Q_green_DAC_ts), orient="index"
-        ).loc[:, 0]
+        Q_green_DAC_ts_df = solution_series(sol, Q_green_DAC_ts, time)
 
-        Q_grid_DAC_ts_df = pd.DataFrame.from_dict(
-            sol.get_value_dict(Q_grid_DAC_ts), orient="index"
-        ).loc[:, 0]
+        Q_grid_DAC_ts_df = solution_series(sol, Q_grid_DAC_ts, time)
 
         P_green_DAC_value_dict = sol.get_value_dict(P_green_DAC_ts)
         P_green_DAC_value_full_value_dict = {
@@ -1534,17 +1519,11 @@ def ems_cplex_parts_P2MeOH_bidirectional(
             m_grid_MeOH_reactor_value_full_value_dict, orient="index"
         ).loc[:, 0]
 
-        m_H2O_ts_df = pd.DataFrame.from_dict(
-            sol.get_value_dict(m_H2O_ts), orient="index"
-        ).loc[:, 0]
+        m_H2O_ts_df = solution_series(sol, m_H2O_ts, time)
 
-        m_MeOH_tank_ts_df = pd.DataFrame.from_dict(
-            sol.get_value_dict(m_MeOH_tank_ts), orient="index"
-        ).loc[:, 0]
+        m_MeOH_tank_ts_df = solution_series(sol, m_MeOH_tank_ts, time)
 
-        m_MeOH_tank_flow_ts_df = pd.DataFrame.from_dict(
-            sol.get_value_dict(m_MeOH_tank_flow_ts), orient="index"
-        ).loc[:, 0]
+        m_MeOH_tank_flow_ts_df = solution_series(sol, m_MeOH_tank_flow_ts, time)
 
         m_green_MeOH_dist_value_dict = sol.get_value_dict(m_green_MeOH_dist_ts)
         m_green_MeOH_dist_value_full_value_dict = {
