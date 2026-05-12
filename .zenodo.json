@@ -1,13 +1,1 @@
-{
-"description": "<p>hydesign, A tool for design and control of utility scale wind-solar-storage-p2x based hybrid energy plant.</p>", 
-"license": "MIT", 
-"upload_type": "software", 
-"creators": [
-{"orcid": "0000-0002-6723-6830", "affiliation": "Senior Development Engineer, DTU Wind and Energy Systems, Technical University of Denmark", "name": "Friis-M\u00f8ller, Mikkel"},
-{"orcid": "0000-0002-1938-3035", "affiliation": "Assistant Professor, DTU Wind and Energy Systems, Technical University of Denmark", "name": "Gupta, Megha"},
-{"orcid": "0000-0002-6501-7896", "affiliation": "Associate Professor, DTU Wind and Energy Systems, Technical University of Denmark", "name": "Das, Kaushik"},
-{"orcid": "0000-0001-8887-7592", "affiliation": "Postdoc, DTU Wind and Energy Systems, Technical University of Denmark", "name": "Zhu, Rujie"}
-{"orcid": "0000-0002-5459-8170", "affiliation": "Development Engineer, DTU Wind and Energy Systems, Technical University of Denmark", "name": "Arasteh, Amir"}
-], 
-"access_right": "open"
-}
+{"description": "<p>hydesign, A tool for design and control of utility scale wind-solar-storage-p2x based hybrid energy plant.</p>", "license": "MIT", "upload_type": "software", "creators": [{"orcid": "0000-0002-6723-6830", "affiliation": "Senior Development Engineer, DTU Wind and Energy Systems, Technical University of Denmark", "name": "Friis-M\u00f8ller, Mikkel"},{"orcid": "0000-0002-1938-3035", "affiliation": "Assistant Professor, DTU Wind and Energy Systems, Technical University of Denmark", "name": "Gupta, Megha"},{"orcid": "0000-0002-6501-7896", "affiliation": "Associate Professor, DTU Wind and Energy Systems, Technical University of Denmark", "name": "Das, Kaushik"},{"orcid": "0000-0001-8887-7592", "affiliation": "Postdoc, DTU Wind and Energy Systems, Technical University of Denmark", "name": "Zhu, Rujie"}{"orcid": "0000-0002-5459-8170", "affiliation": "Development Engineer, DTU Wind and Energy Systems, Technical University of Denmark", "name": "Arasteh, Amir"}], "access_right": "open"}
