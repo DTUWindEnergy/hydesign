@@ -1,98 +1,140 @@
-Welcome to hydesign
+Welcome to HyDesign
 ===========================================
 
 .. image:: HyDesign_logo.png
-    :width: 70 %
+    :width: 60 %
     :align: center
 
 
-HyDesign is the DTU tool for design, control and optimization of utility scale Hybrid Power- and Energy Plants including  wind, solar, storage and P2X technologies.
+**HyDesign** is the DTU tool for design, control and optimization of utility scale Hybrid Power- and Energy Plants including  wind, solar, storage and P2X technologies.
 
-For installation instructions, please see the :ref:`Installation Guide <installation>`.
+
+.. note::
+
+   New to HyDesign? For installation instructions, please see the :ref:`Installation Guide <installation>`. 
+   For an in-depth explanation of how to work with HyDesign, please see :download:`Working with HyDesign <HyDesign_Instructions.pdf>`.
+   Try HyDesign in the notebook :doc:`notebooks/Quickstart`.
+
 
 Source code repository and issue tracker:
-    https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign
-    
+    `GitLab Repository <https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign>`_
+
 License:
-    MIT_
+    `MIT <https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign/blob/main/LICENSE>`_
 
-.. _MIT: https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign/blob/main/LICENSE
-
-Getting Started
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-The :ref:`Quickstart </notebooks/Quickstart.ipynb>` section shows how to set up and perform some basic operations in hydesign.
-
-For an in-depth explanation of how to work with HyDesign, please see :download:`Working with HyDesign <HyDesign_Instructions.pdf>`.
+Video Tutorials
+^^^^^^^^^^^^^^^^
 
 A series of tutorial videos are available to assist you in working with HyDesign:
 
-Working with HyDesign tool:
+.. grid:: 1
 
-.. youtube:: bggJUsrfplY
+    .. grid-item-card:: Working with HyDesign
 
-HyDesign using Google Colab:
+        .. youtube:: bggJUsrfplY
 
-.. youtube:: tQ5vryIjzn4
+    .. grid-item-card:: Google Colab Tutorial
 
-Introduction - Hybrid Power Plant and HyDesign
+        .. youtube:: tQ5vryIjzn4
 
-.. youtube:: cJe21EpM46Y
+    .. grid-item-card:: Introduction to HPPs
+
+        .. youtube:: cJe21EpM46Y
 
 
+Documentation
+^^^^^^^^^^^^^
 Explanations of hydesign's core objects can be found in the following tutorials:
 
+.. grid:: 3
 
-    .. toctree::
-        :maxdepth: 1
-	:caption: Contents
-    
-        installation
-        how_to_cite
-        notebooks/ChangeLog
-               
-    .. toctree::
-        :maxdepth: 1
-	:caption: Evaluation Tutorials
+    .. grid-item-card:: Evaluation Tutorials
 
-	notebooks/Quickstart
-	notebooks/Advanced_hpp_model
-	notebooks/HPP_evaluation_P2X
-	notebooks/PyWake_P2X_Example
-	notebooks/break_even_price_and_PPA
-	notebooks/constant_output
-	notebooks/offshore
-	notebooks/Example_ISO_prob
-	notebooks/HPP_evaluation_BM
-	notebooks/Hybridize
-	notebooks/evaluate_with_reliability
-	notebooks/HPP_evaluation_P2MeOH
+        Learn how to evaluate hybrid power plants.
 
-    .. toctree::
-        :maxdepth: 1
-	:caption: Sizing Tutorials
+        :doc:`Open Tutorials <tutorials/index>`
 
-	notebooks/Simple_Sizing_Example
-	notebooks/Simple_Sizing_P2X_Example
-	notebooks/sizing_with_reliability
-       
+    .. grid-item-card:: Sizing Tutorials
 
-    .. toctree::
-        :maxdepth: 1
-	:caption: HiFi EMS
+        Optimize HPP and P2X configurations.
 
-	notebooks/HiFiEMS
+        :doc:`Open Tutorials <tutorials/index>`
+        
+    .. grid-item-card:: HiFi EMS
 
-    .. toctree::
-        :glob:
-        :maxdepth: 1
-	:caption: Publications
-    
-        pub_tool
-        pub_theses
-        pub_related
+        High-fidelity energy management system examples.
+
+        :doc:`Open HiFi EMS Tutorial <notebooks/HiFiEMS>`
+        
+.. toctree::
+   :hidden:
+
+   installation
+   how_to_cite
+   tutorials/index
+   publications/index
+   api_reference
+
+
     
 
-    .. toctree::
-        :maxdepth: 1
-	:caption: API reference
-    
+Related DTU Software
+^^^^^^^^^^^^^^^^^^^^
+
+.. grid:: 2
+
+    .. grid-item-card:: Balancing Tool Chain (BTC)
+
+        Hour-ahead balancing and AFC simulation framework.
+
+        **Documentation**
+
+        `BTC Documentation <https://btc_group.pages.windenergy.dtu.dk/btc/>`_
+
+        **Repository**
+
+        `BTC GitLab Repository <https://gitlab.windenergy.dtu.dk/btc_group/btc>`_
+
+    .. grid-item-card:: CorRES
+
+        Renewable generation time-series simulation with spatial and temporal correlations.
+
+        **Repository**
+
+        `CorRES GitLab Repository <https://gitlab.windenergy.dtu.dk/corres/corres>`_
+
+    .. grid-item-card:: Balmorel
+
+        Energy system optimisation and electricity market analysis.
+
+        **Documentation**
+
+        `Balmorel Documentation <https://balmorelcommunity.github.io/Balmorel/>`_
+
+        **Repository**
+
+        `Balmorel GitHub Repository <https://github.com/balmorelcommunity/Balmorel>`_
+
+    .. grid-item-card:: TopFarm2
+
+        Wind farm layout and design optimisation framework.
+
+        **Documentation**
+
+        `TopFarm2 Documentation <https://topfarm.pages.windenergy.dtu.dk/TopFarm2/>`_
+
+        **Repository**
+
+        `TopFarm2 GitLab Repository <https://gitlab.windenergy.dtu.dk/TOPFARM/TopFarm2>`_
+
+    .. grid-item-card:: OptiWindNet
+
+        Offshore wind farm cable network optimisation.
+
+        **Documentation**
+
+        `OptiWindNet Documentation <https://optiwindnet.readthedocs.io/>`_
+
+        **Repository**
+
+        `OptiWindNet GitLab Repository <https://gitlab.windenergy.dtu.dk/TOPFARM/OptiWindNet>`_

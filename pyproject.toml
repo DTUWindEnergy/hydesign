@@ -60,6 +60,7 @@ docs = [
     "sphinx-autoapi",
     "sphinx-tags",
     "sphinxcontrib-youtube",
+    "sphinx-design",
 ]
 loads = [
     "surrogates-interface",

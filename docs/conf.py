@@ -60,6 +60,7 @@ extensions = [
     #'sphinx.ext.imgconverter',
     'autoapi.extension',
     "sphinx_tags",
+    "sphinx_design",
     'sphinxcontrib.youtube',
 ]
 
@@ -69,30 +70,28 @@ intersphinx_mapping = {
     'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
 }
 
-# Auto API conf.:
-autoapi_dirs = ['../hydesign']
-autoapi_add_toctree_entry = True         # ensures TOC entries appear
-autoapi_generate_api_docs = True         # explicit
+# AutoAPI
+autoapi_dirs = ["../hydesign"]
+
+autoapi_type = "python"
+
+autoapi_keep_files = True
+
 autoapi_options = [
-    'members',
-    'undoc-members',
-    'show-inheritance',
-    'show-module-summary',
-]
-autoapi_ignore = [
-    '*/tests/*',
-    '*/examples/scripts/*',
-    '*/examples/HiFiEMS_inputs/*',
-    '*/assembly/run_*',
-    '*_ipynb.py',
-    '*.bak',
+    "members",
+    "undoc-members",
+    "show-inheritance",
+    "show-module-summary",
 ]
 
-suppress_warnings = [
-    'autoapi.python_import_resolution',
-    'toc.duplicate_entry',
-    'toc.not_included',
+autoapi_ignore = [
+    "*/tests/*",
+    "*/examples/*",
+    "*/assembly/run_*",
 ]
+
+autoapi_add_toctree_entry = False
+
 
 # Spinx tags
 tags_create_tags = True

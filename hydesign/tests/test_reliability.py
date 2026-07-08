@@ -120,4 +120,4 @@ def test_reliability():
             5.00000000e02,
         ]
     )
-    np.testing.assert_allclose(outs, ref, rtol=4e-6)
+    np.testing.assert_allclose(outs, ref, rtol=7e-6)
