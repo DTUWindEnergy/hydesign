@@ -220,8 +220,8 @@ class hpp_model_constant_output(hpp_base):
                     phasing_CAPEX=sim_pars["phasing_CAPEX"],
                 ),
                 {
-                    "CAPEX_el": "CAPEX_sh",
-                    "OPEX_el": "OPEX_sh",
+                    "CAPEX_sh": "CAPEX_sh",
+                    "OPEX_sh": "OPEX_sh",
                     "penalty_t": "penalty_t_with_deg",
                 },  # {<input-key-name in model> (that corresponds to): <output-key-name from prior component>}
             ),

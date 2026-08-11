@@ -90,9 +90,9 @@ class finance:
         OPEX_s,
         CAPEX_b,
         OPEX_b,
-        CAPEX_el_w,
-        CAPEX_el_s,
-        OPEX_el,
+        CAPEX_sh_w,
+        CAPEX_sh_s,
+        OPEX_sh,
         decommissioning_cost_tot_w,
         decommissioning_cost_tot_s,
         hpp_WACC,
@@ -187,9 +187,9 @@ class finance:
         )
 
         # Construction of the CAPEX vector along the lifetime
-        CAPEX_only_wind = float(np.squeeze(CAPEX_w + CAPEX_el_w))
+        CAPEX_only_wind = float(np.squeeze(CAPEX_w + CAPEX_sh_w))
 
-        CAPEX_pv = CAPEX_s + CAPEX_el_s + CAPEX_b
+        CAPEX_pv = CAPEX_s + CAPEX_sh_s + CAPEX_b
         CAPEX_pv = float(np.squeeze(CAPEX_pv))
 
         CAPEX = (
@@ -311,7 +311,7 @@ class finance_comp(ComponentWrapper):
     def __init__(self, **inst_inp):
         life_h = inst_inp["life_h"]
         model = finance(**inst_inp)
-        # key_map_dict = {'CAPEX_sh_w':'CAPEX_el_w','CAPEX_sh_s':'CAPEX_el_s','OPEX_sh':'OPEX_el','penalty_t_with_deg':'penalty_t',}
+        # key_map_dict = {'CAPEX_sh_w':'CAPEX_sh_w','CAPEX_sh_s':'CAPEX_sh_s','OPEX_sh':'OPEX_sh','penalty_t_with_deg':'penalty_t',}
         # def func(**inputs):
         #     inputs = {(key_map_dict[k] if k in key_map_dict else k):v  for (k,v) in inputs.items()}
         #     return Finance.compute(**inputs)
@@ -346,12 +346,12 @@ class finance_comp(ComponentWrapper):
                 ("OPEX_s", {"desc": "OPEX solar pvp"}),
                 ("CAPEX_b", {"desc": "CAPEX battery"}),
                 ("OPEX_b", {"desc": "OPEX battery"}),
-                ("CAPEX_el_w", {"desc": "CAPEX electrical infrastructure for wind"}),
+                ("CAPEX_sh_w", {"desc": "CAPEX electrical infrastructure for wind"}),
                 (
-                    "CAPEX_el_s",
+                    "CAPEX_sh_s",
                     {"desc": "CAPEX electrical infrastructure for PV and batteries"},
                 ),
-                ("OPEX_el", {"desc": "OPEX electrical infrastructure"}),
+                ("OPEX_sh", {"desc": "OPEX electrical infrastructure"}),
                 (
                     "decommissioning_cost_tot_w",
                     {"desc": "Decommissioning cost of the entire wind plant"},

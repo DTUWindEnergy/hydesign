@@ -48,6 +48,8 @@ class battery_degradation:
         intervals_per_hour=1,
         weeks_per_season_per_year=None,
         battery_deg=True,
+        operation_start_year=0,
+        component_life_y=None,
     ):
 
         self.life_h = 365 * 24 * life_y
@@ -57,6 +59,10 @@ class battery_degradation:
         self.weather_fn = weather_fn
         self.battery_deg = battery_deg
         self.battery_rf_matrix = None
+        self.operation_start_year = int(operation_start_year)
+        self.component_life_y = int(
+            life_y if component_life_y is None else component_life_y
+        )
 
         weather = pd.read_csv(weather_fn, index_col=0, parse_dates=True)
 
@@ -72,20 +78,32 @@ class battery_degradation:
     def compute(self, b_E_SOC_t, min_LoH, **kwargs):
 
         num_batteries = self.num_batteries
-        life_intervals = self.life_intervals
+        project_intervals = self.life_intervals
+        if self.component_life_y <= 0:
+            return np.zeros(project_intervals), 0
+        start = max(0, self.operation_start_year * self.yearly_intervals)
+        stop = min(
+            max(0, self.operation_start_year + self.component_life_y)
+            * self.yearly_intervals,
+            project_intervals,
+        )
+        life_intervals = stop - start
+        if life_intervals <= 0:
+            return np.zeros(project_intervals), 0
+        b_E_SOC_active = np.asarray(b_E_SOC_t)[start : stop + 1]
 
         # b_E_SOC_t = inputs['b_E_SOC_t']
         # min_LoH = inputs['min_LoH'][0]
 
-        air_temp_K_t = self.air_temp_K_t
+        air_temp_K_t = self.air_temp_K_t[start:stop]
 
         outputs = {}
         if self.battery_deg:
-            if np.max(b_E_SOC_t) == 0 or num_batteries == 0:
+            if np.max(b_E_SOC_active) == 0 or num_batteries == 0:
                 outputs["SoH"] = np.zeros(life_intervals)
                 outputs["n_batteries"] = 0
             else:
-                SoC = b_E_SOC_t / np.max(b_E_SOC_t)
+                SoC = b_E_SOC_active / np.max(b_E_SOC_active)
                 rf_DoD, rf_SoC, rf_count, rf_i_start, self.battery_rf_matrix = RFcount(
                     SoC
                 )
@@ -115,8 +133,11 @@ class battery_degradation:
                 outputs["SoH"] = SoH_all
                 outputs["n_batteries"] = n_batteries
         else:
-            outputs["SoH"] = np.ones(self.life_intervals)
+            outputs["SoH"] = np.ones(life_intervals)
             outputs["n_batteries"] = 1
+        SoH_project = np.zeros(project_intervals)
+        SoH_project[start:stop] = outputs["SoH"]
+        outputs["SoH"] = SoH_project
         return outputs["SoH"], outputs["n_batteries"]
 
 

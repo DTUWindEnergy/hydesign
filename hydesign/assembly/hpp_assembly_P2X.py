@@ -201,8 +201,8 @@ class hpp_model_P2X(hpp_base):
                     tax_rate=sim_pars["tax_rate"],
                 ),
                 {
-                    "CAPEX_el": "CAPEX_sh",
-                    "OPEX_el": "OPEX_sh",
+                    "CAPEX_sh": "CAPEX_sh",
+                    "OPEX_sh": "OPEX_sh",
                 },
             ),
         ]

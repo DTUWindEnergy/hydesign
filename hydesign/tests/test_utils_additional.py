@@ -175,6 +175,23 @@ def test_generate_availability_ensamble_small():
         sampling_const=1,
         pdf=cp.Exponential,
     )
-    assert ds.dims["seed"] == 2
-    assert ds.dims["component"] == 2
+    assert ds.sizes["seed"] == 2
+    assert ds.sizes["component"] == 2
     assert ds.TTF_indices.shape == ds.TTR_indices.shape
+
+
+def test_generate_availability_ensamble_in_batches():
+    ds = generate_availability_ensamble(
+        ts_start="2030-01-01 00:00",
+        ts_end="2030-01-01 00:00",
+        seeds=[3],
+        MTTF=1,
+        MTTR=1,
+        N_components=401,
+        sampling_const=1,
+        pdf=cp.Exponential,
+    )
+
+    assert ds.sizes["batch_no"] == 2
+    assert ds.sizes["component"] == 400
+    np.testing.assert_array_equal(ds.final_seed, [[1003, 2003]])

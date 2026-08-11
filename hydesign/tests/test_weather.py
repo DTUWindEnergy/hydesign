@@ -12,7 +12,12 @@ import pytest
 
 from hydesign.examples import examples_filepath
 from hydesign.tests.test_files import tfp
-from hydesign.weather.weather import interpolate_WS_loglog
+from hydesign.weather.weather import (
+    ABL,
+    interpolate_WD,
+    interpolate_WS_loglog,
+    isoprob_transfrom,
+)
 
 
 # ------------------------------------------------------------------------------------------------
@@ -42,6 +47,44 @@ def test_interp_ws():
         np.testing.assert_allclose(
             interp_ws_out[var].values, interp_ws_out_data[var].values
         )
+
+
+def test_interp_wind_direction():
+    weather = pd.DataFrame(
+        {
+            "WD_10": [350.0, 0.0],
+            "WD_100": [10.0, 90.0],
+        }
+    )
+
+    np.testing.assert_allclose(interpolate_WD(weather, hh=55), [0.0, 45.0])
+
+
+def test_abl_returns_wind_speed_and_direction(tmp_path):
+    weather = pd.DataFrame(
+        {
+            "WS_10": [2.0, 4.0],
+            "WS_100": [20.0, 40.0],
+            "WD_10": [350.0, 0.0],
+            "WD_100": [10.0, 90.0],
+        },
+        index=pd.date_range("2030-01-01", periods=2, freq="h"),
+    )
+    weather_file = tmp_path / "weather.csv"
+    weather.to_csv(weather_file)
+
+    model = ABL(weather_file, N_time=2, interpolate_wd=True)
+    wind_speed, wind_direction = model.compute(hh=55)
+
+    assert wind_speed.shape == (2,)
+    assert wind_direction.shape == (2,)
+    assert model.compute_partials().shape == (2,)
+
+
+def test_isoprobabilistic_transform():
+    transformed = isoprob_transfrom([0, 1, 2], [10, 20, 30])
+
+    np.testing.assert_allclose(transformed, [10, 20, 30])
 
 
 # ------------------------------------------------------------------------------------------------

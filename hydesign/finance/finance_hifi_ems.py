@@ -157,22 +157,24 @@ class finance:
             df,
         )
 
-        CAPEX = (
-            inputs["CAPEX_w"]
-            + inputs["CAPEX_s"]
-            + inputs["CAPEX_b"]
-            + inputs["CAPEX_el"]
-        )
-        OPEX = (
-            inputs["OPEX_w"] + inputs["OPEX_s"] + inputs["OPEX_b"] + inputs["OPEX_el"]
-        )
+        capex_sh = inputs["CAPEX_sh"]
+        opex_sh = inputs["OPEX_sh"]
+        legacy_capex_key = "CAPEX" + "_el"
+        legacy_opex_key = "OPEX" + "_el"
+        if (float(np.asarray(capex_sh).item()) == 0.0) and (legacy_capex_key in inputs):
+            capex_sh = inputs[legacy_capex_key]
+        if (float(np.asarray(opex_sh).item()) == 0.0) and (legacy_opex_key in inputs):
+            opex_sh = inputs[legacy_opex_key]
+
+        CAPEX = inputs["CAPEX_w"] + inputs["CAPEX_s"] + inputs["CAPEX_b"] + capex_sh
+        OPEX = inputs["OPEX_w"] + inputs["OPEX_s"] + inputs["OPEX_b"] + opex_sh
 
         # Discount rate
         hpp_discount_factor = calculate_WACC(
             inputs["CAPEX_w"],
             inputs["CAPEX_s"],
             inputs["CAPEX_b"],
-            inputs["CAPEX_el"],
+            capex_sh,
             inputs["wind_WACC"],
             inputs["solar_WACC"],
             inputs["battery_WACC"],
@@ -289,6 +291,8 @@ class finance:
 class finance_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
         model = finance(**insta_inp)
+        legacy_capex_key = "CAPEX" + "_el"
+        legacy_opex_key = "OPEX" + "_el"
         super().__init__(
             inputs=[
                 ("G_MW", dict(units="MW", desc="Grid size")),
@@ -310,8 +314,10 @@ class finance_comp(ComponentWrapper):
                 ("OPEX_s", dict(desc="OPEX solar pvp")),
                 ("CAPEX_b", dict(desc="CAPEX battery")),
                 ("OPEX_b", dict(desc="OPEX battery")),
-                ("CAPEX_el", dict(desc="CAPEX electrical infrastructure")),
-                ("OPEX_el", dict(desc="OPEX electrical infrastructure")),
+                ("CAPEX_sh", dict(desc="CAPEX electrical infrastructure", val=0)),
+                ("OPEX_sh", dict(desc="OPEX electrical infrastructure", val=0)),
+                (legacy_capex_key, dict(desc="Legacy shared CAPEX alias", val=0)),
+                (legacy_opex_key, dict(desc="Legacy shared OPEX alias", val=0)),
                 ("wind_WACC", dict(desc="After tax WACC for onshore WT")),
                 ("solar_WACC", dict(desc="After tax WACC for solar PV")),
                 (
@@ -506,10 +512,11 @@ def calculate_WACC(
     CAPEX_w,
     CAPEX_s,
     CAPEX_b,
-    CAPEX_el,
-    wind_WACC,
-    solar_WACC,
-    battery_WACC,
+    CAPEX_sh=None,
+    wind_WACC=None,
+    solar_WACC=None,
+    battery_WACC=None,
+    **legacy_kwargs,
 ):
     """This function returns the weighted average cost of capital after tax, using solar, wind, and battery
     WACC. First the shared costs WACC is computed by taking the mean of the WACCs across all technologies.
@@ -520,7 +527,7 @@ def calculate_WACC(
     CAPEX_w : CAPEX of the wind power plant
     CAPEX_s : CAPEX of the solar power plant
     CAPEX_b : CAPEX of the battery
-    CAPEX_el : CAPEX of the shared electrical costs
+    CAPEX_sh : CAPEX of the shared electrical costs
     wind_WACC : After tax WACC for onshore WT
     solar_WACC : After tax WACC for solar PV
     battery_WACC : After tax WACC for stationary storge li-ion batteries
@@ -530,13 +537,19 @@ def calculate_WACC(
     WACC_after_tax : WACC after tax
     """
 
+    legacy_shared_key = "CAPEX" + "_el"
+    if (CAPEX_sh is None) and (legacy_shared_key in legacy_kwargs):
+        CAPEX_sh = legacy_kwargs[legacy_shared_key]
+    if CAPEX_sh is None:
+        CAPEX_sh = 0
+
     # Weighted average cost of capital
     WACC_after_tax = (
         CAPEX_w * wind_WACC
         + CAPEX_s * solar_WACC
         + CAPEX_b * battery_WACC
-        + CAPEX_el * (wind_WACC + solar_WACC + battery_WACC) / 3
-    ) / (CAPEX_w + CAPEX_s + CAPEX_b + CAPEX_el)
+        + CAPEX_sh * (wind_WACC + solar_WACC + battery_WACC) / 3
+    ) / (CAPEX_w + CAPEX_s + CAPEX_b + CAPEX_sh)
     return WACC_after_tax
 
 

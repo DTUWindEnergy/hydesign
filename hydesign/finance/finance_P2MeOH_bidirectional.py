@@ -71,6 +71,8 @@ class finance_P2MeOH_bidirectional(OpenMDAOModel2Python):
         super().__init__()
 
     def setup(self):
+        legacy_capex_key = "CAPEX" + "_el"
+        legacy_opex_key = "OPEX" + "_el"
 
         self.add_input(
             "P_HPP_t", desc="HPP power time series", units="MW", shape=[self.life_h]
@@ -198,8 +200,10 @@ class finance_P2MeOH_bidirectional(OpenMDAOModel2Python):
         self.add_input("CAPEX_b", desc="CAPEX battery")
         self.add_input("OPEX_b", desc="OPEX battery")
 
-        self.add_input("CAPEX_el", desc="CAPEX electrical infrastructure")
-        self.add_input("OPEX_el", desc="OPEX electrical infrastructure")
+        self.add_input("CAPEX_sh", desc="CAPEX electrical infrastructure", val=0)
+        self.add_input("OPEX_sh", desc="OPEX electrical infrastructure", val=0)
+        self.add_input(legacy_capex_key, desc="Legacy shared CAPEX alias", val=0)
+        self.add_input(legacy_opex_key, desc="Legacy shared OPEX alias", val=0)
 
         self.add_input("CAPEX_P2MeOH", desc="CAPEX P2MeOH")
         self.add_input("OPEX_SOEC", desc="OPEX SOEC")
@@ -312,8 +316,8 @@ class finance_P2MeOH_bidirectional(OpenMDAOModel2Python):
         OPEX_DAC : OPEX of DAC
         OPEX_reactor : OPEX of reactor
         OPEX_MeOH_tank : OPEX of methanol tank
-        CAPEX_el :  CAPEX of the shared electrical infrastracture
-        OPEX_el : OPEX of the shared electrical infrastracture
+        CAPEX_sh :  CAPEX of the shared electrical infrastracture
+        OPEX_sh : OPEX of the shared electrical infrastracture
         water_consumption_cost : Annual water consumption and treatment cost
         wind_WACC : After tax WACC for onshore WT
         solar_WACC : After tax WACC for solar PV
@@ -389,18 +393,26 @@ class finance_P2MeOH_bidirectional(OpenMDAOModel2Python):
             elec_grid_price_t_ext,
             df,
         )
+        capex_sh = inputs["CAPEX_sh"]
+        opex_sh = inputs["OPEX_sh"]
+        legacy_capex_key = "CAPEX" + "_el"
+        legacy_opex_key = "OPEX" + "_el"
+        if (float(np.asarray(capex_sh).item()) == 0.0) and (legacy_capex_key in inputs):
+            capex_sh = inputs[legacy_capex_key]
+        if (float(np.asarray(opex_sh).item()) == 0.0) and (legacy_opex_key in inputs):
+            opex_sh = inputs[legacy_opex_key]
         CAPEX = (
             inputs["CAPEX_w"]
             + inputs["CAPEX_s"]
             + inputs["CAPEX_b"]
-            + inputs["CAPEX_el"]
+            + capex_sh
             + inputs["CAPEX_P2MeOH"]
         )
         OPEX = (
             inputs["OPEX_w"]
             + inputs["OPEX_s"]
             + inputs["OPEX_b"]
-            + inputs["OPEX_el"]
+            + opex_sh
             + inputs["OPEX_SOEC"]
             + inputs["OPEX_DAC"]
             + inputs["OPEX_reactor"]
@@ -410,14 +422,9 @@ class finance_P2MeOH_bidirectional(OpenMDAOModel2Python):
         # + inputs['OPEX_heater']
 
         CAPEX_LCOE = (
-            inputs["CAPEX_w"]
-            + inputs["CAPEX_s"]
-            + inputs["CAPEX_b"]
-            + inputs["CAPEX_el"]
+            inputs["CAPEX_w"] + inputs["CAPEX_s"] + inputs["CAPEX_b"] + capex_sh
         )
-        OPEX_LCOE = (
-            inputs["OPEX_w"] + inputs["OPEX_s"] + inputs["OPEX_b"] + inputs["OPEX_el"]
-        )
+        OPEX_LCOE = inputs["OPEX_w"] + inputs["OPEX_s"] + inputs["OPEX_b"] + opex_sh
         # + inputs['OPEX_heater']
 
         outputs["CAPEX"] = CAPEX
@@ -428,7 +435,7 @@ class finance_P2MeOH_bidirectional(OpenMDAOModel2Python):
             inputs["CAPEX_w"],
             inputs["CAPEX_s"],
             inputs["CAPEX_b"],
-            inputs["CAPEX_el"],
+            capex_sh,
             inputs["CAPEX_P2MeOH"],
             inputs["wind_WACC"],
             inputs["solar_WACC"],
@@ -439,7 +446,7 @@ class finance_P2MeOH_bidirectional(OpenMDAOModel2Python):
             inputs["CAPEX_w"],
             inputs["CAPEX_s"],
             inputs["CAPEX_b"],
-            inputs["CAPEX_el"],
+            capex_sh,
             inputs["wind_WACC"],
             inputs["solar_WACC"],
             inputs["battery_WACC"],
@@ -664,12 +671,13 @@ def calculate_WACC_P2MeOH(
     CAPEX_w,
     CAPEX_s,
     CAPEX_b,
-    CAPEX_el,
-    CAPEX_P2MeOH,
-    wind_WACC,
-    solar_WACC,
-    battery_WACC,
-    P2MeOH_WACC,
+    CAPEX_sh=None,
+    CAPEX_P2MeOH=None,
+    wind_WACC=None,
+    solar_WACC=None,
+    battery_WACC=None,
+    P2MeOH_WACC=None,
+    **legacy_kwargs,
 ):
     """This function returns the weighted average cost of capital after tax, using solar, wind, electrolyzer, heater, DAC,
     reactor, MeOH tank and battery
@@ -677,14 +685,20 @@ def calculate_WACC_P2MeOH(
     Then the WACC after tax is calculated by taking the weighted sum by the corresponding CAPEX.
     """
 
+    legacy_shared_key = "CAPEX" + "_el"
+    if (CAPEX_sh is None) and (legacy_shared_key in legacy_kwargs):
+        CAPEX_sh = legacy_kwargs[legacy_shared_key]
+    if CAPEX_sh is None:
+        CAPEX_sh = 0
+
     # Weighted average cost of capital
     WACC_after_tax = (
         CAPEX_w * wind_WACC
         + CAPEX_s * solar_WACC
         + CAPEX_b * battery_WACC
         + CAPEX_P2MeOH * P2MeOH_WACC
-        + CAPEX_el * (wind_WACC + solar_WACC + battery_WACC + P2MeOH_WACC) / 4
-    ) / (CAPEX_w + CAPEX_s + CAPEX_b + CAPEX_el + CAPEX_P2MeOH)
+        + CAPEX_sh * (wind_WACC + solar_WACC + battery_WACC + P2MeOH_WACC) / 4
+    ) / (CAPEX_w + CAPEX_s + CAPEX_b + CAPEX_sh + CAPEX_P2MeOH)
     return WACC_after_tax
 
 

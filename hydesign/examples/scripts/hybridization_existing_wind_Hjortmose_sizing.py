@@ -1,9 +1,10 @@
 if __name__ == "__main__":
+    import math
     import os
 
     import pandas as pd
 
-    from hydesign.assembly.hpp_assembly_hybridization_wind import hpp_model
+    from hydesign.assembly.hpp_assembly import hpp_model
     from hydesign.examples import examples_filepath
     from hydesign.Parallel_EGO import EfficientGlobalOptimizationDriver
 
@@ -30,7 +31,7 @@ if __name__ == "__main__":
         "input_ts_fn": input_ts_fn,
         "sim_pars_fn": sim_pars_fn,
         "opt_var": "NPV_over_CAPEX",
-        "num_batteries": 10,
+        "max_num_batteries_allowed": 10,
         "n_procs": n_procs - 1,
         "n_doe": 10,
         "n_clusters": 5,
@@ -45,6 +46,17 @@ if __name__ == "__main__":
         "hpp_model": hpp_model,
         #'PPA_price': 40,
         "variables": {
+            "clearance [m]": {"var_type": "fixed", "value": 94 - 112 / 2},
+            "sp [W/m2]": {
+                "var_type": "fixed",
+                "value": 3.3e6 / (math.pi * (112 / 2) ** 2),
+            },
+            "p_rated [MW]": {"var_type": "fixed", "value": 3.3},
+            "Nwt": {"var_type": "fixed", "value": 22},
+            "wind_MW_per_km2 [MW/km2]": {
+                "var_type": "fixed",
+                "value": 22 * 3.3 / 5,
+            },
             # 'clearance [m]':
             #     #{'var_type':'design',
             #     #  'limits':[10, 60],
@@ -120,16 +132,6 @@ if __name__ == "__main__":
                 "limits": [0, 20],
                 "types": "float",
             },
-            # {'var_type':'fixed',
-            #   'value': 5},
-            "delta_life [years]": {
-                "var_type": "design",
-                "limits": [5, 15],
-                "types": "int",
-            },
-            # {'var_type':'fixed',
-            #  'value': 11
-            #  },
         },
     }
 

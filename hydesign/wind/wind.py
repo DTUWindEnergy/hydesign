@@ -17,6 +17,7 @@ from scipy.interpolate import RegularGridInterpolator
 from hydesign.ems.ems import expand_to_lifetime
 from hydesign.look_up_tables import lut_filepath
 from hydesign.openmdao_wrapper import ComponentWrapper
+from hydesign.utils import shift_project_profile
 
 
 class genericWT_surrogate:
@@ -284,17 +285,24 @@ class wpp_with_degradation:
         N_ws=51,
         wpp_efficiency=0.95,
         life_y=25,
+        project_life_y=None,
+        operation_start_year=0,
         intervals_per_hour=1,
         wind_deg_yr=[0, 25],
         wind_deg=[0, 25 * 1 / 100],
         share_WT_deg_types=0.5,
         weeks_per_season_per_year=None,
+        enabled=True,
     ):
         # super().__init__()
         self.N_time = N_time
         self.life_y = life_y
-        self.life_h = life_y * 365 * 24
+        self.project_life_y = life_y if project_life_y is None else project_life_y
+        self.operation_start_year = operation_start_year
+        self.life_h = self.project_life_y * 365 * 24
         self.life_intervals = self.life_h * intervals_per_hour
+        self.component_life_h = life_y * 365 * 24
+        self.component_life_intervals = self.component_life_h * intervals_per_hour
         self.intervals_per_hour = intervals_per_hour
         # number of points in the power curves
         self.N_ws = N_ws
@@ -307,6 +315,7 @@ class wpp_with_degradation:
 
         # In case data is provided as weeks per season
         self.weeks_per_season_per_year = weeks_per_season_per_year
+        self.enabled = enabled
 
     def compute(self, ws, pcw, wst):
 
@@ -314,23 +323,31 @@ class wpp_with_degradation:
         # pcw = inputs['pcw']
         # wst = inputs['wst']
 
+        if not self.enabled:
+            return np.zeros(self.life_intervals)
         wst_ext = expand_to_lifetime(
             wst,
             life_y=self.life_y,
             intervals_per_hour=self.intervals_per_hour,
         )
 
-        wind_t_ext_deg = self.wpp_efficiency * get_wind_ts_degradation(
+        component_profile = self.wpp_efficiency * get_wind_ts_degradation(
             ws=ws,
             pc=pcw,
             ws_ts=wst_ext,
             yr=self.wind_deg_yr,
             wind_deg=self.wind_deg,
-            life=self.life_intervals,
+            life=self.component_life_intervals,
             share=self.share_WT_deg_types,
             intervals_per_hour=self.intervals_per_hour,
         )
-        return wind_t_ext_deg
+        return shift_project_profile(
+            profile=component_profile,
+            operation_start_year=self.operation_start_year,
+            component_life_y=self.life_y,
+            project_life_y=self.project_life_y,
+            intervals_per_hour=self.intervals_per_hour,
+        )
 
 
 class wpp_with_degradation_comp(ComponentWrapper):
@@ -340,22 +357,28 @@ class wpp_with_degradation_comp(ComponentWrapper):
         N_ws=51,
         wpp_efficiency=0.95,
         life_y=25,
+        project_life_y=None,
+        operation_start_year=0,
         intervals_per_hour=1,
         wind_deg_yr=[0, 25],
         wind_deg=[0, 25 * 1 / 100],
         share_WT_deg_types=0.5,
         weeks_per_season_per_year=None,
+        enabled=True,
     ):
         model = wpp_with_degradation(
             N_time=N_time,
             N_ws=N_ws,
             wpp_efficiency=wpp_efficiency,
             life_y=life_y,
+            project_life_y=project_life_y,
+            operation_start_year=operation_start_year,
             intervals_per_hour=intervals_per_hour,
             wind_deg_yr=wind_deg_yr,
             wind_deg=wind_deg,
             share_WT_deg_types=share_WT_deg_types,
             weeks_per_season_per_year=weeks_per_season_per_year,
+            enabled=enabled,
         )
         super().__init__(
             inputs=[

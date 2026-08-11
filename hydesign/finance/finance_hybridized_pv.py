@@ -117,11 +117,11 @@ class finance:
     #     self.add_input('OPEX_b',
     #                    desc="OPEX battery")
 
-    #     self.add_input('CAPEX_el_w',
+    #     self.add_input('CAPEX_sh_w',
     #                    desc="CAPEX electrical infrastructure for wind and batteries")
-    #     self.add_input('CAPEX_el_s',
+    #     self.add_input('CAPEX_sh_s',
     #                    desc="CAPEX electrical infrastructure for PV")
-    #     self.add_input('OPEX_el',
+    #     self.add_input('OPEX_sh',
     #                    desc="OPEX electrical infrastructure")
 
     #     self.add_input('decommissioning_cost_tot_w',
@@ -182,8 +182,8 @@ class finance:
         OPEX_s,
         CAPEX_b,
         OPEX_b,
-        CAPEX_el_w,
-        CAPEX_el_s,
+        CAPEX_sh_w,
+        CAPEX_sh_s,
         decommissioning_cost_tot_s,
         hpp_WACC,
         tax_rate,
@@ -288,13 +288,13 @@ class finance:
 
         # Construction of the CAPEX vector along the lifetime
         # CAPEX_only_pv = inputs['CAPEX_s'] + \
-        #                   inputs['CAPEX_el_s']
+        #                   inputs['CAPEX_sh_s']
 
-        # CAPEX_wind = inputs['CAPEX_w'] + inputs['CAPEX_el_w'] + inputs['CAPEX_b']
+        # CAPEX_wind = inputs['CAPEX_w'] + inputs['CAPEX_sh_w'] + inputs['CAPEX_b']
 
-        CAPEX_only_pv = CAPEX_s + CAPEX_el_s
+        CAPEX_only_pv = CAPEX_s + CAPEX_sh_s
 
-        CAPEX_wind = CAPEX_w + CAPEX_el_w + CAPEX_b
+        CAPEX_wind = CAPEX_w + CAPEX_sh_w + CAPEX_b
 
         CAPEX = (
             CAPEX_only_pv + CAPEX_wind
@@ -415,7 +415,7 @@ class finance_comp(ComponentWrapper):
     def __init__(self, **inst_inp):
         life_h = inst_inp["life_h"]
         model = finance(**inst_inp)
-        # key_map_dict = {'CAPEX_sh_w':'CAPEX_el_w','CAPEX_sh_s':'CAPEX_el_s','penalty_t_with_deg':'penalty_t',}
+        # key_map_dict = {'CAPEX_sh_w':'CAPEX_sh_w','CAPEX_sh_s':'CAPEX_sh_s','penalty_t_with_deg':'penalty_t',}
         # def func(**inputs):
         #     inputs = {(key_map_dict[k] if k in key_map_dict else k):v  for (k,v) in inputs.items()}
         #     return Finance.compute(**inputs)
@@ -451,10 +451,10 @@ class finance_comp(ComponentWrapper):
                 ("CAPEX_b", {"desc": "CAPEX battery"}),
                 ("OPEX_b", {"desc": "OPEX battery"}),
                 (
-                    "CAPEX_el_w",
+                    "CAPEX_sh_w",
                     {"desc": "CAPEX electrical infrastructure for wind and batteries"},
                 ),
-                ("CAPEX_el_s", {"desc": "CAPEX electrical infrastructure for PV"}),
+                ("CAPEX_sh_s", {"desc": "CAPEX electrical infrastructure for PV"}),
                 (
                     "decommissioning_cost_tot_w",
                     {"desc": "Decommissioning cost of the entire wind plant"},

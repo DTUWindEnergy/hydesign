@@ -24,6 +24,7 @@ class wpp_cost:
         p_rated_ref,
         N_time,
         intervals_per_hour=1,
+        enabled=True,
     ):
         """Initialization of the wind power plant cost model
 
@@ -48,6 +49,7 @@ class wpp_cost:
         self.p_rated_ref = p_rated_ref
         self.N_time = N_time
         self.intervals_per_hour = intervals_per_hour
+        self.enabled = enabled
 
     def compute(self, Nwt, hh, d, p_rated, wind_t, **kwargs):
         """Computing the CAPEX and OPEX of the wind power plant.
@@ -66,6 +68,8 @@ class wpp_cost:
         CAPEX_w : CAPEX of the wind power plant [Eur]
         OPEX_w : OPEX of the wind power plant [Eur/year]
         """
+        if not self.enabled:
+            return 0.0, 0.0
         wind_turbine_cost = self.wind_turbine_cost
         wind_civil_works_cost = self.wind_civil_works_cost
         wind_fixed_onm_cost = self.wind_fixed_onm_cost
@@ -151,6 +155,7 @@ class pvp_cost:
         solar_hardware_installation_cost,
         solar_inverter_cost,
         solar_fixed_onm_cost,
+        enabled=True,
     ):
         """Initialization of the PV power plant cost model
 
@@ -165,6 +170,7 @@ class pvp_cost:
         self.solar_hardware_installation_cost = solar_hardware_installation_cost
         self.solar_inverter_cost = solar_inverter_cost
         self.solar_fixed_onm_cost = solar_fixed_onm_cost
+        self.enabled = enabled
 
     def compute(self, solar_MW, DC_AC_ratio, **kwargs):
         """Computing the CAPEX and OPEX of the solar power plant.
@@ -180,6 +186,8 @@ class pvp_cost:
         OPEX_s : OPEX of the PV power plant [Eur/year]
         """
 
+        if not self.enabled:
+            return 0.0, 0.0
         solar_PV_cost = self.solar_PV_cost
         solar_hardware_installation_cost = self.solar_hardware_installation_cost
         solar_inverter_cost = self.solar_inverter_cost
@@ -254,6 +262,7 @@ class battery_cost:
         life_y=25,
         intervals_per_hour=1,
         battery_price_reduction_per_year=0.1,
+        enabled=True,
     ):
         """Initialization of the battery cost model
 
@@ -281,6 +290,7 @@ class battery_cost:
         self.yearly_intervals = 365 * 24 * intervals_per_hour
         self.life_intervals = life_y * self.yearly_intervals
         self.battery_price_reduction_per_year = battery_price_reduction_per_year
+        self.enabled = enabled
 
     def compute(self, b_E, b_P, SoH, **kwargs):
         """Computing the CAPEX and OPEX of battery.
@@ -298,6 +308,8 @@ class battery_cost:
         OPEX_b : OPEX of the storage unit [Eur/year]
         """
 
+        if not self.enabled:
+            return 0.0, 0.0
         life_intervals = self.life_intervals
         age = np.arange(life_intervals) / self.yearly_intervals
 
@@ -361,7 +373,13 @@ class battery_cost_comp(ComponentWrapper):
 class shared_cost:
     """Pure Python Electrical infrastructure and land rent cost model"""
 
-    def __init__(self, hpp_BOS_soft_cost, hpp_grid_connection_cost, land_cost):
+    def __init__(
+        self,
+        hpp_BOS_soft_cost,
+        hpp_grid_connection_cost,
+        land_cost,
+        technologies=None,
+    ):
         """Initialization of the shared costs model
 
         Parameters
@@ -373,6 +391,7 @@ class shared_cost:
         self.hpp_BOS_soft_cost = hpp_BOS_soft_cost
         self.hpp_grid_connection_cost = hpp_grid_connection_cost
         self.land_cost = land_cost
+        self.technologies = technologies
 
     def compute(self, G_MW, Awpp, Apvp, **kwargs):
         """Computing the CAPEX and OPEX of the shared land and infrastructure.
@@ -389,16 +408,26 @@ class shared_cost:
         OPEX_sh : OPEX electrical infrastructure/ land rent [Eur/year]
         """
         land_cost = self.land_cost
+        if self.technologies is not None:
+            if "wind" not in self.technologies:
+                Awpp = 0
+            if "solar" not in self.technologies:
+                Apvp = 0
         hpp_BOS_soft_cost = self.hpp_BOS_soft_cost
         hpp_grid_connection_cost = self.hpp_grid_connection_cost
 
-        if Awpp >= Apvp:
-            land_rent = land_cost * Awpp
-        else:
-            land_rent = land_cost * Apvp
-        CAPEX_sh = (hpp_BOS_soft_cost + hpp_grid_connection_cost) * G_MW + land_rent
+        CAPEX_sh_fixed = (hpp_BOS_soft_cost + hpp_grid_connection_cost) * G_MW
+        CAPEX_sh_w_land = land_cost * Awpp
+        CAPEX_sh_s_land = land_cost * Apvp
+        CAPEX_sh = CAPEX_sh_fixed + max(CAPEX_sh_w_land, CAPEX_sh_s_land)
         OPEX_sh = 0
-        return CAPEX_sh, OPEX_sh
+        return (
+            CAPEX_sh,
+            OPEX_sh,
+            CAPEX_sh_fixed,
+            CAPEX_sh_w_land,
+            CAPEX_sh_s_land,
+        )
 
     def compute_partials(self, Awpp, Apvp):
         partials = {}
@@ -406,13 +435,18 @@ class shared_cost:
         hpp_BOS_soft_cost = self.hpp_BOS_soft_cost
         hpp_grid_connection_cost = self.hpp_grid_connection_cost
 
+        wind_enabled = self.technologies is None or "wind" in self.technologies
+        solar_enabled = self.technologies is None or "solar" in self.technologies
+        effective_Awpp = Awpp if wind_enabled else 0
+        effective_Apvp = Apvp if solar_enabled else 0
+
         partials["CAPEX_sh", "G_MW"] = hpp_BOS_soft_cost + hpp_grid_connection_cost
-        if Awpp >= Apvp:
-            partials["CAPEX_sh", "Awpp"] = land_cost
+        if effective_Awpp >= effective_Apvp:
+            partials["CAPEX_sh", "Awpp"] = land_cost if wind_enabled else 0
             partials["CAPEX_sh", "Apvp"] = 0
         else:
             partials["CAPEX_sh", "Awpp"] = 0
-            partials["CAPEX_sh", "Apvp"] = land_cost
+            partials["CAPEX_sh", "Apvp"] = land_cost if solar_enabled else 0
         partials["OPEX_sh", "G_MW"] = 0
         partials["OPEX_sh", "Awpp"] = 0
         partials["OPEX_sh", "Apvp"] = 0
@@ -431,9 +465,60 @@ class shared_cost_comp(ComponentWrapper):
             outputs=[
                 ("CAPEX_sh", {"desc": "CAPEX electrical infrastructure/ land rent"}),
                 ("OPEX_sh", {"desc": "OPEX electrical infrastructure/ land rent"}),
+                (
+                    "CAPEX_sh_fixed",
+                    {"desc": "Fixed grid connection and balance-of-system CAPEX"},
+                ),
+                (
+                    "CAPEX_sh_w_land",
+                    {"desc": "Land CAPEX of the complete wind footprint"},
+                ),
+                (
+                    "CAPEX_sh_s_land",
+                    {"desc": "Land CAPEX of the complete solar footprint"},
+                ),
             ],
             function=model.compute,
             partial_function=model.compute_partials,
+            partial_options=[{"dependent": False, "val": 0}],
+        )
+
+
+class decommissioning_cost:
+    """Pure Python decommissioning cost model."""
+
+    def __init__(self, decommissioning_cost_w, decommissioning_cost_s):
+        self.decommissioning_cost_w = decommissioning_cost_w
+        self.decommissioning_cost_s = decommissioning_cost_s
+
+    def compute(self, CAPEX_w, solar_MW, **kwargs):
+        decommissioning_cost_tot_w = self.decommissioning_cost_w * CAPEX_w
+        decommissioning_cost_tot_s = self.decommissioning_cost_s * solar_MW
+        return decommissioning_cost_tot_w, decommissioning_cost_tot_s
+
+
+class decommissioning_cost_comp(ComponentWrapper):
+    def __init__(self, decommissioning_cost_w, decommissioning_cost_s):
+        model = decommissioning_cost(decommissioning_cost_w, decommissioning_cost_s)
+        super().__init__(
+            inputs=[
+                ("CAPEX_w", {"desc": "CAPEX of the wind plant"}),
+                (
+                    "solar_MW",
+                    {"units": "MW", "desc": "AC nominal capacity of the PV plant"},
+                ),
+            ],
+            outputs=[
+                (
+                    "decommissioning_cost_tot_w",
+                    {"desc": "Decommissioning cost of the entire wind plant"},
+                ),
+                (
+                    "decommissioning_cost_tot_s",
+                    {"desc": "Decommissioning cost of the entire PV plant"},
+                ),
+            ],
+            function=model.compute,
             partial_options=[{"dependent": False, "val": 0}],
         )
 

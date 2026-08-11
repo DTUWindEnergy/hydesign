@@ -12,12 +12,13 @@ from hydesign.battery_degradation import (
     battery_loss_in_capacity_due_to_temp_comp as battery_loss_in_capacity_due_to_temp,
 )
 from hydesign.costs.costs import battery_cost_comp as battery_cost
+from hydesign.costs.costs import decommissioning_cost_comp as decommissioning_cost
 from hydesign.costs.costs import pvp_cost_comp as pvp_cost
-from hydesign.costs.costs import shared_cost_comp as shared_cost
+from hydesign.costs.costs import shared_cost_comp as shared_cost_standard
 from hydesign.costs.costs import wpp_cost_comp as wpp_cost
 from hydesign.ems.ems import ems_comp as ems
 from hydesign.ems.ems import ems_long_term_operation_comp as ems_long_term_operation
-from hydesign.finance.finance import finance_comp as finance
+from hydesign.finance.finance import finance_comp as finance_standard
 from hydesign.look_up_tables import lut_filepath
 from hydesign.pv.pv import pvp_comp as pvp
 from hydesign.pv.pv import pvp_with_degradation_comp as pvp_with_degradation
@@ -26,16 +27,16 @@ from hydesign.reliability import (
 )
 from hydesign.reliability import pvp_with_reliability_comp as pvp_with_reliability
 from hydesign.reliability import wpp_with_reliability_comp as wpp_with_reliability
-from hydesign.weather.weather import ABL_comp as ABL
-from hydesign.weather.weather import (
-    extract_weather_for_HPP,
-    select_years,
+from hydesign.technology import (
+    legacy_technology_schedule,
+    normalize_technology_schedule,
+    project_lifetime,
 )
+from hydesign.weather.weather import ABL_comp as ABL
+from hydesign.weather.weather import extract_weather_for_HPP, select_years
 from hydesign.wind.wind import genericWake_surrogate_comp as genericWake_surrogate
 from hydesign.wind.wind import genericWT_surrogate_comp as genericWT_surrogate
-from hydesign.wind.wind import (
-    get_rotor_d,
-)
+from hydesign.wind.wind import get_rotor_d
 from hydesign.wind.wind import wpp_comp as wpp
 from hydesign.wind.wind import wpp_with_degradation_comp as wpp_with_degradation
 
@@ -109,6 +110,45 @@ class hpp_base:
             life_y = sim_pars["life_y"]
         elif "N_life" in sim_pars:
             life_y = sim_pars["N_life"]
+
+        wind_operation_year = int(sim_pars.get("wind_operation_year", 0) or 0)
+        solar_operation_year = int(sim_pars.get("solar_operation_year", 0) or 0)
+        battery_operation_year = int(
+            sim_pars.get("battery_operation_year", solar_operation_year) or 0
+        )
+
+        schedule_input = sim_pars.get("technologies")
+        if schedule_input is None:
+            schedule_input = sim_pars.get("technology_schedule")
+        technology_schedule_explicit = schedule_input is not None
+        technology_schedule = normalize_technology_schedule(
+            schedule_input, default_lifetime=life_y
+        )
+        if technology_schedule is None:
+            technology_schedule = legacy_technology_schedule(
+                life_y=life_y,
+                wind_operation_year=wind_operation_year,
+                solar_operation_year=solar_operation_year,
+                battery_operation_year=battery_operation_year,
+            )
+            # Preserve the legacy horizon for plants commissioned before year 0.
+            project_life_y = life_y + max(
+                0,
+                wind_operation_year,
+                solar_operation_year,
+                battery_operation_year,
+            )
+        else:
+            project_life_y = project_lifetime(technology_schedule)
+            wind_operation_year = technology_schedule.get("wind", {}).get(
+                "deployment_year", 0
+            )
+            solar_operation_year = technology_schedule.get("solar", {}).get(
+                "deployment_year", 0
+            )
+            battery_operation_year = technology_schedule.get("battery", {}).get(
+                "deployment_year", 0
+            )
 
         if "wind_deg" in sim_pars:
             wind_deg = sim_pars["wind_deg"]
@@ -204,6 +244,10 @@ class hpp_base:
                 f"\n\nSelected input time series based on {weeks_per_season_per_year} weeks per season are stored in {input_ts_fn}"
             )
             weather.to_csv(input_ts_fn)
+            if ppa_price is None:
+                price = weather["Price"].values
+            else:
+                price = ppa_price * np.ones(N_time)
         # extract number of ws in the look-up tables
         with xr.open_dataset(genWT_fn, engine="h5netcdf") as ds:
             # number of points in the power curves
@@ -239,6 +283,9 @@ class hpp_base:
         self.latitude = latitude
         self.altitude = altitude
         self.life_y = life_y
+        self.project_life_y = project_life_y
+        self.technology_schedule = technology_schedule
+        self.technology_schedule_explicit = technology_schedule_explicit
 
         sim_pars["N_ws"] = self.N_ws
         sim_pars["N_time"] = N_time
@@ -248,6 +295,12 @@ class hpp_base:
         sim_pars["price"] = price
         sim_pars["input_ts_fn"] = input_ts_fn
         sim_pars["life_y"] = life_y
+        sim_pars["project_life_y"] = project_life_y
+        sim_pars["wind_operation_year"] = wind_operation_year
+        sim_pars["solar_operation_year"] = solar_operation_year
+        sim_pars["battery_operation_year"] = battery_operation_year
+        sim_pars["technologies"] = technology_schedule
+        sim_pars["technology_schedule_explicit"] = technology_schedule_explicit
 
         self.sim_pars = sim_pars
 
@@ -271,6 +324,14 @@ class hpp_base:
             reliability_ts_wind=None,
             reliability_ts_pv=None,
             save_finance_ts=False,
+            wind_operation_year=0,
+            solar_operation_year=0,
+            battery_operation_year=0,
+            phasing_yr=[0],
+            phasing_CAPEX=[1],
+            decommissioning_cost_w=0,
+            decommissioning_cost_s=0,
+            technologies=None,
         )
 
     def check_inputs(self, sim_pars):
@@ -404,6 +465,7 @@ class hpp_model(hpp_base):
         wpp_efficiency = self.wpp_efficiency
         sim_pars = self.sim_pars
         life_y = self.life_y
+        project_life_y = self.project_life_y
         wind_deg_yr = self.wind_deg_yr
         wind_deg = self.wind_deg
         share_WT_deg_types = self.share_WT_deg_types
@@ -424,6 +486,13 @@ class hpp_model(hpp_base):
         reliability_ts_pv = sim_pars["reliability_ts_pv"]
         battery_price_reduction_per_year = sim_pars["battery_price_reduction_per_year"]
         work_dir = sim_pars["work_dir"]
+        wind_operation_year = sim_pars["wind_operation_year"]
+        solar_operation_year = sim_pars["solar_operation_year"]
+        battery_operation_year = sim_pars["battery_operation_year"]
+        technology_schedule = self.technology_schedule
+        wind_schedule = technology_schedule.get("wind")
+        solar_schedule = technology_schedule.get("solar")
+        battery_schedule = technology_schedule.get("battery")
 
         comps = [
             (
@@ -462,8 +531,9 @@ class hpp_model(hpp_base):
                 ems(
                     N_time=N_time,
                     weeks_per_season_per_year=weeks_per_season_per_year,
-                    life_y=life_y,
+                    life_y=project_life_y,
                     ems_type=ems_type,
+                    technology_schedule=technology_schedule,
                 ),
             ),
             (
@@ -471,16 +541,14 @@ class hpp_model(hpp_base):
                 battery_degradation(
                     weather_fn=input_ts_fn,  # for extracting temperature
                     num_batteries=max_num_batteries_allowed,
-                    life_y=life_y,
+                    life_y=project_life_y,
                     weeks_per_season_per_year=weeks_per_season_per_year,
-                ),
-            ),
-            (
-                "battery_loss_in_capacity_due_to_temp",
-                battery_loss_in_capacity_due_to_temp(
-                    weather_fn=input_ts_fn,  # for extracting temperature
-                    life_y=life_y,
-                    weeks_per_season_per_year=weeks_per_season_per_year,
+                    operation_start_year=(
+                        battery_schedule["deployment_year"] if battery_schedule else 0
+                    ),
+                    component_life_y=(
+                        battery_schedule["lifetime"] if battery_schedule else 0
+                    ),
                 ),
             ),
             (
@@ -489,7 +557,12 @@ class hpp_model(hpp_base):
                     N_time=N_time,
                     N_ws=N_ws,
                     wpp_efficiency=wpp_efficiency,
-                    life_y=life_y,
+                    life_y=(wind_schedule["lifetime"] if wind_schedule else 0),
+                    project_life_y=project_life_y,
+                    operation_start_year=(
+                        wind_schedule["deployment_year"] if wind_schedule else 0
+                    ),
+                    enabled=wind_schedule is not None,
                     wind_deg_yr=wind_deg_yr,
                     wind_deg=wind_deg,
                     share_WT_deg_types=share_WT_deg_types,
@@ -499,15 +572,28 @@ class hpp_model(hpp_base):
             (
                 "pvp_with_degradation",
                 pvp_with_degradation(
-                    life_y=life_y,
+                    life_y=(solar_schedule["lifetime"] if solar_schedule else 0),
+                    project_life_y=project_life_y,
+                    operation_start_year=(
+                        solar_schedule["deployment_year"] if solar_schedule else 0
+                    ),
+                    enabled=solar_schedule is not None,
                     pv_deg_yr=sim_pars["pv_deg_yr"],
                     pv_deg=sim_pars["pv_deg"],
                 ),
             ),
             (
+                "battery_loss_in_capacity_due_to_temp",
+                battery_loss_in_capacity_due_to_temp(
+                    weather_fn=input_ts_fn,  # for extracting temperature
+                    life_y=project_life_y,
+                    weeks_per_season_per_year=weeks_per_season_per_year,
+                ),
+            ),
+            (
                 "battery_with_reliability",
                 battery_with_reliability(
-                    life_y=life_y,
+                    life_y=project_life_y,
                     reliability_ts_battery=reliability_ts_battery,
                     reliability_ts_trans=reliability_ts_trans,
                 ),
@@ -515,7 +601,7 @@ class hpp_model(hpp_base):
             (
                 "wpp_with_reliability",
                 wpp_with_reliability(
-                    life_y=life_y,
+                    life_y=project_life_y,
                     reliability_ts_wind=reliability_ts_wind,
                     reliability_ts_trans=reliability_ts_trans,
                 ),
@@ -524,7 +610,7 @@ class hpp_model(hpp_base):
             (
                 "pvp_with_reliability",
                 pvp_with_reliability(
-                    life_y=life_y,
+                    life_y=project_life_y,
                     reliability_ts_pv=reliability_ts_pv,
                     reliability_ts_trans=reliability_ts_trans,
                 ),
@@ -532,7 +618,7 @@ class hpp_model(hpp_base):
             ),
             (
                 "ems_long_term_operation",
-                ems_long_term_operation(N_time=N_time, life_y=life_y),
+                ems_long_term_operation(N_time=N_time, life_y=project_life_y),
                 {
                     "SoH": "SoH_all",
                     "wind_t_ext_deg": "wind_t_rel",
@@ -551,6 +637,7 @@ class hpp_model(hpp_base):
                     hh_ref=sim_pars["hh_ref"],
                     p_rated_ref=sim_pars["p_rated_ref"],
                     N_time=N_time,
+                    enabled=wind_schedule is not None,
                 ),
             ),
             (
@@ -562,6 +649,7 @@ class hpp_model(hpp_base):
                     ],
                     solar_inverter_cost=sim_pars["solar_inverter_cost"],
                     solar_fixed_onm_cost=sim_pars["solar_fixed_onm_cost"],
+                    enabled=solar_schedule is not None,
                 ),
             ),
             (
@@ -575,42 +663,55 @@ class hpp_model(hpp_base):
                     battery_control_system_cost=sim_pars["battery_control_system_cost"],
                     battery_energy_onm_cost=sim_pars["battery_energy_onm_cost"],
                     # N_life = N_life,
-                    life_y=life_y,
+                    life_y=project_life_y,
                     battery_price_reduction_per_year=battery_price_reduction_per_year,
+                    enabled=battery_schedule is not None,
                 ),
             ),
             (
                 "shared_cost",
-                shared_cost(
+                shared_cost_standard(
                     hpp_BOS_soft_cost=sim_pars["hpp_BOS_soft_cost"],
                     hpp_grid_connection_cost=sim_pars["hpp_grid_connection_cost"],
                     land_cost=sim_pars["land_cost"],
+                    technologies=technology_schedule,
+                ),
+            ),
+            (
+                "decommissioning_cost",
+                decommissioning_cost(
+                    decommissioning_cost_w=sim_pars["decommissioning_cost_w"],
+                    decommissioning_cost_s=sim_pars["decommissioning_cost_s"],
                 ),
             ),
             (
                 "finance",
-                finance(
+                finance_standard(
                     N_time=N_time,
-                    # Depreciation curve
+                    life_y=life_y,
+                    project_life_y=project_life_y,
+                    wind_operation_year=wind_operation_year,
+                    solar_operation_year=solar_operation_year,
+                    battery_operation_year=battery_operation_year,
+                    technology_schedule=(
+                        technology_schedule
+                        if self.technology_schedule_explicit
+                        else None
+                    ),
                     depreciation_yr=sim_pars["depreciation_yr"],
                     depreciation=sim_pars["depreciation"],
-                    # Inflation curve
                     inflation_yr=sim_pars["inflation_yr"],
                     inflation=sim_pars["inflation"],
                     ref_yr_inflation=sim_pars["ref_yr_inflation"],
-                    # Early paying or CAPEX Phasing
                     phasing_yr=sim_pars["phasing_yr"],
                     phasing_CAPEX=sim_pars["phasing_CAPEX"],
-                    life_y=life_y,
-                    # save_finance_ts = sim_pars['save_finance_ts'],
-                    # work_dir = work_dir,
-                    # time_str = sim_pars['time_str']
+                    depre_rate=1 / life_y,
                 ),
                 {
-                    "CAPEX_el": "CAPEX_sh",
-                    "OPEX_el": "OPEX_sh",
+                    "CAPEX_sh": "CAPEX_sh",
+                    "OPEX_sh": "OPEX_sh",
                     "penalty_t": "penalty_t_with_deg",
-                },  # {<input-key-name in model> (that corresponds to): <output-key-name from prior component>}
+                },
             ),
         ]
 
@@ -820,14 +921,14 @@ class hpp_model(hpp_base):
                 prob["revenues"] / 1e6,
                 prob["CAPEX"] / 1e6,
                 prob["OPEX"] / 1e6,
-                prob.get_val("finance.CAPEX_w") / 1e6,
-                prob.get_val("finance.OPEX_w") / 1e6,
-                prob.get_val("finance.CAPEX_s") / 1e6,
-                prob.get_val("finance.OPEX_s") / 1e6,
-                prob.get_val("finance.CAPEX_b") / 1e6,
-                prob.get_val("finance.OPEX_b") / 1e6,
-                prob.get_val("finance.CAPEX_el") / 1e6,
-                prob.get_val("finance.OPEX_el") / 1e6,
+                prob.get_val("CAPEX_w") / 1e6,
+                prob.get_val("OPEX_w") / 1e6,
+                prob.get_val("CAPEX_s") / 1e6,
+                prob.get_val("OPEX_s") / 1e6,
+                prob.get_val("CAPEX_b") / 1e6,
+                prob.get_val("OPEX_b") / 1e6,
+                prob.get_val("CAPEX_sh") / 1e6,
+                prob.get_val("OPEX_sh") / 1e6,
                 prob["penalty_lifetime"] / 1e6,
                 prob["mean_AEP"] / 1e3,  # [GWh]
                 # Grid Utilization factor
@@ -840,8 +941,8 @@ class hpp_model(hpp_base):
                 prob["total_curtailment"] / 1e3,  # [GWh]
                 prob["total_curtailment_with_deg"] / 1e3,  # [GWh]
                 Awpp,
-                prob.get_val("shared_cost.Apvp"),
-                max(Awpp, prob.get_val("shared_cost.Apvp")),
+                prob.get_val("Apvp"),
+                max(Awpp, prob.get_val("Apvp")),
                 d,
                 hh,
                 prob.get_val("battery_degradation.n_batteries") * (b_P > 0),

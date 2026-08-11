@@ -5,6 +5,59 @@ import openmdao.api as om
 from hydesign.openmdao_wrapper import ComponentWrapper
 
 
+def shift_project_profile(
+    profile,
+    operation_start_year,
+    component_life_y,
+    project_life_y,
+    intervals_per_hour=1,
+):
+    """Shift a component-lifetime profile into the full project lifetime.
+
+    Parameters
+    ----------
+    profile : ndarray
+        Profile defined over the component lifetime.
+    operation_start_year : int or float
+        Commissioning year counted from project year 0.
+    component_life_y : int
+        Component lifetime in years.
+    project_life_y : int
+        Project lifetime in years.
+    intervals_per_hour : int, optional
+        Number of intervals per hour.
+
+    Returns
+    -------
+    ndarray
+        Project-lifetime array with zeros outside the component operating window.
+    """
+
+    start_year = int(np.asarray(operation_start_year).item())
+    intervals_per_year = 365 * 24 * intervals_per_hour
+    component_intervals = int(component_life_y * intervals_per_year)
+    project_intervals = int(project_life_y * intervals_per_year)
+    start_idx = start_year * intervals_per_year
+    component_start_idx = 0
+    if start_idx < 0:
+        component_start_idx = -start_idx
+        start_idx = 0
+
+    end_idx = min(
+        start_idx + (component_intervals - component_start_idx), project_intervals
+    )
+
+    shifted = np.zeros(project_intervals)
+    if end_idx <= start_idx:
+        return shifted
+
+    component_profile = np.asarray(profile)[:component_intervals]
+    shifted[start_idx:end_idx] = component_profile[
+        component_start_idx : component_start_idx + (end_idx - start_idx)
+    ]
+    return shifted
+
+
 def get_weights(grid, xtgt, maxorder):
     """Return finite-difference weights on an arbitrary grid.
 
@@ -98,22 +151,13 @@ class hybridization_shifted:
         self.N_time = N_time
 
     def compute(self, delta_life, SoH, **kwargs):
-
-        N_limit = self.N_limit
-        life_y = self.life_y
-        # life_h = self.life_h
-
-        # SoH = inputs['SoH']
-        delta_life = int(delta_life[0])
-
-        SoH_shifted = np.concatenate(
-            (
-                np.zeros(delta_life * 365 * 24),
-                SoH[0 : life_y * 365 * 24],
-                np.zeros((N_limit - delta_life) * 365 * 24),
-            )
+        project_life_y = self.life_y + self.N_limit
+        return shift_project_profile(
+            profile=SoH,
+            operation_start_year=delta_life,
+            component_life_y=self.life_y,
+            project_life_y=project_life_y,
         )
-        return SoH_shifted
 
 
 class hybridization_shifted_comp(ComponentWrapper):
@@ -141,6 +185,53 @@ class hybridization_shifted_comp(ComponentWrapper):
                     {
                         "desc": "Battery state of health at discretization levels shifted of delta_life",
                         "shape": [life_h],
+                    },
+                )
+            ],
+            function=model.compute,
+            partial_options=[{"dependent": False, "val": 0}],
+        )
+
+
+class operation_shifted:
+    def __init__(self, operation_start_year, component_life_y, project_life_y):
+        self.operation_start_year = operation_start_year
+        self.component_life_y = component_life_y
+        self.project_life_y = project_life_y
+        self.project_life_h = int(project_life_y * 365 * 24)
+
+    def compute(self, profile, **kwargs):
+        return shift_project_profile(
+            profile=profile,
+            operation_start_year=self.operation_start_year,
+            component_life_y=self.component_life_y,
+            project_life_y=self.project_life_y,
+        )
+
+
+class operation_shifted_comp(ComponentWrapper):
+    def __init__(self, operation_start_year, component_life_y, project_life_y):
+        model = operation_shifted(
+            operation_start_year=operation_start_year,
+            component_life_y=component_life_y,
+            project_life_y=project_life_y,
+        )
+        super().__init__(
+            inputs=[
+                (
+                    "profile",
+                    {
+                        "desc": "Component lifetime profile",
+                        "shape": [model.project_life_h],
+                    },
+                )
+            ],
+            outputs=[
+                (
+                    "profile_shifted",
+                    {
+                        "desc": "Project lifetime profile shifted to the commissioning year",
+                        "shape": [model.project_life_h],
                     },
                 )
             ],

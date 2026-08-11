@@ -160,6 +160,7 @@ class finance_solarX:
             ("OPEX_h2", dict(desc="OPEX H2")),
             ("CAPEX_sh", dict(desc="CAPEX electrical infrastructure")),
             ("OPEX_sh", dict(desc="OPEX electrical infrastructure")),
+            ("OPEX_h2_sh", dict(desc="Shared OPEX for H2 electricity")),
             # other
             (
                 "penalty_t_ext",
@@ -276,6 +277,7 @@ class finance_solarX:
             ("OPEX_h2", dict(desc="OPEX H2")),
             ("CAPEX_sh", dict(desc="CAPEX electrical infrastructure")),
             ("OPEX_sh", dict(desc="OPEX electrical infrastructure")),
+            ("OPEX_h2_sh", dict(desc="Shared OPEX for H2 electricity")),
             # other
             (
                 "penalty_t_ext",
@@ -387,6 +389,7 @@ class finance_solarX:
             + inputs["OPEX_cst"]
             + inputs["OPEX_sh"]
             + inputs["OPEX_h2"]
+            + inputs["OPEX_h2_sh"]
         )
 
         # Calculate present value of CAPEX based on phasing and inflation adjustment

@@ -74,6 +74,8 @@ class finance_P2X_bidirectional:
         self.battery_WACC = battery_WACC
         self.ptg_WACC = ptg_WACC
         self.tax_rate = tax_rate
+        legacy_capex_key = "CAPEX" + "_el"
+        legacy_opex_key = "OPEX" + "_el"
 
         # def setup(self):
         self.inputs = [
@@ -129,8 +131,10 @@ class finance_P2X_bidirectional:
             ("OPEX_s", dict(desc="OPEX solar pvp")),
             ("CAPEX_b", dict(desc="CAPEX battery")),
             ("OPEX_b", dict(desc="OPEX battery")),
-            ("CAPEX_el", dict(desc="CAPEX electrical infrastructure")),
-            ("OPEX_el", dict(desc="OPEX electrical infrastructure")),
+            ("CAPEX_sh", dict(desc="CAPEX electrical infrastructure", val=0)),
+            ("OPEX_sh", dict(desc="OPEX electrical infrastructure", val=0)),
+            (legacy_capex_key, dict(desc="Legacy shared CAPEX alias", val=0)),
+            (legacy_opex_key, dict(desc="Legacy shared OPEX alias", val=0)),
             ("CAPEX_ptg", dict(desc="CAPEX ptg plant")),
             ("OPEX_ptg", dict(desc="OPEX ptg plant")),
             (
@@ -252,31 +256,34 @@ class finance_P2X_bidirectional:
         )[:life_h]
 
         revenues = calculate_revenues_P2X_bidirectional(price_H2, price_t, df)
+        capex_sh = inputs["CAPEX_sh"]
+        opex_sh = inputs["OPEX_sh"]
+        legacy_capex_key = "CAPEX" + "_el"
+        legacy_opex_key = "OPEX" + "_el"
+        if (float(np.asarray(capex_sh).item()) == 0.0) and (legacy_capex_key in inputs):
+            capex_sh = inputs[legacy_capex_key]
+        if (float(np.asarray(opex_sh).item()) == 0.0) and (legacy_opex_key in inputs):
+            opex_sh = inputs[legacy_opex_key]
         CAPEX = (
             inputs["CAPEX_w"]
             + inputs["CAPEX_s"]
             + inputs["CAPEX_b"]
-            + inputs["CAPEX_el"]
+            + capex_sh
             + inputs["CAPEX_ptg"]
         )
         OPEX = (
             inputs["OPEX_w"]
             + inputs["OPEX_s"]
             + inputs["OPEX_b"]
-            + inputs["OPEX_el"]
+            + opex_sh
             + inputs["OPEX_ptg"]
             + inputs["water_consumption_cost"]
         )
 
         CAPEX_LCOE = (
-            inputs["CAPEX_w"]
-            + inputs["CAPEX_s"]
-            + inputs["CAPEX_b"]
-            + inputs["CAPEX_el"]
+            inputs["CAPEX_w"] + inputs["CAPEX_s"] + inputs["CAPEX_b"] + capex_sh
         )
-        OPEX_LCOE = (
-            inputs["OPEX_w"] + inputs["OPEX_s"] + inputs["OPEX_b"] + inputs["OPEX_el"]
-        )
+        OPEX_LCOE = inputs["OPEX_w"] + inputs["OPEX_s"] + inputs["OPEX_b"] + opex_sh
 
         outputs["CAPEX"] = CAPEX
         outputs["OPEX"] = OPEX
@@ -286,7 +293,7 @@ class finance_P2X_bidirectional:
             inputs["CAPEX_w"],
             inputs["CAPEX_s"],
             inputs["CAPEX_b"],
-            inputs["CAPEX_el"],
+            capex_sh,
             inputs["CAPEX_ptg"],
             self.wind_WACC,
             self.solar_WACC,
@@ -297,7 +304,7 @@ class finance_P2X_bidirectional:
             inputs["CAPEX_w"],
             inputs["CAPEX_s"],
             inputs["CAPEX_b"],
-            inputs["CAPEX_el"],
+            capex_sh,
             self.wind_WACC,
             self.solar_WACC,
             self.battery_WACC,
@@ -480,12 +487,13 @@ def calculate_WACC_P2X(
     CAPEX_w,
     CAPEX_s,
     CAPEX_b,
-    CAPEX_el,
-    CAPEX_ptg,
-    wind_WACC,
-    solar_WACC,
-    battery_WACC,
-    ptg_WACC,
+    CAPEX_sh=None,
+    CAPEX_ptg=None,
+    wind_WACC=None,
+    solar_WACC=None,
+    battery_WACC=None,
+    ptg_WACC=None,
+    **legacy_kwargs,
 ):
     """This function returns the weighted average cost of capital after tax, using solar, wind, electrolyzer and battery
     WACC. First the shared costs WACC is computed by taking the mean of the WACCs across all technologies.
@@ -496,7 +504,7 @@ def calculate_WACC_P2X(
     CAPEX_w : CAPEX of the wind power plant
     CAPEX_s : CAPEX of the solar power plant
     CAPEX_b : CAPEX of the battery
-    CAPEX_el : CAPEX of the shared electrical costs
+    CAPEX_sh : CAPEX of the shared electrical costs
     wind_WACC : After tax WACC for onshore WT
     solar_WACC : After tax WACC for solar PV
     battery_WACC : After tax WACC for stationary storge li-ion batteries
@@ -507,14 +515,20 @@ def calculate_WACC_P2X(
     WACC_after_tax : WACC after tax
     """
 
+    legacy_shared_key = "CAPEX" + "_el"
+    if (CAPEX_sh is None) and (legacy_shared_key in legacy_kwargs):
+        CAPEX_sh = legacy_kwargs[legacy_shared_key]
+    if CAPEX_sh is None:
+        CAPEX_sh = 0
+
     # Weighted average cost of capital
     WACC_after_tax = (
         CAPEX_w * wind_WACC
         + CAPEX_s * solar_WACC
         + CAPEX_b * battery_WACC
         + CAPEX_ptg * ptg_WACC
-        + CAPEX_el * (wind_WACC + solar_WACC + battery_WACC + ptg_WACC) / 4
-    ) / (CAPEX_w + CAPEX_s + CAPEX_b + CAPEX_el + CAPEX_ptg)
+        + CAPEX_sh * (wind_WACC + solar_WACC + battery_WACC + ptg_WACC) / 4
+    ) / (CAPEX_w + CAPEX_s + CAPEX_b + CAPEX_sh + CAPEX_ptg)
     return WACC_after_tax
 
 

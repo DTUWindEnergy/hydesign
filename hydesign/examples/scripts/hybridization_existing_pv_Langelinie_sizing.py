@@ -12,7 +12,7 @@ if __name__ == "__main__":
     # import scipy as sp
     # from scipy import stats
     # import xarray as xr
-    from hydesign.assembly.hpp_assembly_hybridization_pv import hpp_model
+    from hydesign.assembly.hpp_assembly import hpp_model
     from hydesign.examples import examples_filepath
     from hydesign.Parallel_EGO import EfficientGlobalOptimizationDriver
 
@@ -52,7 +52,7 @@ if __name__ == "__main__":
         # 'existing_wpp_power_curve_xr_fn': existing_inverter_efficiency_curve_fn,
         # 'batt_reduction': 0,
         "opt_var": "NPV_over_CAPEX",
-        "num_batteries": 10,
+        "max_num_batteries_allowed": 10,
         "n_procs": n_procs - 1,
         "n_doe": 20,
         "n_clusters": 5,
@@ -91,6 +91,10 @@ if __name__ == "__main__":
             #  'types':'float'
             #  },
             {"var_type": "fixed", "value": 7},
+            "solar_MW [MW]": {"var_type": "fixed", "value": 7.48},
+            "surface_tilt [deg]": {"var_type": "fixed", "value": 25},
+            "surface_azimuth [deg]": {"var_type": "fixed", "value": 180},
+            "DC_AC_ratio": {"var_type": "fixed", "value": 1.32},
             "b_P [MW]": {"var_type": "design", "limits": [0, 100], "types": "int"},
             # {'var_type':'fixed',
             #  'value': 50

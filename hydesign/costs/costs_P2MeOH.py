@@ -377,8 +377,8 @@ class shared_cost(om.ExplicitComponent):
         self.add_input("Awpp", desc="Land use area of WPP", units="km**2")
         self.add_input("Apvp", desc="Land use area of SP", units="km**2")
 
-        self.add_output("CAPEX_el", desc="CAPEX electrical infrastructure/ land rent")
-        self.add_output("OPEX_el", desc="OPEX electrical infrastructure/ land rent")
+        self.add_output("CAPEX_sh", desc="CAPEX electrical infrastructure/ land rent")
+        self.add_output("OPEX_sh", desc="OPEX electrical infrastructure/ land rent")
 
     def setup_partials(self):
         self.declare_partials("*", "*", method="fd")
@@ -394,8 +394,8 @@ class shared_cost(om.ExplicitComponent):
 
         Returns
         -------
-        CAPEX_el : CAPEX electrical infrastructure/ land rent [Eur]
-        OPEX_el : OPEX electrical infrastructure/ land rent [Eur/year]
+        CAPEX_sh : CAPEX electrical infrastructure/ land rent [Eur]
+        OPEX_sh : OPEX electrical infrastructure/ land rent [Eur/year]
         """
         hpp_grid_connection = inputs["hpp_grid_connection"]
         Awpp = inputs["Awpp"]
@@ -410,10 +410,10 @@ class shared_cost(om.ExplicitComponent):
             land_rent = land_cost * Apvp
 
         # print(land_rent)
-        outputs["CAPEX_el"] = (
+        outputs["CAPEX_sh"] = (
             hpp_BOS_soft_cost + hpp_grid_connection_cost
         ) * hpp_grid_connection + land_rent
-        outputs["OPEX_el"] = 0
+        outputs["OPEX_sh"] = 0
 
     def compute_partials(self, inputs, partials):
         hpp_grid_connection = inputs["hpp_grid_connection"]
@@ -423,17 +423,17 @@ class shared_cost(om.ExplicitComponent):
         hpp_BOS_soft_cost = self.hpp_BOS_soft_cost
         hpp_grid_connection_cost = self.hpp_grid_connection_cost
 
-        partials["CAPEX_el", "hpp_grid_connection"] = (
+        partials["CAPEX_sh", "hpp_grid_connection"] = (
             hpp_BOS_soft_cost + hpp_grid_connection_cost
         )
         if Awpp >= Apvp:
-            partials["CAPEX_el", "Apvp"] = 0
+            partials["CAPEX_sh", "Apvp"] = 0
         else:
-            partials["CAPEX_el", "Awpp"] = 0
-            partials["CAPEX_el", "Apvp"] = land_cost
-        partials["OPEX_el", "hpp_grid_connection"] = 0
-        partials["OPEX_el", "Awpp"] = 0
-        partials["OPEX_el", "Apvp"] = 0
+            partials["CAPEX_sh", "Awpp"] = 0
+            partials["CAPEX_sh", "Apvp"] = land_cost
+        partials["OPEX_sh", "hpp_grid_connection"] = 0
+        partials["OPEX_sh", "Awpp"] = 0
+        partials["OPEX_sh", "Apvp"] = 0
 
 
 class P2MeOH_cost(om.ExplicitComponent):

@@ -197,14 +197,14 @@ class hpp_model_P2X_bidirectional(hpp_model_P2X):
                     tax_rate=sim_pars["tax_rate"],
                 ),
                 {
-                    "CAPEX_el": "CAPEX_sh",
-                    "OPEX_el": "OPEX_sh",
+                    "CAPEX_sh": "CAPEX_sh",
+                    "OPEX_sh": "OPEX_sh",
                 },
             ),
         ]
 
-        # model.connect('shared_cost.CAPEX_sh', 'finance.CAPEX_el')
-        # model.connect('shared_cost.OPEX_sh', 'finance.OPEX_el')
+        # model.connect('shared_cost.CAPEX_sh', 'finance.CAPEX_sh')
+        # model.connect('shared_cost.OPEX_sh', 'finance.OPEX_sh')
 
         prob = self.get_prob(comps)
 

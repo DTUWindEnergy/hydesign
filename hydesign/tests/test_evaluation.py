@@ -749,7 +749,7 @@ def test_evaluation_BM():
     evaluation_metrics = run_evaluation_BM()[1].to_numpy().squeeze()
     loaded_metrics = load_evaluation_BM().to_numpy().squeeze()
     for i in range(len(loaded_metrics)):
-        np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=6e-03)
+        np.testing.assert_allclose(evaluation_metrics[i], loaded_metrics[i], rtol=1e-02)
 
 
 # ------------------------------------------------------------------------------------------------

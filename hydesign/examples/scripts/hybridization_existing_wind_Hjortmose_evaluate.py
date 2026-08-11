@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import math
 import time
 
 import pandas as pd
 
-from hydesign.assembly.hpp_assembly_hybridization_wind import hpp_model
+from hydesign.assembly.hpp_assembly import hpp_model
 from hydesign.examples import examples_filepath
 
 examples_sites = pd.read_csv(
@@ -24,12 +25,17 @@ hpp = hpp_model(
     latitude=latitude,
     longitude=longitude,
     altitude=altitude,
-    num_batteries=10,
+    max_num_batteries_allowed=10,
     work_dir="./",
     sim_pars_fn=sim_pars_fn,
     input_ts_fn=input_ts_fn,
 )
 
+clearance = 94 - 112 / 2
+sp = 3.3e6 / (math.pi * (112 / 2) ** 2)
+p_rated = 3.3
+Nwt = 22
+wind_MW_per_km2 = Nwt * p_rated / 5
 solar_MW = 100
 surface_tilt = 25
 surface_azimuth = 180
@@ -37,10 +43,15 @@ DC_AC_ratio = 1.475
 b_P = 18  # MW
 b_E_h = 6  # hours
 cost_of_battery_P_fluct_in_peak_price_ratio = 0.319
-delta_life = 5
 
 
 x = [
+    # Wind plant design
+    clearance,
+    sp,
+    p_rated,
+    Nwt,
+    wind_MW_per_km2,
     # PV plant design
     solar_MW,
     surface_tilt,
@@ -50,8 +61,6 @@ x = [
     b_P,
     b_E_h,
     cost_of_battery_P_fluct_in_peak_price_ratio,
-    # Time design
-    delta_life,
 ]
 
 

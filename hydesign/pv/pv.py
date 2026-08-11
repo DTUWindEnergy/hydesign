@@ -17,6 +17,7 @@ from pvlib.modelchain import ModelChain
 from pvlib.temperature import TEMPERATURE_MODEL_PARAMETERS
 
 from hydesign.openmdao_wrapper import ComponentWrapper
+from hydesign.utils import shift_project_profile
 
 
 class pvp:
@@ -136,9 +137,12 @@ class pvp_with_degradation:
     def __init__(
         self,
         life_y=25,
+        project_life_y=None,
+        operation_start_year=0,
         intervals_per_hour=1,
         pv_deg_yr=[0, 25],
         pv_deg=[0, 25 * 1 / 100],
+        enabled=True,
     ):
         """Initialization of the PV degradation model
 
@@ -148,32 +152,58 @@ class pvp_with_degradation:
 
         """
         self.life_y = life_y
-        self.life_h = 365 * 24 * life_y
+        self.project_life_y = life_y if project_life_y is None else project_life_y
+        self.operation_start_year = operation_start_year
+        self.life_h = 365 * 24 * self.project_life_y
         self.life_intervals = self.life_h * intervals_per_hour
+        self.component_life_h = 365 * 24 * life_y
+        self.component_life_intervals = self.component_life_h * intervals_per_hour
         self.intervals_per_hour = intervals_per_hour
 
         # PV degradation curve
         self.pv_deg_yr = pv_deg_yr
         self.pv_deg = pv_deg
+        self.enabled = enabled
 
     def compute(self, solar_t_ext):
-        t_over_year = np.arange(self.life_intervals) / (
+        if not self.enabled:
+            return np.zeros(self.life_intervals)
+        t_over_year = np.arange(self.component_life_intervals) / (
             365 * 24 * self.intervals_per_hour
         )
         degradation = np.interp(t_over_year, self.pv_deg_yr, self.pv_deg)
-        solar_t_ext_deg = (1 - degradation) * solar_t_ext
-        return solar_t_ext_deg
+        component_profile = (1 - degradation) * np.asarray(solar_t_ext)[
+            : self.component_life_intervals
+        ]
+        return shift_project_profile(
+            profile=component_profile,
+            operation_start_year=self.operation_start_year,
+            component_life_y=self.life_y,
+            project_life_y=self.project_life_y,
+            intervals_per_hour=self.intervals_per_hour,
+        )
 
 
 class pvp_with_degradation_comp(ComponentWrapper):
     def __init__(
         self,
         life_y=25,
+        project_life_y=None,
+        operation_start_year=0,
         intervals_per_hour=1,
         pv_deg_yr=[0, 25],
         pv_deg=[0, 25 * 1 / 100],
+        enabled=True,
     ):
-        model = pvp_with_degradation(life_y, intervals_per_hour, pv_deg_yr, pv_deg)
+        model = pvp_with_degradation(
+            life_y=life_y,
+            project_life_y=project_life_y,
+            operation_start_year=operation_start_year,
+            intervals_per_hour=intervals_per_hour,
+            pv_deg_yr=pv_deg_yr,
+            pv_deg=pv_deg,
+            enabled=enabled,
+        )
         super().__init__(
             inputs=[
                 (
@@ -181,7 +211,7 @@ class pvp_with_degradation_comp(ComponentWrapper):
                     {
                         "desc": "PVP power time series",
                         "units": "MW",
-                        "shape": [life_y * 365 * 24 * intervals_per_hour],
+                        "shape": [model.life_intervals],
                     },
                 )
             ],
@@ -191,7 +221,7 @@ class pvp_with_degradation_comp(ComponentWrapper):
                     {
                         "desc": "PVP power time series with degradation",
                         "units": "MW",
-                        "shape": [life_y * 365 * 24 * intervals_per_hour],
+                        "shape": [model.life_intervals],
                     },
                 )
             ],

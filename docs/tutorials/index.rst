@@ -17,6 +17,7 @@ Evaluation Tutorials
    ../notebooks/Example_ISO_prob
    ../notebooks/HPP_evaluation_BM
    ../notebooks/Hybridize
+   ../technology_deployment
    ../notebooks/evaluate_with_reliability
    ../notebooks/HPP_evaluation_P2MeOH
 

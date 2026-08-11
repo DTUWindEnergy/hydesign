@@ -4,6 +4,19 @@
 G_MW: 72.6 # Grid capacity
 year: '2012' # Single representative year
 N_life: 25
+technologies:
+  - name: wind
+    deployment_year: 0
+    lifetime: 25
+    capex_phasing: {years: [0], shares: [1]}
+  - name: solar
+    deployment_year: 5
+    lifetime: 25
+    capex_phasing: {years: [0], shares: [1]}
+  - name: battery
+    deployment_year: 5
+    lifetime: 25
+    capex_phasing: {years: [0], shares: [1]}
 
 # --------------------------------------------------------------------------------------------
 # Existing Wind
@@ -66,7 +79,8 @@ tracking: 'No' # 'single_axis'  #
 
 # Degradation
 #pv_deg_yr: [0,   delta_life,  delta_life + .0001,  delta_life + lifetime]
-pv_deg: [1,  1, 0.03, 0.28, 1, 1] #0.03 intial + 25yr * 1%/yr
+pv_deg_yr: [0, 25, 25.0001, 40]
+pv_deg: [0.03, 0.28, 1, 1] #0.03 initial + 25yr * 1%/yr
 
 # --------------------------------------------------------------------------------------------
 # Battery
@@ -114,12 +128,11 @@ land_cost: 300_000  #  [Euro/km**2] from Hybridize imputs 6-12k Euro/acre. 1km2 
 # battery_WACC: 0.06 # After tax WACC for stationary storge li-ion batteries
 # ptg_WACC: 0.06      # After tax WACC for P2H plant
 hpp_WACC: 0.06
+wind_WACC: 0.06
+solar_WACC: 0.06
+battery_WACC: 0.06
 
 tax_rate: 0.20      # Corporate tax rate
-
-# Early CAPEX payment, or phasing 
-phasing_yr: [-1,0]
-phasing_CAPEX: [0,1] # shares will be normalized to sum the CAPEX
 
 # Inflation will be linearly interpolated at integer year values
 inflation_yr: [-3,    20,    21,   50]

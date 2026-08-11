@@ -4,6 +4,8 @@ Created on Thu Aug 22 13:08:01 2024
 
 @author: mikf
 """
+import numpy as np
+
 from hydesign.openmdao_wrapper import ComponentWrapper
 
 
@@ -37,11 +39,9 @@ class battery_with_reliability:
         if (self.reliability_ts_battery is None) or (self.reliability_ts_trans is None):
             b_t_rel = b_t
             return b_t_rel
-        b_t_rel = (
-            b_t
-            * self.reliability_ts_battery[: self.life_intervals]
-            * self.reliability_ts_trans[: self.life_intervals]
-        )
+        battery = _fit_availability(self.reliability_ts_battery, self.life_intervals)
+        transformer = _fit_availability(self.reliability_ts_trans, self.life_intervals)
+        b_t_rel = b_t * battery * transformer
         return b_t_rel
 
 
@@ -102,11 +102,9 @@ class wpp_with_reliability:
         if (self.reliability_ts_wind is None) or (self.reliability_ts_trans is None):
             wind_t_rel = wind_t
             return wind_t_rel
-        wind_t_rel = (
-            wind_t
-            * self.reliability_ts_wind[: self.life_intervals]
-            * self.reliability_ts_trans[: self.life_intervals]
-        )
+        wind = _fit_availability(self.reliability_ts_wind, self.life_intervals)
+        transformer = _fit_availability(self.reliability_ts_trans, self.life_intervals)
+        wind_t_rel = wind_t * wind * transformer
         return wind_t_rel
 
 
@@ -167,12 +165,18 @@ class pvp_with_reliability:
         if (self.reliability_ts_pv is None) or (self.reliability_ts_trans is None):
             solar_t_rel = solar_t
             return solar_t_rel
-        solar_t_rel = (
-            solar_t
-            * self.reliability_ts_pv[: self.life_intervals]
-            * self.reliability_ts_trans[: self.life_intervals]
-        )
+        solar = _fit_availability(self.reliability_ts_pv, self.life_intervals)
+        transformer = _fit_availability(self.reliability_ts_trans, self.life_intervals)
+        solar_t_rel = solar_t * solar * transformer
         return solar_t_rel
+
+
+def _fit_availability(values, length):
+    """Repeat a shorter availability record to cover the project horizon."""
+    values = values[:length]
+    if len(values) == length:
+        return values
+    return np.resize(values, length)
 
 
 class pvp_with_reliability_comp(ComponentWrapper):

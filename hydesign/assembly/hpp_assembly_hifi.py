@@ -230,8 +230,8 @@ class hpp_model(hpp_base):
                     phasing_CAPEX=sim_pars["phasing_CAPEX"],
                 ),
                 {
-                    "CAPEX_el": "CAPEX_sh",
-                    "OPEX_el": "OPEX_sh",
+                    "CAPEX_sh": "CAPEX_sh",
+                    "OPEX_sh": "OPEX_sh",
                 },
             ),
         ]

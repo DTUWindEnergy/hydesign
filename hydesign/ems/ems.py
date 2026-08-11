@@ -9,6 +9,7 @@ import pandas as pd
 from docplex.mp.model import Model
 
 from hydesign.openmdao_wrapper import ComponentWrapper
+from hydesign.technology import technology_stage_intervals
 
 # import yaml
 
@@ -54,6 +55,7 @@ class ems:
         intervals_per_hour=1,
         weeks_per_season_per_year=None,
         ems_type="cplex",
+        technology_schedule=None,
     ):
 
         # super().__init__()
@@ -64,6 +66,7 @@ class ems:
         self.life_h = 365 * 24 * life_y
         self.life_intervals = self.life_h * intervals_per_hour
         self.intervals_per_hour = intervals_per_hour
+        self.technology_schedule = technology_schedule
 
     def compute(
         self,
@@ -113,13 +116,13 @@ class ems:
 
         # print(WSPr_df.head())
 
-        P_HPP_ts, P_curtailment_ts, P_charge_discharge_ts, E_SOC_ts, penalty_ts = (
-            ems_WSB(
-                wind_ts=WSPr_df.wind_t,
-                solar_ts=WSPr_df.solar_t,
+        def solve_stage(wind_active=True, solar_active=True, battery_active=True):
+            return ems_WSB(
+                wind_ts=WSPr_df.wind_t * wind_active,
+                solar_ts=WSPr_df.solar_t * solar_active,
                 price_ts=WSPr_df.price_t,
-                P_batt_MW=np.asarray(b_P).item(),
-                E_batt_MWh_t=WSPr_df.E_batt_MWh_t,
+                P_batt_MW=np.asarray(b_P).item() * battery_active,
+                E_batt_MWh_t=WSPr_df.E_batt_MWh_t * battery_active,
                 hpp_grid_connection=np.asarray(G_MW).item(),
                 battery_depth_of_discharge=float(battery_depth_of_discharge),
                 charge_efficiency=float(battery_charge_efficiency),
@@ -127,7 +130,64 @@ class ems:
                 cost_of_battery_P_fluct_in_peak_price_ratio=cost_of_battery_P_fluct_in_peak_price_ratio,
                 n_full_power_hours_expected_per_day_at_peak_price=n_full_power_hours_expected_per_day_at_peak_price,
             )
-        )
+
+        schedule = self.technology_schedule
+        if schedule is None:
+            stage_results = [
+                {
+                    "start_year": 0,
+                    "end_year": self.life_y,
+                    "result": solve_stage(),
+                }
+            ]
+        else:
+            stage_results = []
+            for stage in technology_stage_intervals(schedule, self.life_y):
+                active = stage["technologies"]
+                stage_results.append(
+                    {
+                        **stage,
+                        "result": solve_stage(
+                            "wind" in active,
+                            "solar" in active,
+                            "battery" in active,
+                        ),
+                    }
+                )
+
+        def extend(values, additional_intervals=0):
+            return expand_to_lifetime(
+                values,
+                life_y=self.life_y,
+                intervals_per_hour=self.intervals_per_hour,
+                weeks_per_season_per_year=self.weeks_per_season_per_year,
+                additional_intervals=additional_intervals,
+            )
+
+        def scheduled_result(result_index, additional_intervals=0):
+            def stage_values(values):
+                return values[:-1] if additional_intervals else values
+
+            if schedule is None:
+                return extend(
+                    stage_values(stage_results[0]["result"][result_index]),
+                    additional_intervals=additional_intervals,
+                )
+            result = np.zeros(self.life_intervals + additional_intervals)
+            year_index = np.minimum(
+                np.arange(len(result)) // (365 * 24 * self.intervals_per_hour),
+                self.life_y - 1,
+            )
+            for stage in stage_results:
+                expanded = extend(
+                    stage_values(stage["result"][result_index]),
+                    additional_intervals=additional_intervals,
+                )
+                mask = (year_index >= stage["start_year"]) & (
+                    year_index < stage["end_year"]
+                )
+                result[mask] = expanded[mask]
+            return result
 
         # Extend (by repeating them and stacking) all variable to full lifetime
         outputs = {}
@@ -149,37 +209,11 @@ class ems:
             intervals_per_hour=self.intervals_per_hour,
             weeks_per_season_per_year=self.weeks_per_season_per_year,
         )
-        outputs["hpp_t"] = expand_to_lifetime(
-            P_HPP_ts,
-            life_y=self.life_y,
-            intervals_per_hour=self.intervals_per_hour,
-            weeks_per_season_per_year=self.weeks_per_season_per_year,
-        )
-        outputs["hpp_curt_t"] = expand_to_lifetime(
-            P_curtailment_ts,
-            life_y=self.life_y,
-            intervals_per_hour=self.intervals_per_hour,
-            weeks_per_season_per_year=self.weeks_per_season_per_year,
-        )
-        outputs["b_t"] = expand_to_lifetime(
-            P_charge_discharge_ts,
-            life_y=self.life_y,
-            intervals_per_hour=self.intervals_per_hour,
-            weeks_per_season_per_year=self.weeks_per_season_per_year,
-        )
-        outputs["b_E_SOC_t"] = expand_to_lifetime(
-            E_SOC_ts[:-1],
-            life_y=self.life_y,
-            intervals_per_hour=self.intervals_per_hour,
-            weeks_per_season_per_year=self.weeks_per_season_per_year,
-            additional_intervals=1,
-        )
-        outputs["penalty_t"] = expand_to_lifetime(
-            penalty_ts,
-            life_y=self.life_y,
-            intervals_per_hour=self.intervals_per_hour,
-            weeks_per_season_per_year=self.weeks_per_season_per_year,
-        )
+        outputs["hpp_t"] = scheduled_result(0)
+        outputs["hpp_curt_t"] = scheduled_result(1)
+        outputs["b_t"] = scheduled_result(2)
+        outputs["b_E_SOC_t"] = scheduled_result(3, additional_intervals=1)
+        outputs["penalty_t"] = scheduled_result(4)
         return (
             outputs["wind_t_ext"],
             outputs["solar_t_ext"],
@@ -1682,6 +1716,15 @@ def operation_solar_batt_deg(
 
     # Update the SoC
     for i in range(len(b_t_less_sol)):
+        if i > 0 and batt_degradation[i] > 0 and batt_degradation[i - 1] == 0:
+            # Before deployment, zero battery health forces the propagated SOC
+            # to zero. Start the newly active EMS stage from its own feasible
+            # planned SOC instead of inheriting that inactive state.
+            b_E_SOC_t_sat[i] = np.clip(
+                b_E_SOC_t[i],
+                (1 - battery_depth_of_discharge) * b_E * batt_degradation[i],
+                b_E * batt_degradation[i],
+            )
         if b_t_less_sol[i] < 0:  # charging
             b_E_SOC_t_sat[i + 1] = (
                 b_E_SOC_t_sat[i] - b_t_less_sol[i] * dt * battery_charge_efficiency
@@ -1700,6 +1743,11 @@ def operation_solar_batt_deg(
     # Recompute the battery power
     b_t_sat = b_t.copy()
     for i in range(len(b_t_sat)):
+        if batt_degradation[i] <= 0:
+            # An SOC initialization jump at the next deployment boundary is
+            # state setup, not energy charged during this inactive interval.
+            b_t_sat[i] = 0
+            continue
         if b_t[i] < 0:
             b_t_sat[i] = (
                 (b_E_SOC_t_sat[i] - b_E_SOC_t_sat[i + 1]) / battery_charge_efficiency

@@ -126,9 +126,9 @@ class finance:
     #     self.add_input('OPEX_b',
     #                    desc="OPEX battery")
 
-    #     self.add_input('CAPEX_el',
+    #     self.add_input('CAPEX_sh',
     #                    desc="CAPEX electrical infrastructure")
-    #     self.add_input('OPEX_el',
+    #     self.add_input('OPEX_sh',
     #                    desc="OPEX electrical infrastructure")
 
     #     self.add_input('wind_WACC',
@@ -198,8 +198,8 @@ class finance:
         OPEX_s,
         CAPEX_b,
         OPEX_b,
-        CAPEX_el,
-        OPEX_el,
+        CAPEX_sh,
+        OPEX_sh,
         wind_WACC,
         solar_WACC,
         battery_WACC,
@@ -274,15 +274,21 @@ class finance:
         # Compute yearly revenues and cashflow
         revenues_without_deg = calculate_revenues_without_deg(df)
         revenues = calculate_revenues(df)
-        CAPEX = CAPEX_w + CAPEX_s + CAPEX_b + CAPEX_el
-        OPEX = OPEX_w + OPEX_s + OPEX_b + OPEX_el
+        legacy_capex_key = "CAPEX" + "_el"
+        legacy_opex_key = "OPEX" + "_el"
+        if (float(np.asarray(CAPEX_sh).item()) == 0.0) and (legacy_capex_key in kwargs):
+            CAPEX_sh = kwargs[legacy_capex_key]
+        if (float(np.asarray(OPEX_sh).item()) == 0.0) and (legacy_opex_key in kwargs):
+            OPEX_sh = kwargs[legacy_opex_key]
+        CAPEX = CAPEX_w + CAPEX_s + CAPEX_b + CAPEX_sh
+        OPEX = OPEX_w + OPEX_s + OPEX_b + OPEX_sh
 
         # Discount rate
         hpp_discount_factor = calculate_WACC(
             CAPEX_w,
             CAPEX_s,
             CAPEX_b,
-            CAPEX_el,
+            CAPEX_sh,
             wind_WACC,
             solar_WACC,
             battery_WACC,
@@ -398,6 +404,8 @@ class finance:
 class finance_comp(ComponentWrapper):
     def __init__(self, **insta_inp):
         model = finance(**insta_inp)
+        legacy_capex_key = "CAPEX" + "_el"
+        legacy_opex_key = "OPEX" + "_el"
         super().__init__(
             inputs=[
                 (
@@ -486,8 +494,10 @@ class finance_comp(ComponentWrapper):
                 ("OPEX_s", {"desc": "OPEX solar pvp"}),
                 ("CAPEX_b", {"desc": "CAPEX battery"}),
                 ("OPEX_b", {"desc": "OPEX battery"}),
-                ("CAPEX_el", {"desc": "CAPEX electrical infrastructure"}),
-                ("OPEX_el", {"desc": "OPEX electrical infrastructure"}),
+                ("CAPEX_sh", {"desc": "CAPEX electrical infrastructure", "val": 0}),
+                ("OPEX_sh", {"desc": "OPEX electrical infrastructure", "val": 0}),
+                (legacy_capex_key, {"desc": "Legacy shared CAPEX alias", "val": 0}),
+                (legacy_opex_key, {"desc": "Legacy shared OPEX alias", "val": 0}),
                 ("wind_WACC", {"desc": "After tax WACC for onshore WT"}),
                 ("solar_WACC", {"desc": "After tax WACC for solar PV"}),
                 (

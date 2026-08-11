@@ -305,7 +305,7 @@ class H2Cost:
         self.outputs = [
             ("CAPEX_h2", dict(desc="CAPEX of H2 Production")),
             ("OPEX_h2", dict(desc="OPEX of H2 Production")),
-            ("OPEX_el", dict(desc="OPEX costs for electricity")),
+            ("OPEX_h2_sh", dict(desc="Shared OPEX costs for H2 electricity")),
         ]
 
     def compute(self, **inputs):
@@ -380,8 +380,8 @@ class H2Cost:
         outputs["OPEX_h2"] = water_cost + co2_cost + biogas_cost + maintenance_cost
 
         # OPEX calculations for consumed electricity
-        outputs["OPEX_el"] = sum(p_biogas_h2_t * price_el_t)
-        out_keys = ["CAPEX_h2", "OPEX_h2", "OPEX_el"]
+        outputs["OPEX_h2_sh"] = sum(p_biogas_h2_t * price_el_t)
+        out_keys = ["CAPEX_h2", "OPEX_h2", "OPEX_h2_sh"]
         return [outputs[key] for key in out_keys]
 
 
