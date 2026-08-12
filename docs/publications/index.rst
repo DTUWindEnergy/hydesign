@@ -1,6 +1,8 @@
 Publications
 ============
 
+Browse the publication lists below, or :doc:`browse all publications by topic <../_tags/tagsindex>`.
+
 .. toctree::
    :maxdepth: 1
 

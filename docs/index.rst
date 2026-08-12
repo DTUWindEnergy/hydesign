@@ -65,6 +65,12 @@ Explanations of hydesign's core objects can be found in the following tutorials:
         High-fidelity energy management system examples.
 
         :doc:`Open HiFi EMS Tutorial <notebooks/HiFiEMS>`
+
+    .. grid-item-card:: Changelog
+
+        See the latest features, improvements, and fixes.
+
+        :doc:`Open the Changelog <notebooks/ChangeLog>`
         
 .. toctree::
    :hidden:
@@ -73,6 +79,7 @@ Explanations of hydesign's core objects can be found in the following tutorials:
    how_to_cite
    tutorials/index
    publications/index
+   notebooks/ChangeLog
    api_reference
 
 
