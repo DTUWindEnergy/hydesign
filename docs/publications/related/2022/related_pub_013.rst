@@ -32,4 +32,4 @@ Long, Q, Zhu, R, Das, Kaushik, and Sørensen, P. Interfacing Energy Management w
 Download `here
 <https://backend.orbit.dtu.dk/ws/portalfiles/portal/270281905/WIW2021_paper.pdf>`_.
 
-.. tags:: Energy Management System, Market participation, Hybrid Power Plants, Optimization, HPP Operation
+.. tags:: Energy Management System, Market Participation, Hybrid Power Plants, Optimization, HPP Operation

@@ -17,4 +17,4 @@ Zhu, R, Lindberg, O, Das, Kaushik, Sørensen, PE, and Hansen, AD. Impact of Rene
 Download `here
 <https://findit.dtu.dk/en/catalog/6530f1c7b6400e3eab098f3e>`_.
 
-.. tags:: Energy Management System, Market participation, Hybrid Power Plants, Optimization, HPP Operation
+.. tags:: Energy Management System, Market Participation, Hybrid Power Plants, Optimization, HPP Operation

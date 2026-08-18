@@ -17,4 +17,4 @@ Zhu, R, Das, Kaushik, Sørensen, PE, and Hansen, A. Energy Management of Hybrid 
 Download `here
 <https://backend.orbit.dtu.dk/ws/portalfiles/portal/276003250/3B_3_HYB22_017_paper_Zhu_Rujie.pdf>`_.
 
-.. tags:: Energy Management System, Market participation, Hybrid Power Plants, Optimization, HPP Operation
+.. tags:: Energy Management System, Market Participation, Hybrid Power Plants, Optimization, HPP Operation

@@ -28,4 +28,4 @@ Zhu, R, Das, Kaushik, Sørensen, PE, and Hansen, AD. Optimal Participation of Co
 Download `here
 <https://backend.orbit.dtu.dk/ws/portalfiles/portal/333683945/energies_16_05597_v2.pdf>`_.
 
-.. tags:: Energy Management System, Market participation, Hybrid Power Plants, Optimization, HPP Operation
+.. tags:: Energy Management System, Market Participation, Hybrid Power Plants, Optimization, HPP Operation

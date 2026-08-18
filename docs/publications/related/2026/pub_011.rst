@@ -16,4 +16,4 @@ Zhu R, Murcia Leon JP, Friis-Møller M, Gupta M, Das K. Optimal sizing of renewa
 Download `here
 <https://orbit.dtu.dk/en/publications/optimal-sizing-of-renewable-hybrid-power-plants-considering-compo/>`_.
 
-.. tags:: Hybrid power plants, Component sizing, Component reliability, Multi-disciplinary optimization, Stochastic optimization
+.. tags:: Hybrid Power Plants, Component sizing, Component reliability, Multi-disciplinary optimization, Stochastic optimization

@@ -17,4 +17,4 @@ Zhu, R, Das, Kaushik, Sørensen, P, and Hansen, AD. Enhancing Profits of Hybrid 
 Download `here
 <https://www.sciencedirect.com/science/article/pii/S0142061524002503?ref=pdf_download&fr=RR-2&rr=94e7a13a5d3192fe>`_.
 
-.. tags:: Energy Management System, Market participation, Hybrid Power Plants, Optimization, HPP Operation
+.. tags:: Energy Management System, Market Participation, Hybrid Power Plants, Optimization, HPP Operation

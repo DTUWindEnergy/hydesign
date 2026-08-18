@@ -16,4 +16,4 @@ Lindberg, O, Zhu, R, Das, Kaushik, Lingfors, D, and Sørensen, PE. Optimal Opera
 Download `here
 <https://ieeexplore.ieee.org/document/10220136>`_.
 
-.. tags:: Energy Management System, Market participation, Hybrid Power Plants, Optimization, HPP Operation
+.. tags:: Energy Management System, Market Participation, Hybrid Power Plants, Optimization, HPP Operation

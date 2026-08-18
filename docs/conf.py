@@ -13,8 +13,10 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
+import re
 import sys
 import warnings
+from pathlib import Path
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.append('..')
 
@@ -96,6 +98,41 @@ autoapi_add_toctree_entry = False
 # Spinx tags
 tags_create_tags = True
 
+
+def _validate_unique_tag_slugs(app):
+    """Prevent differently spelled tags from overwriting the same tag page."""
+    tags_by_slug = {}
+    publications_dir = Path(app.srcdir) / "publications"
+
+    for source_path in publications_dir.rglob("*.rst"):
+        if ".ipynb_checkpoints" in source_path.parts:
+            continue
+        for line in source_path.read_text(encoding="utf8").splitlines():
+            match = re.match(r"^\.\. tags::\s*(.+)$", line)
+            if not match:
+                continue
+            for tag in match.group(1).split(","):
+                display_tag = re.sub(r"\s+", " ", tag.strip())
+                slug = re.sub(r"[\s\W]+", "-", display_tag).lower().strip("-")
+                tags_by_slug.setdefault(slug, set()).add(display_tag)
+
+    collisions = {
+        slug: spellings
+        for slug, spellings in tags_by_slug.items()
+        if len(spellings) > 1
+    }
+    if collisions:
+        details = "; ".join(
+            f"{slug}: {', '.join(sorted(spellings))}"
+            for slug, spellings in sorted(collisions.items())
+        )
+        raise RuntimeError(f"Tag names generate duplicate page names: {details}")
+
+
+def setup(app):
+    # Run before sphinx-tags writes generated pages on ``builder-inited``.
+    app.connect("builder-inited", _validate_unique_tag_slugs, priority=100)
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -121,7 +158,7 @@ exclude_patterns = [
     # Slow notebook:
     #'notebooks/neural_network_with_tfds_data.ipynb',
     # ipynb checkpoints
-    'notebooks/.ipynb_checkpoints/*.ipynb',
+    '**/.ipynb_checkpoints/**',
     'build/*'
 ]
 

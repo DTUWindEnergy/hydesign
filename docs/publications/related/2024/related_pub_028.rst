@@ -16,4 +16,4 @@ Gupta M, Leon JPM, Friis-Møller M, Das K. Profitability of solar-based hybrid p
 Download `here
 <https://orbit.dtu.dk/en/publications/profitability-of-solar-based-hybrid-power-plant-in-northern-europ/>`_.
 
-.. tags:: Solar PV, Energy storage system, Electricity market, Hydrogen market, Profitability, Sizing optimization
+.. tags:: Solar PV, Energy storage system, Electricity market, Hydrogen market, Profitability, Sizing Optimization

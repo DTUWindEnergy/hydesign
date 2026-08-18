@@ -16,4 +16,4 @@ Moolman, J, Das, Kaushik, and Sørensen, P. Operation of Battery Storage in Hybr
 Download `here
 <https://ieeexplore.ieee.org/document/9582958>`_.
 
-.. tags:: Energy Management System, Market participation, Hybrid Power Plants, Optimization, HPP Operation
+.. tags:: Energy Management System, Market Participation, Hybrid Power Plants, Optimization, HPP Operation

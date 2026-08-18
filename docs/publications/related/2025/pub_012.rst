@@ -13,4 +13,4 @@ Gupta M, Baize-Roch F, Das K. Hybrid Renewable Power Plants for Green Ammonia Pr
 Download `here
 <https://orbit.dtu.dk/en/publications/hybrid-renewable-power-plants-for-green-ammonia-production-optima/>`_.
 
-.. tags:: Green ammonia, Energy management system, Hybrid power plant, Power-to-X, Haber-Bosch process, Solid oxide electrolyzer cell
+.. tags:: Green ammonia, Energy Management System, Hybrid Power Plant, Power-to-X, Haber-Bosch process, Solid oxide electrolyzer cell
