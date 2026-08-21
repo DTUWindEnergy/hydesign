@@ -73,7 +73,7 @@ gnn-loads = [
     "surrogates-interface",
     "py_wake",
     "topfarm",
-    "design_friendly @ git+https://gitlab.windenergy.dtu.dk/TOPFARM/cuttingedge/pywake/design-friendly-control.git",
+    "design_friendly",
 ]
 reliability = [
     "chaospy",
