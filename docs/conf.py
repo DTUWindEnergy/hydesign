@@ -171,9 +171,11 @@ napolean_use_rtype = False
 
 # -- Options for nbsphinx -----------------------------------------------------
 
-# Execute notebooks before conversion: 'always', 'never', 'auto' (default)
-# We execute all notebooks, exclude the slow ones using 'exclude_patterns'
-# nbsphinx_execute = 'always'
+# Execute notebooks before conversion: 'always', 'never', 'auto' (default).
+# Builds deliberately use committed outputs because several tutorials require
+# optional solvers or are too expensive to run in the documentation job.  The
+# nbstripout pre-commit hook therefore excludes plot-bearing notebooks whose
+# rendered output is part of the documentation.
 nbsphinx_execute = 'never'
 
 # Use this kernel instead of the one stored in the notebook metadata:

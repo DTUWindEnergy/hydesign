@@ -4,25 +4,31 @@ import openmdao.api as om
 import pandas as pd
 
 from hydesign.assembly.hpp_assembly import hpp_base
-from hydesign.battery_degradation import battery_degradation as battery_degradation_pp
 from hydesign.battery_degradation import (
-    battery_loss_in_capacity_due_to_temp as battery_loss_in_capacity_due_to_temp_pp,
+    battery_degradation_comp,
+    battery_loss_in_capacity_due_to_temp_comp,
 )
-from hydesign.costs.costs import battery_cost as battery_cost_pp
-from hydesign.costs.costs import pvp_cost as pvp_cost_pp
-from hydesign.costs.costs import shared_cost as shared_cost_pp
-from hydesign.costs.costs import wpp_cost as wpp_cost_pp
-from hydesign.ems.ems import ems as ems_pp
-from hydesign.ems.ems import ems_long_term_operation as ems_long_term_operation_pp
-from hydesign.ems.ems import (
-    expand_to_lifetime,
+from hydesign.costs.costs import (
+    battery_cost_comp,
+    pvp_cost_comp,
+    shared_cost_comp,
+    wpp_cost_comp,
 )
-from hydesign.finance.finance import finance as finance_pp
+from hydesign.ems.ems import ems_comp, ems_long_term_operation_comp, expand_to_lifetime
+from hydesign.finance.finance import finance_comp
 from hydesign.openmdao_wrapper import ComponentWrapper
-from hydesign.pv.pv import pvp as pvp_pp
-from hydesign.pv.pv import pvp_with_degradation as pvp_with_degradation_pp
-from hydesign.weather.weather import ABL as ABL_pp
-from hydesign.wind.wind import get_rotor_d
+from hydesign.pv.pv import pvp_comp, pvp_with_degradation_comp
+from hydesign.reliability import (
+    battery_with_reliability_comp,
+    pvp_with_reliability_comp,
+    wpp_with_reliability_comp,
+)
+from hydesign.weather.weather import ABL_comp
+from hydesign.wind.wind import (
+    get_pywake_farm_pc,
+    get_rotor_d,
+    get_wind_ts_degradation_2d,
+)
 
 
 class hpp_model(hpp_base):
@@ -38,560 +44,246 @@ class hpp_model(hpp_base):
         hpp_base.__init__(self, sim_pars_fn=sim_pars_fn, **kwargs)
 
         sim_pars = self.sim_pars
+        N_time = self.N_time
+        wpp_efficiency = self.wpp_efficiency
+        life_y = self.life_y
+        wind_deg_yr = self.wind_deg_yr
+        wind_deg = self.wind_deg
 
         N_time = sim_pars["N_time"]
         wpp_efficiency = sim_pars["wpp_efficiency"]
         life_y = sim_pars["life_y"]
-        price_t = sim_pars["price"]
         input_ts_fn = sim_pars["input_ts_fn"]
         latitude = sim_pars["latitude"]
         longitude = sim_pars["longitude"]
         altitude = sim_pars["altitude"]
         battery_price_reduction_per_year = sim_pars["battery_price_reduction_per_year"]
-        G_MW = sim_pars["G_MW"]
-        battery_depth_of_discharge = sim_pars["battery_depth_of_discharge"]
-        battery_charge_efficiency = sim_pars["battery_charge_efficiency"]
-        peak_hr_quantile = sim_pars["peak_hr_quantile"]
-        n_full_power_hours_expected_per_day_at_peak_price = sim_pars[
-            "n_full_power_hours_expected_per_day_at_peak_price"
-        ]
-        min_LoH = sim_pars["min_LoH"]
-        wind_WACC = sim_pars["wind_WACC"]
-        solar_WACC = sim_pars["solar_WACC"]
-        battery_WACC = sim_pars["battery_WACC"]
-        tax_rate = sim_pars["tax_rate"]
-        land_use_per_solar_MW = sim_pars["land_use_per_solar_MW"]
         intervals_per_hour = sim_pars["intervals_per_hour"]
         farm = sim_pars["farm"]
         x = sim_pars["x"]
         y = sim_pars["y"]
         tilt = sim_pars["tilt"]
         time_stamp = sim_pars["time_stamp"]
-        num_batteries = sim_pars["max_num_batteries_allowed"]
-        n_loads = sim_pars["n_loads"]
+        max_num_batteries_allowed = sim_pars["max_num_batteries_allowed"]
+
+        altitude = sim_pars["altitude"]
+        latitude = sim_pars["latitude"]
+        longitude = sim_pars["longitude"]
+        input_ts_fn = sim_pars["input_ts_fn"]
+        weeks_per_season_per_year = sim_pars["weeks_per_season_per_year"]
+        max_num_batteries_allowed = sim_pars["max_num_batteries_allowed"]
+
+        ems_type = sim_pars["ems_type"]
+        reliability_ts_battery = sim_pars["reliability_ts_battery"]
+        reliability_ts_trans = sim_pars["reliability_ts_trans"]
+        reliability_ts_wind = sim_pars["reliability_ts_wind"]
+        reliability_ts_pv = sim_pars["reliability_ts_pv"]
+        battery_price_reduction_per_year = sim_pars["battery_price_reduction_per_year"]
 
         life_h = 365 * 24 * life_y
         life_intervals = life_h * intervals_per_hour
+        pc, pc_ws, pc_wd, pc_yaw, pc_tilt = get_pywake_farm_pc(farm, x, y)
 
-        ABL = ABL_pp(weather_fn=input_ts_fn, N_time=N_time, interpolate_wd=True)
-
-        PVP = pvp_pp(
-            weather_fn=input_ts_fn,
-            N_time=N_time,
-            latitude=latitude,
-            longitude=longitude,
-            altitude=altitude,
-            tracking=sim_pars["tracking"],
-        )
-        PVP_deg = pvp_with_degradation_pp(
-            life_y=life_y,
-            intervals_per_hour=intervals_per_hour,
-            pv_deg_yr=sim_pars["pv_deg_yr"],
-            pv_deg=sim_pars["pv_deg"],
-        )
-        EMS = ems_pp(
-            N_time=N_time, life_y=life_y, intervals_per_hour=intervals_per_hour
-        )
-
-        Batt_deg = battery_degradation_pp(
-            weather_fn=input_ts_fn,
-            num_batteries=num_batteries,
-            life_y=life_y,
-            intervals_per_hour=intervals_per_hour,
-        )
-
-        Batt_loss = battery_loss_in_capacity_due_to_temp_pp(
-            weather_fn=input_ts_fn,
-            num_batteries=num_batteries,
-            life_y=life_y,
-            intervals_per_hour=intervals_per_hour,
-        )
-        EMS_long_term = ems_long_term_operation_pp(
-            N_time=N_time,
-            num_batteries=num_batteries,
-            life_y=life_y,
-            intervals_per_hour=intervals_per_hour,
-        )
-
-        Wind_cost = wpp_cost_pp(
-            wind_turbine_cost=sim_pars["wind_turbine_cost"],
-            wind_civil_works_cost=sim_pars["wind_civil_works_cost"],
-            wind_fixed_onm_cost=sim_pars["wind_fixed_onm_cost"],
-            wind_variable_onm_cost=sim_pars["wind_variable_onm_cost"],
-            d_ref=sim_pars["d_ref"],
-            hh_ref=sim_pars["hh_ref"],
-            p_rated_ref=sim_pars["p_rated_ref"],
-            N_time=N_time,
-        )
-
-        Solar_cost = pvp_cost_pp(
-            solar_PV_cost=sim_pars["solar_PV_cost"],
-            solar_hardware_installation_cost=sim_pars[
-                "solar_hardware_installation_cost"
-            ],
-            solar_inverter_cost=sim_pars["solar_inverter_cost"],
-            solar_fixed_onm_cost=sim_pars["solar_fixed_onm_cost"],
-        )
-
-        Batt_cost = battery_cost_pp(
-            battery_energy_cost=sim_pars["battery_energy_cost"],
-            battery_power_cost=sim_pars["battery_power_cost"],
-            battery_BOP_installation_commissioning_cost=sim_pars[
-                "battery_BOP_installation_commissioning_cost"
-            ],
-            battery_control_system_cost=sim_pars["battery_control_system_cost"],
-            battery_energy_onm_cost=sim_pars["battery_energy_onm_cost"],
-            life_y=life_y,
-            battery_price_reduction_per_year=battery_price_reduction_per_year,
-        )
-
-        Shared_cost = shared_cost_pp(
-            hpp_BOS_soft_cost=sim_pars["hpp_BOS_soft_cost"],
-            hpp_grid_connection_cost=sim_pars["hpp_grid_connection_cost"],
-            land_cost=sim_pars["land_cost"],
-        )
-
-        Finance = finance_pp(
-            N_time=N_time,
-            depreciation_yr=sim_pars["depreciation_yr"],
-            depreciation=sim_pars["depreciation"],
-            inflation_yr=sim_pars["inflation_yr"],
-            inflation=sim_pars["inflation"],
-            ref_yr_inflation=sim_pars["ref_yr_inflation"],
-            phasing_yr=sim_pars["phasing_yr"],
-            phasing_CAPEX=sim_pars["phasing_CAPEX"],
-            life_y=life_y,
-        )
-
-        def abl(hh, **kwargs):
-            ws, wd = ABL.compute(hh)
-            return [ws, wd]
-
-        def pywake_ref(ws, wd, **kwargs):
-            sim_res = farm(
-                x=x,
-                y=y,
-                yaw=np.zeros_like(wd),
-                tilt=tilt,
-                wd=wd,
-                ws=ws,
-                time=time_stamp,
-                Alpha=0.12,
-            )
+        def pywake(ws, wd, yaw, **kwargs):
+            sim_res = farm(x=x, y=y, yaw=yaw, tilt=tilt, wd=wd, ws=ws, time=time_stamp)
             sim_res["duration"] = 0
 
-            loads_ref_ext = expand_to_lifetime(
-                sim_res.loads(normalize_probabilities=False, method="OneWT")[
-                    "DEL"
-                ].values,
+            wind_t = sim_res.Power.sum("wt").values * wpp_efficiency * 1e-6  # W -> MW
+            wind_t_ext_deg_raw = expand_to_lifetime(
+                wpp_efficiency
+                * get_wind_ts_degradation_2d(
+                    ws=pc_ws,
+                    wd=pc_wd,
+                    pc=pc,
+                    ws_ts=ws,
+                    wd_ts=wd,
+                    yr=wind_deg_yr,
+                    wind_deg=wind_deg,
+                    life=ws.size,
+                ),
                 life_y=life_y,
                 intervals_per_hour=intervals_per_hour,
-                axis=2,
             )
-            return loads_ref_ext
 
-        def pywake(ws, wd, yaw, loads_ref_ext, **kwargs):
-            sim_res = farm(
-                x=x, y=y, yaw=yaw, tilt=tilt, wd=wd, ws=ws, time=time_stamp, Alpha=0.12
-            )
-            sim_res["duration"] = 0
+            return [wind_t, wind_t_ext_deg_raw]
 
-            loads = sim_res.loads(normalize_probabilities=False, method="OneWT")[
-                "DEL"
-            ].values
-            wind_t = sim_res.Power.sum("wt").values * wpp_efficiency * 1e-6  # W -> MW
-            wind_t_ext = expand_to_lifetime(
-                wind_t, life_y=life_y, intervals_per_hour=intervals_per_hour
-            )
-            loads_rel_ext = (
-                expand_to_lifetime(
-                    loads, life_y=life_y, intervals_per_hour=intervals_per_hour, axis=2
-                )
-                / loads_ref_ext
-            )
-            return [wind_t, loads_rel_ext, wind_t_ext]
-
-        def pv(surface_tilt, surface_azimuth, solar_MW, DC_AC_ratio, **kwargs):
-            solar_t, Apvp = PVP.compute(
-                surface_tilt,
-                surface_azimuth,
-                solar_MW,
-                land_use_per_solar_MW,
-                DC_AC_ratio,
-            )
-            solar_t_ext = expand_to_lifetime(
-                solar_t, life_y=life_y, intervals_per_hour=intervals_per_hour
-            )
-            solar_t_ext_deg = PVP_deg.compute(solar_t_ext)
-            return [solar_t, solar_t_ext, solar_t_ext_deg, Apvp]
-
-        def ems(
-            wind_t,
-            solar_t,
-            b_P,
-            b_E,
-            cost_of_battery_P_fluct_in_peak_price_ratio,
-            **kwargs,
-        ):
+        comps = [
             (
-                price_t_ext,  # wind_t_ext, solar_t_ext,
-                hpp_t,
-                hpp_curt_t,
-                b_t,
-                b_E_SOC_t,
-                penalty_t,
-            ) = EMS.compute(
-                wind_t,
-                solar_t,
-                price_t,
-                b_P,
-                b_E,
-                G_MW,
-                battery_depth_of_discharge,
-                battery_charge_efficiency,
-                peak_hr_quantile,
-                cost_of_battery_P_fluct_in_peak_price_ratio,
-                n_full_power_hours_expected_per_day_at_peak_price,
-            )
-            return [
-                price_t_ext,
-                hpp_t,
-                hpp_curt_t,
-                b_t,
-                b_E_SOC_t,
-                penalty_t,
-            ]  # wind_t_ext, solar_t_ext,
-
-        def battery_degradation(b_E_SOC_t, **kwargs):
-            SoH, n_batteries = Batt_deg.compute(b_E_SOC_t, min_LoH)
-            return [SoH, n_batteries]
-
-        def battery_loss(SoH, **kwargs):
-            SoH_all = Batt_loss.compute(SoH)
-            return SoH_all
-
-        def ems_long_term(
-            SoH_all,
-            solar_t_ext_deg,
-            wind_t_ext,
-            solar_t_ext,
-            price_t_ext,
-            b_E,
-            hpp_curt_t,
-            b_t,
-            b_E_SOC_t,
-            **kwargs,
-        ):
-            wind_t_ext_deg = wind_t_ext.copy()
+                "abl",
+                ABL_comp(weather_fn=input_ts_fn, N_time=N_time),
+            ),
             (
-                hpp_t_with_deg,
-                hpp_curt_t_with_deg,
-                b_t_with_deg,
-                b_E_SOC_t_with_deg,
-                penalty_t_with_deg,
-                total_curtailment_with_deg,
-                total_curtailment,
-            ) = EMS_long_term.compute(
-                SoH_all,
-                wind_t_ext_deg,
-                solar_t_ext_deg,
-                wind_t_ext,
-                solar_t_ext,
-                price_t_ext,
-                b_E,
-                G_MW,
-                battery_depth_of_discharge,
-                battery_charge_efficiency,
-                hpp_curt_t,
-                b_t,
-                b_E_SOC_t,
-                peak_hr_quantile,
-                n_full_power_hours_expected_per_day_at_peak_price,
-            )
-            return [
-                hpp_t_with_deg,
-                hpp_curt_t_with_deg,
-                b_t_with_deg,
-                b_E_SOC_t_with_deg,
-                penalty_t_with_deg,
-                total_curtailment_with_deg,
-                total_curtailment,
-            ]
-
-        def wind_cost(Nwt, hh, d, p_rated, wind_t, **kwargs):
-            CAPEX_w, OPEX_w = Wind_cost.compute(Nwt, hh, d, p_rated, wind_t)
-            return [CAPEX_w, OPEX_w]
-
-        def solar_cost(solar_MW, DC_AC_ratio, **kwargs):
-            CAPEX_s, OPEX_s = Solar_cost.compute(solar_MW, DC_AC_ratio)
-            return [CAPEX_s, OPEX_s]
-
-        def batt_cost(b_E, b_P, SoH, **kwargs):
-            CAPEX_b, OPEX_b = Batt_cost.compute(b_E, b_P, SoH)
-            return [CAPEX_b, OPEX_b]
-
-        def shared_cost(Awpp, Apvp, **kwargs):
-            CAPEX_sh, OPEX_sh = Shared_cost.compute(G_MW, Awpp, Apvp)
-            return [CAPEX_sh, OPEX_sh]
-
-        def finance(
-            hpp_t_with_deg,
-            penalty_t_with_deg,
-            price_t_ext,
-            CAPEX_w,
-            CAPEX_s,
-            CAPEX_b,
-            CAPEX_sh,
-            OPEX_w,
-            OPEX_s,
-            OPEX_b,
-            OPEX_sh,
-            **kwargs,
-        ):
+                "pywake_comp",
+                ComponentWrapper(
+                    [
+                        ("ws", {"shape": [N_time]}),
+                        ("wd", {"shape": [N_time]}),
+                        ("yaw", {"shape": [N_time]}),
+                    ],
+                    [
+                        ("wind_t", {"shape": [N_time], "units": "MW"}),
+                        ("wind_t_ext_deg_raw", {"shape": [life_intervals]}),
+                    ],
+                    pywake,
+                    partial_options=[{"dependent": False, "val": 0}],
+                ),
+            ),
             (
-                CAPEX,
-                OPEX,
-                revenues_mean,
-                NPV,
-                IRR,
-                NPV_over_CAPEX,
-                LCOE,
-                mean_AEP,
-                penalty_lifetime,
-                break_even_PPA_price,
-            ) = Finance.compute(
-                hpp_t_with_deg,
-                penalty_t_with_deg,
-                price_t_ext,
-                CAPEX_w,
-                CAPEX_s,
-                CAPEX_b,
-                CAPEX_sh,
-                OPEX_w,
-                OPEX_s,
-                OPEX_b,
-                OPEX_sh,
-                wind_WACC,
-                solar_WACC,
-                battery_WACC,
-                tax_rate,
-            )
-            return [
-                CAPEX,
-                OPEX,
-                revenues_mean,
-                NPV,
-                IRR,
-                NPV_over_CAPEX,
-                LCOE,
-                mean_AEP,
-                penalty_lifetime,
-                break_even_PPA_price,
-            ]
+                "pvp",
+                pvp_comp(
+                    weather_fn=input_ts_fn,
+                    N_time=N_time,
+                    latitude=latitude,
+                    longitude=longitude,
+                    altitude=altitude,
+                    tracking=sim_pars["tracking"],
+                ),
+            ),
+            (
+                "ems",
+                ems_comp(
+                    N_time=N_time,
+                    weeks_per_season_per_year=weeks_per_season_per_year,
+                    life_y=life_y,
+                    ems_type=ems_type,
+                ),
+            ),
+            (
+                "battery_degradation",
+                battery_degradation_comp(
+                    weather_fn=input_ts_fn,  # for extracting temperature
+                    num_batteries=max_num_batteries_allowed,
+                    life_y=life_y,
+                    weeks_per_season_per_year=weeks_per_season_per_year,
+                ),
+            ),
+            (
+                "battery_loss_in_capacity_due_to_temp",
+                battery_loss_in_capacity_due_to_temp_comp(
+                    weather_fn=input_ts_fn,  # for extracting temperature
+                    life_y=life_y,
+                    weeks_per_season_per_year=weeks_per_season_per_year,
+                ),
+            ),
+            (
+                "pvp_with_degradation",
+                pvp_with_degradation_comp(
+                    life_y=life_y,
+                    pv_deg_yr=sim_pars["pv_deg_yr"],
+                    pv_deg=sim_pars["pv_deg"],
+                ),
+            ),
+            (
+                "battery_with_reliability",
+                battery_with_reliability_comp(
+                    life_y=life_y,
+                    reliability_ts_battery=reliability_ts_battery,
+                    reliability_ts_trans=reliability_ts_trans,
+                ),
+            ),
+            (
+                "wpp_with_reliability",
+                wpp_with_reliability_comp(
+                    life_y=life_y,
+                    reliability_ts_wind=reliability_ts_wind,
+                    reliability_ts_trans=reliability_ts_trans,
+                ),
+                {"wind_t": "wind_t_ext_deg"},
+            ),
+            (
+                "pvp_with_reliability",
+                pvp_with_reliability_comp(
+                    life_y=life_y,
+                    reliability_ts_pv=reliability_ts_pv,
+                    reliability_ts_trans=reliability_ts_trans,
+                ),
+                {"solar_t": "solar_t_ext_deg"},
+            ),
+            (
+                "ems_long_term_operation",
+                ems_long_term_operation_comp(N_time=N_time, life_y=life_y),
+                {
+                    "SoH": "SoH_all",
+                    "wind_t_ext_deg": "wind_t_rel",
+                    "solar_t_ext_deg": "solar_t_rel",
+                    "b_t": "b_t_rel",
+                },  # (<parent key>, <child key>)
+            ),
+            (
+                "wpp_cost",
+                wpp_cost_comp(
+                    wind_turbine_cost=sim_pars["wind_turbine_cost"],
+                    wind_civil_works_cost=sim_pars["wind_civil_works_cost"],
+                    wind_fixed_onm_cost=sim_pars["wind_fixed_onm_cost"],
+                    wind_variable_onm_cost=sim_pars["wind_variable_onm_cost"],
+                    d_ref=sim_pars["d_ref"],
+                    hh_ref=sim_pars["hh_ref"],
+                    p_rated_ref=sim_pars["p_rated_ref"],
+                    N_time=N_time,
+                ),
+            ),
+            (
+                "pvp_cost",
+                pvp_cost_comp(
+                    solar_PV_cost=sim_pars["solar_PV_cost"],
+                    solar_hardware_installation_cost=sim_pars[
+                        "solar_hardware_installation_cost"
+                    ],
+                    solar_inverter_cost=sim_pars["solar_inverter_cost"],
+                    solar_fixed_onm_cost=sim_pars["solar_fixed_onm_cost"],
+                ),
+            ),
+            (
+                "battery_cost",
+                battery_cost_comp(
+                    battery_energy_cost=sim_pars["battery_energy_cost"],
+                    battery_power_cost=sim_pars["battery_power_cost"],
+                    battery_BOP_installation_commissioning_cost=sim_pars[
+                        "battery_BOP_installation_commissioning_cost"
+                    ],
+                    battery_control_system_cost=sim_pars["battery_control_system_cost"],
+                    battery_energy_onm_cost=sim_pars["battery_energy_onm_cost"],
+                    # N_life = N_life,
+                    life_y=life_y,
+                    battery_price_reduction_per_year=battery_price_reduction_per_year,
+                ),
+            ),
+            (
+                "shared_cost",
+                shared_cost_comp(
+                    hpp_BOS_soft_cost=sim_pars["hpp_BOS_soft_cost"],
+                    hpp_grid_connection_cost=sim_pars["hpp_grid_connection_cost"],
+                    land_cost=sim_pars["land_cost"],
+                ),
+            ),
+            (
+                "finance",
+                finance_comp(
+                    N_time=N_time,
+                    # Depreciation curve
+                    depreciation_yr=sim_pars["depreciation_yr"],
+                    depreciation=sim_pars["depreciation"],
+                    # Inflation curve
+                    inflation_yr=sim_pars["inflation_yr"],
+                    inflation=sim_pars["inflation"],
+                    ref_yr_inflation=sim_pars["ref_yr_inflation"],
+                    # Early paying or CAPEX Phasing
+                    phasing_yr=sim_pars["phasing_yr"],
+                    phasing_CAPEX=sim_pars["phasing_CAPEX"],
+                    life_y=life_y,
+                    # save_finance_ts = sim_pars['save_finance_ts'],
+                    # work_dir = work_dir,
+                    # time_str = sim_pars['time_str']
+                ),
+                {
+                    "CAPEX_el": "CAPEX_sh",
+                    "OPEX_el": "OPEX_sh",
+                    "penalty_t": "penalty_t_with_deg",
+                },  # {<input-key-name in model> (that corresponds to): <output-key-name from prior component>}
+            ),
+        ]
 
-        comps = dict(
-            abl_comp=ComponentWrapper(
-                [
-                    ("hh",),
-                ],
-                [
-                    ("ws", {"shape": [N_time]}),
-                    ("wd", {"shape": [N_time]}),
-                ],
-                abl,
-                partial_options=[{"dependent": False, "val": 0}],
-            ),
-            pywake_ref_comp=ComponentWrapper(
-                [
-                    ("ws", {"shape": [N_time]}),
-                    ("wd", {"shape": [N_time]}),
-                ],
-                [
-                    ("loads_ref_ext", {"shape": [n_loads, n_wt, life_intervals]}),
-                ],
-                pywake_ref,
-                partial_options=[{"dependent": False, "val": 0}],
-            ),
-            pywake_comp=ComponentWrapper(
-                [
-                    ("ws", {"shape": [N_time]}),
-                    ("wd", {"shape": [N_time]}),
-                    ("yaw", {"shape": [N_time]}),
-                    ("loads_ref_ext", {"shape": [n_loads, n_wt, life_intervals]}),
-                ],
-                [
-                    ("wind_t", {"shape": [N_time]}),
-                    ("loads_rel_ext", {"shape": [n_loads, n_wt, life_intervals]}),
-                    ("wind_t_ext", {"shape": [life_intervals]}),
-                ],
-                pywake,
-                partial_options=[{"dependent": False, "val": 0}],
-            ),
-            pv_comp=ComponentWrapper(
-                [
-                    ("surface_tilt",),
-                    ("surface_azimuth",),
-                    ("solar_MW",),
-                    ("DC_AC_ratio",),
-                ],
-                [
-                    ("solar_t", {"shape": [N_time]}),
-                    ("solar_t_ext", {"shape": [life_intervals]}),
-                    ("solar_t_ext_deg", {"shape": [life_intervals]}),
-                    ("Apvp",),
-                ],
-                pv,
-                partial_options=[{"dependent": False, "val": 0}],
-            ),
-            ems_comp=ComponentWrapper(
-                [
-                    ("wind_t", {"shape": [N_time]}),
-                    ("solar_t", {"shape": [N_time]}),
-                    ("b_P",),
-                    ("b_E",),
-                    ("cost_of_battery_P_fluct_in_peak_price_ratio",),
-                ],
-                [
-                    ("price_t_ext", {"shape": [life_intervals]}),
-                    ("hpp_t", {"shape": [life_intervals]}),
-                    ("hpp_curt_t", {"shape": [life_intervals]}),
-                    ("b_t", {"shape": [life_intervals]}),
-                    ("b_E_SOC_t", {"shape": [life_intervals + 1]}),
-                    ("penalty_t", {"shape": [life_intervals]}),
-                ],
-                ems,
-                partial_options=[{"dependent": False, "val": 0}],
-            ),
-            battery_degradation_comp=ComponentWrapper(
-                [
-                    ("b_E_SOC_t", {"shape": [life_intervals + 1]}),
-                ],
-                [
-                    ("SoH", {"shape": [life_intervals]}),
-                    ("n_batteries",),
-                ],
-                battery_degradation,
-                partial_options=[{"dependent": False, "val": 0}],
-            ),
-            battery_loss_comp=ComponentWrapper(
-                [("SoH", {"shape": [life_intervals]})],
-                [
-                    ("SoH_all", {"shape": [life_intervals]}),
-                ],
-                battery_loss,
-                partial_options=[{"dependent": False, "val": 0}],
-            ),
-            ems_long_term_comp=ComponentWrapper(
-                [
-                    ("SoH_all", {"shape": [life_intervals]}),
-                    # ('wind_t_ext_deg', {'shape': [life_intervals]}),
-                    ("solar_t_ext_deg", {"shape": [life_intervals]}),
-                    ("wind_t_ext", {"shape": [life_intervals]}),
-                    ("solar_t_ext", {"shape": [life_intervals]}),
-                    ("price_t_ext", {"shape": [life_intervals]}),
-                    ("b_E",),
-                    ("hpp_curt_t", {"shape": [life_intervals]}),
-                    ("b_t", {"shape": [life_intervals]}),
-                    ("b_E_SOC_t", {"shape": [life_intervals + 1]}),
-                ],
-                [
-                    ("hpp_t_with_deg", {"shape": [life_intervals]}),
-                    ("hpp_curt_t_with_deg", {"shape": [life_intervals]}),
-                    ("b_t_with_deg", {"shape": [life_intervals]}),
-                    ("b_E_SOC_t_with_deg", {"shape": [life_intervals + 1]}),
-                    ("penalty_t_with_deg", {"shape": [life_intervals]}),
-                    ("total_curtailment_with_deg",),
-                    ("total_curtailment",),
-                ],
-                ems_long_term,
-                partial_options=[{"dependent": False, "val": 0}],
-            ),
-            wind_cost_comp=ComponentWrapper(
-                [
-                    ("Nwt",),
-                    ("hh",),
-                    ("d",),
-                    ("p_rated",),
-                    ("wind_t", {"shape": [N_time]}),
-                ],
-                [
-                    ("CAPEX_w",),
-                    ("OPEX_w",),
-                ],
-                wind_cost,
-                partial_options=[{"dependent": False, "val": 0}],
-            ),
-            solar_cost_comp=ComponentWrapper(
-                [
-                    ("solar_MW",),
-                    ("DC_AC_ratio",),
-                ],
-                [
-                    ("CAPEX_s",),
-                    ("OPEX_s",),
-                ],
-                solar_cost,
-                partial_options=[{"dependent": False, "val": 0}],
-            ),
-            batt_cost_comp=ComponentWrapper(
-                [
-                    ("b_E",),
-                    ("b_P",),
-                    ("SoH", {"shape": [life_intervals]}),
-                ],
-                [
-                    ("CAPEX_b",),
-                    ("OPEX_b",),
-                ],
-                batt_cost,
-                partial_options=[{"dependent": False, "val": 0}],
-            ),
-            shared_cost_comp=ComponentWrapper(
-                [
-                    ("Awpp",),
-                    ("Apvp",),
-                ],
-                [
-                    ("CAPEX_sh",),
-                    ("OPEX_sh",),
-                ],
-                shared_cost,
-                partial_options=[{"dependent": False, "val": 0}],
-            ),
-            finance_comp=ComponentWrapper(
-                [
-                    ("hpp_t_with_deg", {"shape": [life_intervals]}),
-                    ("penalty_t_with_deg", {"shape": [life_intervals]}),
-                    ("price_t_ext", {"shape": [life_intervals]}),
-                    ("CAPEX_w",),
-                    ("CAPEX_s",),
-                    ("CAPEX_b",),
-                    ("CAPEX_sh",),
-                    ("OPEX_w",),
-                    ("OPEX_s",),
-                    ("OPEX_b",),
-                    ("OPEX_sh",),
-                ],
-                [
-                    ("CAPEX",),
-                    ("OPEX",),
-                    ("revenues_mean",),
-                    ("NPV",),
-                    ("IRR",),
-                    ("NPV_over_CAPEX",),
-                    ("LCOE",),
-                    ("mean_AEP",),
-                    ("penalty_lifetime",),
-                    ("break_even_PPA_price",),
-                ],
-                finance,
-                partial_options=[{"dependent": False, "val": 0}],
-            ),
-        )
-
-        prob = om.Problem(reports=None)
-        for k, v in comps.items():
-            prob.model.add_subsystem(k, v, promotes=["*"])
+        prob = self.get_prob(comps)
         prob.model.options["auto_order"] = True
         prob.setup()
         self.prob = prob
@@ -769,7 +461,7 @@ class hpp_model(hpp_base):
                 prob["NPV"] / 1e6,
                 prob["IRR"],
                 prob["LCOE"],
-                prob["revenues_mean"] / 1e6,
+                prob["revenues"] / 1e6,
                 prob["CAPEX"] / 1e6,
                 prob["OPEX"] / 1e6,
                 prob["CAPEX_w"] / 1e6,
@@ -811,8 +503,7 @@ if __name__ == "__main__":
 
     from py_wake import NOJ
     from py_wake.deflection_models import JimenezWakeDeflection
-    from py_wake.examples.data.dtu10mw_surrogate import DTU10MW_1WT_Surrogate
-    from py_wake.examples.data.hornsrev1 import Hornsrev1Site
+    from py_wake.examples.data.hornsrev1 import Hornsrev1Site, HornsrevV80
     from py_wake.turbulence_models.stf import STF2017TurbulenceModel
     from topfarm.utils import regular_generic_layout
 
@@ -833,9 +524,8 @@ if __name__ == "__main__":
 
     life_y = 25
     intervals_per_hour = 1
-    n_wt = 10
-    n_loads = 4
-    wt = DTU10MW_1WT_Surrogate()
+    n_wt = 30
+    wt = HornsrevV80()
     d = wt.diameter()
     site = Hornsrev1Site()
     sx = 4 * d
@@ -865,7 +555,6 @@ if __name__ == "__main__":
         y=y,
         tilt=tilt,
         time_stamp=time_stamp,
-        n_loads=n_loads,
     )
 
     start = time.time()
@@ -878,7 +567,7 @@ if __name__ == "__main__":
         Nwt=n_wt,
         wind_MW_per_km2=5.917,
         # PV plant design
-        solar_MW=75,
+        solar_MW=0,
         surface_tilt=28.125,
         surface_azimuth=191.250,
         DC_AC_ratio=1.479,
@@ -896,11 +585,3 @@ if __name__ == "__main__":
 
     end = time.time()
     print("exec. time [min]:", (end - start) / 60)
-
-    sensors = wt.loadFunction.output_keys
-    sensor_no = 0
-    sensor = sensors[sensor_no]
-    turb = 0
-    import matplotlib.pyplot as plt
-
-    plt.plot(hpp.prob["loads_rel_ext"][sensor_no, turb, :])

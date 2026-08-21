@@ -1,4 +1,4 @@
-;case;name;longitude;latitude;altitude;input_ts_fn;sim_pars_fn;price_fn;price_col;H2_demand_col;MeOH_demand_col;input_HA_ts_fn;price_up_ts;price_dwn_ts;sim_pars_MeOH_fn
+;case;name;longitude;latitude;altitude;input_ts_fn;sim_pars_fn;price_fn;price_col;H2_demand_col;MeOH_demand_col;input_HA_ts_fn;price_up_ts;price_dwn_ts;sim_pars_MeOH_fn;MDF_fn
 0;India;Indian_site_good_wind;77.50022583;8.334293917;679.803454;India/GWA2/input_ts_Indian_site_good_wind.csv;India/hpp_pars.yml;India/Indian_elec_price_t.csv;Price;India/H2_demand.csv;;;;;
 1;India;Indian_site_good_solar;68.54220353;23.54209921;29.88355741;India/GWA2/input_ts_Indian_site_good_solar.csv;India/hpp_pars.yml;India/Indian_elec_price_t.csv;Price;India/H2_demand.csv;;;;;
 2;India;Indian_site_bad_solar_bad_wind;77.91687803;17.29231621;627.4246426;India/GWA2/input_ts_Indian_site_bad_solar_bad_wind.csv;India/hpp_pars.yml;India/Indian_elec_price_t.csv;Price;India/H2_demand.csv;;;;;
@@ -37,4 +37,5 @@
 35;Europe;Turku;22.266541;60.440963;34;Europe/GWA2/input_ts_Turku_FIN.csv;Europe/hpp_pars.yml;Europe/2030-EL_PRICE.csv;FIN;Europe/H2_demand.csv;;;;;
 36;Europe;Vordingborg;11.907806;55.008339;6;Europe/GWA2/input_ts_Vordingborg_DKE.csv;Europe/hpp_pars.yml;Europe/2030-EL_PRICE.csv;DKE;Europe/H2_demand.csv;;;;;
 37;Europe;Workum;5.446472;52.978829;1;Europe/GWA2/input_ts_Workum_NLR.csv;Europe/hpp_pars.yml;Europe/2030-EL_PRICE.csv;NLR;Europe/H2_demand.csv;;;;;
-38;Europe;France_good_wind_MeOH;-0.864258;48.744116;302;Europe/GWA2/input_ts_France_good_wind.csv;Europe/hpp_pars_P2MeOH.yml;Europe/2030-EL_PRICE.csv;FR_R;Europe/H2_demand.csv;;MeOH_demand.csv;;;Europe/hpp_pars_P2MeOH.yml
+38;Europe;France_good_wind_MeOH;-0.864258;48.744116;302;Europe/GWA2/input_ts_France_good_wind.csv;Europe/hpp_pars_P2MeOH.yml;Europe/2030-EL_PRICE.csv;FR_R;Europe/H2_demand.csv;;MeOH_demand.csv;;;Europe/hpp_pars_P2MeOH.yml;
+39;Europe;HKN;4.293496346;52.6977727;1;Europe/GWA2/input_ts_HKN.csv;Europe/hpp_pars.yml;;NLR;;;;;;;Europe/df_mdf_wind_nl_20251219_1451_[2023, 2024].csv

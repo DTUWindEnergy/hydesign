@@ -153,24 +153,23 @@ def interpolate_WS_loglog(weather, hh):
 
 
 def interpolate_WD(weather, hh):
-    wd_vars = [var for var in weather.columns if "WD_" in var]
+    wd_vars = [
+        var
+        for var in weather.columns
+        if var.startswith("WD_") and var.removeprefix("WD_").isdigit()
+    ]
     heights = np.array([float(var.split("_")[-1]) for var in wd_vars])
 
     # wind direction to mathematical direction
-    for height in heights:
-        key = int(height)
-        weather[f"WD_{key:d}_math"] = 90 - weather[f"WD_{key:d}"]
-        weather.loc[weather[f"WD_{key:d}_math"] < 180, f"WD_{key:d}_math"] += 360
-        weather[f"WD_x_{key:d}"] = np.sin(np.radians(weather[f"WD_{key:d}_math"]))
-        weather[f"WD_y_{key:d}"] = np.cos(np.radians(weather[f"WD_{key:d}_math"]))
-
-    wd_x_vars = [var for var in weather.columns if "WD_x_" in var]
-    wd_y_vars = [var for var in weather.columns if "WD_y_" in var]
+    wd_math = 90 - weather[wd_vars].to_numpy()
+    wd_math[wd_math < 180] += 360
+    wd_x = np.sin(np.radians(wd_math))
+    wd_y = np.cos(np.radians(wd_math))
 
     ds_wd = xr.Dataset(
         data_vars={
-            "WD_x": (["time", "height"], weather[wd_x_vars].values),
-            "WD_y": (["time", "height"], weather[wd_y_vars].values),
+            "WD_x": (["time", "height"], wd_x),
+            "WD_y": (["time", "height"], wd_y),
             # 'height': (['height'], heights),
         },
         coords={
@@ -417,7 +416,7 @@ def select_years(
     years = np.random.RandomState(seed=seed).permutation(df_inter.index.year.unique())
     for iy, year in enumerate(years):
         i_week = 0
-        for season in df_inter.season.unique():
+        for season in ["DJF", "MAM", "JJA", "SON"]:
             df_inter_yr_ss = df_inter.loc[
                 (df_inter.year == year) & (df_inter.season == season), :
             ].copy()

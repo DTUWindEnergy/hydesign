@@ -35,6 +35,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# ``gnn-loads`` uses a private GitLab dependency and must be installed explicitly.
 all = [
     "hydesign[test,docs,loads,reliability]",
 ]
@@ -61,11 +62,18 @@ docs = [
     "sphinx-tags",
     "sphinxcontrib-youtube",
     "sphinx-design",
+    "pyxdsm",
 ]
 loads = [
     "surrogates-interface",
     "py_wake",
     "topfarm",
+]
+gnn-loads = [
+    "surrogates-interface",
+    "py_wake",
+    "topfarm",
+    "design_friendly @ git+https://gitlab.windenergy.dtu.dk/TOPFARM/cuttingedge/pywake/design-friendly-control.git",
 ]
 reliability = [
     "chaospy",

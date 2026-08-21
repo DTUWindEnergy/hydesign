@@ -20,6 +20,7 @@ Evaluation Tutorials
    ../technology_deployment
    ../notebooks/evaluate_with_reliability
    ../notebooks/HPP_evaluation_P2MeOH
+   ../notebooks/Coupled_HPP_and_wind_farm_operation_including_emissions_displacement
 
 Sizing Tutorials
 ----------------

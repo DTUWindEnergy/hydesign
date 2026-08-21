@@ -5,7 +5,7 @@ import numpy as np
 import openmdao.api as om
 import pandas as pd
 
-from hydesign.ems.ems import expand_to_lifetime
+from hydesign.ems.utils import expand_to_lifetime
 from hydesign.openmdao_wrapper import ComponentWrapper
 from hydesign.pv.pv_hybridization import (
     pvp_with_degradation_comp as pvp_with_degradation,
@@ -36,6 +36,21 @@ def test_get_weights():
     weights = get_weights(grid, 0.0, 1)
     # first derivative central difference [-0.5, 0, 0.5]
     assert np.allclose(weights[:, 1], [-0.5, 0.0, 0.5])
+
+
+def test_seasonal_weeks_follow_meteorological_months():
+    representative_weeks = np.repeat([0.0, 1.0, 2.0, 3.0], 7 * 24)
+    year = expand_to_lifetime(
+        representative_weeks,
+        life=365 * 24,
+        weeks_per_season_per_year=1,
+    )
+
+    boundaries = np.cumsum([0, 59, 92, 92, 91, 31]) * 24
+    expected_seasons = [0.0, 1.0, 2.0, 3.0, 0.0]
+    assert len(year) == 365 * 24
+    for start, end, season in zip(boundaries[:-1], boundaries[1:], expected_seasons):
+        assert np.all(year[start:end] == season)
 
 
 def test_hybridization_shifted_and_sample_mean():

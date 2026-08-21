@@ -29,8 +29,34 @@ excluded = [
     "sizing_with_reliability.ipynb",  # takes ??
     "Simple_Sizing_SolarX_Example.ipynb",  # takes ??
     "HPP_evaluation_P2MeOH.ipynb",  # pandas dataframe indexing issue
+    "yaw_control_loads.ipynb",  # requires the private design_friendly dependency
+    # Full HKN GNN, PyWake, loads, EMS and finance evaluation; takes ~5 min.
+    "Coupled_HPP_and_wind_farm_operation_including_emissions_displacement.ipynb",
 ]
 notebooks = [nb for nb in notebooks if os.path.basename(nb.filename) not in excluded]
+
+
+@pytest.mark.parametrize(
+    ("filename", "minimum_images"),
+    [
+        ("Hybridize.ipynb", 3),
+        (
+            "Coupled_HPP_and_wind_farm_operation_including_emissions_displacement.ipynb",
+            5,
+        ),
+    ],
+)
+def test_documentation_notebook_plots_are_stored(filename, minimum_images):
+    """Plot-bearing tutorials need outputs because nbsphinx does not execute them."""
+    notebook = next(nb for nb in get_notebooks() if Path(nb.filename).name == filename)
+    image_outputs = [
+        output
+        for cell in notebook.cells
+        for output in cell.get("outputs", [])
+        if any(mime.startswith("image/") for mime in output.get("data", {}))
+    ]
+
+    assert len(image_outputs) >= minimum_images
 
 
 @pytest.mark.parametrize(

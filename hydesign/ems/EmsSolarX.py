@@ -8,6 +8,7 @@ import pandas as pd
 from docplex.mp.model import Model
 
 from hydesign.ems.ems import solution_series
+from hydesign.ems.utils import expand_to_lifetime
 from hydesign.openmdao_wrapper import ComponentWrapper
 
 
@@ -1908,45 +1909,6 @@ def ems_cplex_solarX_parts(
         biogas_h2_procuded_h2_kg_in_dni_reactor_t,
         biogas_h2_procuded_h2_kg_in_el_reactor_t,
     )
-
-
-# -----------------------------------------------------------------------
-# Auxiliar functions for ems modelling
-# -----------------------------------------------------------------------
-def expand_to_lifetime(x, life_h=25 * 365 * 24, weeks_per_season_per_year=None):
-    """
-    Expands (by repeating) a given variable to match an expected lifetime length.
-
-    If weeks_per_season_per_year is an int then it will first build a year out of the selected weeks
-
-    Parameters
-    ----------
-    x: input variable
-    life_h: lifetime in hours.
-    weeks_per_season_per_year: None or int.
-
-    Returns
-    -------
-    x_ext: extended variable
-    """
-    if weeks_per_season_per_year == None:
-        # Extend the data to match the expected lifetime
-        len_x = len(x)
-        N_repeats = int(np.ceil(life_h / len_x))
-
-    else:
-        x_ext = np.array([])
-
-        # extend selected weeks into a year: 4 season of 13 weeks + one extra day.
-        for x_batch in split_in_batch(x, weeks_per_season_per_year * 7 * 24):
-            x_ext = np.append(x_ext, np.tile(x_batch, 20)[: 24 * 7 * 13])
-        x_ext = np.append(x_ext, x_batch[-24:])
-
-        # extend the constructed year to match the expected lifetime
-        x = x_ext
-        N_repeats = int(np.ceil(life_h / 365 * 24))
-
-    return np.tile(x, N_repeats)[:life_h]
 
 
 def split_in_batch(array, N):

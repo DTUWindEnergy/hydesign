@@ -14,6 +14,9 @@ repos:
     rev: 0.8.1
     hooks:
       - id: nbstripout
+        # Documentation builds do not execute notebooks (see docs/conf.py), so
+        # plot-bearing tutorials must keep their reviewed outputs.
+        exclude: ^docs/notebooks/(Hybridize|Coupled_HPP_and_wind_farm_operation_including_emissions_displacement)\.ipynb$
         args:
           [
             "--extra-keys=metadata.kernelspec metadata.language_info.version",

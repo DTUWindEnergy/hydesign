@@ -178,11 +178,11 @@ def opt_sm(sm, mixint, x0, fmin=1e10):
 
     ndims = mixint.get_unfolded_dimension()
     res = optimize.minimize(
-        fun=lambda x: KB(sm, x.reshape([1, ndims])),
+        fun=lambda x: float(np.asarray(KB(sm, x.reshape([1, ndims]))).item()),
         jac=lambda x: np.stack(
             [sm.predict_derivatives(x.reshape([1, ndims]), kx=i) for i in range(ndims)]
-        ).reshape([1, ndims]),
-        x0=x0.reshape([1, ndims]),
+        ).reshape(-1),
+        x0=np.asarray(x0).reshape(-1),
         method="SLSQP",
         bounds=[(0, 1)] * ndims,
         options={"maxiter": 20, "eps": 1e-4, "disp": False},

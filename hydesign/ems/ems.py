@@ -8,6 +8,7 @@ import pandas as pd
 # import xarray as xr
 from docplex.mp.model import Model
 
+from hydesign.ems.utils import expand_to_lifetime
 from hydesign.openmdao_wrapper import ComponentWrapper
 from hydesign.technology import technology_stage_intervals
 
@@ -628,64 +629,6 @@ class ems_long_term_operation_comp(ComponentWrapper):
             function=model.compute,
             partial_options=[{"dependent": False, "val": 0}],
         )
-
-
-# -----------------------------------------------------------------------
-# Auxiliar functions for ems modelling
-# -----------------------------------------------------------------------
-
-
-def expand_to_lifetime(
-    x,
-    life_y=25,
-    intervals_per_hour=1,
-    weeks_per_season_per_year=None,
-    axis=0,
-    additional_intervals=0,
-    life=None,
-):
-    """
-    Expands (by repeating) a given variable to match an expected lifetime length.
-
-    If weeks_per_season_per_year is an int then it will first build a year out of the selected weeks
-
-    Parameters
-    ----------
-    x: input variable
-    life: lifetime in number of intervals. If None, it is computed from
-        ``life_y`` and ``intervals_per_hour``.
-    weeks_per_season_per_year: None or int.
-
-    Returns
-    -------
-    x_ext: extended variable
-    """
-    if life is None:
-        life = life_y * 365 * 24 * intervals_per_hour
-    life = life + additional_intervals
-    if weeks_per_season_per_year == None:
-
-        # Extend the data to match the expected lifetime
-        len_x = np.size(x, axis=axis)
-        N_repeats = int(np.ceil(life / len_x))
-
-    else:
-        x_ext = np.array([])
-
-        # extend selected weeks into a year: 4 season of 13 weeks + one extra day.
-        for x_batch in split_in_batch(
-            x, weeks_per_season_per_year * 7 * 24 * intervals_per_hour
-        ):
-            x_ext = np.append(
-                x_ext, np.tile(x_batch, 20)[: 24 * 7 * 13 * intervals_per_hour]
-            )
-        x_ext = np.append(x_ext, x_batch[-24 * intervals_per_hour :])
-
-        # extend the constructed year to match the expected lifetime
-        x = x_ext
-        N_repeats = int(np.ceil(life / (365 * 24 * intervals_per_hour)))
-
-    return np.tile(x, N_repeats)[:life]
 
 
 def ems_cplex(

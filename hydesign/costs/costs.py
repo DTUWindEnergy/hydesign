@@ -51,7 +51,7 @@ class wpp_cost:
         self.intervals_per_hour = intervals_per_hour
         self.enabled = enabled
 
-    def compute(self, Nwt, hh, d, p_rated, wind_t, **kwargs):
+    def compute(self, Nwt, hh, d, p_rated, wind_t, M_actual=0, **kwargs):
         """Computing the CAPEX and OPEX of the wind power plant.
 
         Parameters
@@ -62,6 +62,7 @@ class wpp_cost:
         d : Turbine's diameter [m]
         p_rated : Turbine's rated power [MW]
         wind_t : WPP power time series [MW]
+        M_actual : Additional operational cost due to control strategy [Euro/year]
 
         Returns
         -------
@@ -113,6 +114,7 @@ class wpp_cost:
         OPEX_w = (
             wind_fixed_onm_cost * (Nwt * p_rated)
             + mean_aep_wind * wind_variable_onm_cost * p_rated / p_rated_ref
+            + M_actual
         )
         return CAPEX_w, OPEX_w
 
@@ -132,6 +134,13 @@ class wpp_cost_comp(ComponentWrapper):
                         "units": "MW",
                         "desc": "WPP power time series",
                         "shape": [model.N_time],
+                    },
+                ),
+                (
+                    "M_actual",
+                    {
+                        "desc": "Additional operational cost due to control strategy EURO/year",
+                        "val": 0,
                     },
                 ),
             ],
