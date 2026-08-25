@@ -1,0 +1,18 @@
+{
+  "delivery_profile": "Generic Industrial Yearly",
+  "c_ppa": 160.0,
+  "p_b_max": 20.0,
+  "e_max": 60.0,
+  "e0": 30.0,
+  "settlement_period": "hourly",
+  "lambda_ppa": 0.0,
+  "s_ppa": 5.9722824942658805,
+  "contracted_energy_mwh": 42188.76091589698,
+  "objective_value": -162782.68356377244,
+  "solver_status": "ok",
+  "termination_condition": "optimal",
+  "elapsed_seconds": 2087.509955301881,
+  "run_type": "fixed_obligation_zero_price",
+  "reference_lambda_ppa": 80.0,
+  "reference_objective": 3212318.191129539
+}

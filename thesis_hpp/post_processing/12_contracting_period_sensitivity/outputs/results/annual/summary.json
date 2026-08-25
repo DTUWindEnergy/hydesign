@@ -1,0 +1,22 @@
+{
+  "contracting_period": "annual",
+  "number_of_capacity_decisions": 1,
+  "delivery_profile": "Generic Industrial Yearly",
+  "sdp_label": "Generic Industrial",
+  "deviation_settlement_period": "hourly",
+  "lambda_PPA": 80.0,
+  "c_ppa": 160.0,
+  "P_b_max": 20.0,
+  "E_max": 60.0,
+  "E0": 30.0,
+  "solver_status": "existing result",
+  "termination_condition": "optimal",
+  "elapsed_seconds": null,
+  "expected_profit_eur": 3288750.23958465,
+  "cvar_profit_eur": 2906589.99730302,
+  "objective_value_eur": 3212318.19112954,
+  "annual_contracted_energy_mwh": 42188.760915897,
+  "average_daily_contracted_energy_mwh": 115.90318932938736,
+  "expected_shortfall_mwh": 11512.9407587855,
+  "expected_shortfall_rate_pct": 27.289118023012
+}

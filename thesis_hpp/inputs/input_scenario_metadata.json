@@ -1,0 +1,17 @@
+{
+  "delivery_profile": "Yearly Continuous Baseload",
+  "weather_years": [
+    2000
+  ],
+  "omega_definition": "weather year",
+  "xi_definition": "wind profile scenario",
+  "xi_wind_files": [
+    "P_forecast1.csv"
+  ],
+  "stage2_wind_method": "mean",
+  "stage2_wind_units": "MW",
+  "wind_realization_units": "MW",
+  "source_wind_units": "capacity factor",
+  "activation_limit_source": "absolute value of DK1_imb from Imb_hourly.csv",
+  "price_tolerance": 0.001
+}

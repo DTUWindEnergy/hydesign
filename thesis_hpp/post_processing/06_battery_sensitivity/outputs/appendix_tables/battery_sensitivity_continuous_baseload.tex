@@ -1,0 +1,28 @@
+\begin{table}[htbp]
+\centering
+\small
+\caption{Expected annual profit, optimal contracted PPA capacity and optimal daily contracted energy for the Continuous Baseload profile under hourly PPA deviation settlement. Each battery column reports expected profit [MEUR/year] / $S^{PPA,*}$ [MW] / $E^{PPA,day,*}$ [MWh/day]. Profits exclude the CVaR valuation term.}
+\label{tab:battery_sensitivity_continuous_baseload}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}rrrrr@{}}
+\toprule
+$\lambda^{PPA}$ & $c^{PPA}$ & No battery & 10 MW/30 MWh & 20 MW/60 MWh \\
+\multicolumn{2}{c}{[EUR/MWh]} & \multicolumn{3}{c}{Expected profit [MEUR/year] / $S^{PPA,*}$ [MW] / $E^{PPA,day,*}$ [MWh/day]} \\
+\midrule
+40 & 120 & 2.096 / 0.132 / 3.175 & 2.402 / 0.838 / 20.105 & 2.511 / 0.850 / 20.399 \\
+40 & 160 & 2.096 / 0.000 / 0.000 & 2.382 / 0.234 / 5.623 & 2.494 / 0.187 / 4.493 \\
+40 & 200 & 2.096 / 0.000 / 0.000 & 2.379 / 0.022 / 0.538 & 2.493 / 0.009 / 0.215 \\
+\addlinespace
+60 & 120 & 2.448 / 4.260 / 102.241 & 2.789 / 4.113 / 98.703 & 2.929 / 4.225 / 101.399 \\
+60 & 160 & 2.167 / 1.557 / 37.377 & 2.555 / 1.937 / 46.494 & 2.689 / 2.227 / 53.445 \\
+60 & 200 & 2.100 / 0.318 / 7.620 & 2.473 / 1.138 / 27.319 & 2.590 / 1.397 / 33.517 \\
+\addlinespace
+80 & 120 & 3.632 / 9.518 / 228.433 & 3.933 / 9.281 / 222.749 & 4.075 / 9.261 / 222.264 \\
+80 & 160 & 2.726 / 4.880 / 117.120 & 3.130 / 4.784 / 114.809 & 3.298 / 4.877 / 117.043 \\
+80 & 200 & 2.338 / 2.612 / 62.688 & 2.803 / 2.835 / 68.038 & 2.971 / 3.104 / 74.497 \\
+\addlinespace
+100 & 120 & 6.013 / 18.314 / 439.538 & 6.243 / 17.785 / 426.835 & 6.369 / 17.619 / 422.851 \\
+100 & 160 & 3.899 / 8.550 / 205.209 & 4.274 / 8.358 / 200.582 & 4.448 / 8.399 / 201.572 \\
+100 & 200 & 3.031 / 5.266 / 126.373 & 3.504 / 5.198 / 124.757 & 3.702 / 5.276 / 126.623 \\
+\bottomrule
+\end{tabular*}
+\end{table}

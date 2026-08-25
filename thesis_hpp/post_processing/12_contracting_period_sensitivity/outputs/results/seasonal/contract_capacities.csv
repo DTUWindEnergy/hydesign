@@ -1,0 +1,5 @@
+contracting_period,period_order,period_label,months,number_of_hours,S_PPA_mw,contracted_energy_mwh
+seasonal,1,Winter,"January, February, December",2136,8.80357581317501,15205.6209423188
+seasonal,2,Spring,"March, April, May",2208,5.61265863583984,10021.0101274463
+seasonal,3,Summer,"June, July, August",2208,3.94980998972389,7052.10996723822
+seasonal,4,Autumn,"September, October, November",2184,7.19460196843725,12705.8349392744
