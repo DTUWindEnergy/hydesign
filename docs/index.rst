@@ -18,6 +18,11 @@ Welcome to HyDesign
 
 Source code repository and issue tracker:
     `GitLab Repository <https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign>`_
+    (mirror: `GitHub Repository <https://github.com/DTUWindEnergy/hydesign>`_)
+
+Documentation:
+    `GitLab Pages <https://topfarm.pages.windenergy.dtu.dk/hydesign>`_
+    (mirror: `Read the Docs <https://hydesign.readthedocs.io>`_)
 
 License:
     `MIT <https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign/blob/main/LICENSE>`_

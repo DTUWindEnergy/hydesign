@@ -33,8 +33,9 @@ It is also recommended that you install cplex first before installing HyDesign. 
 
 If your combination of platform and Python version is not available on PyPi you need to go through the IBM website: https://www.ibm.com/products/ilog-cplex-optimization-studio/pricing to download and install the package. Here you can also find the full license (not free) of CPLEX that can solve larger problems.
 
-hydesign’s base code is open-sourced and freely available on `GitLab 
-<https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign>`_ (MIT license).
+hydesign’s base code is open-sourced and freely available on `GitLab
+<https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign>`_ (MIT license), with a mirror on
+`GitHub <https://github.com/DTUWindEnergy/hydesign>`_.
 
 Simple Installation
 ----------------------------

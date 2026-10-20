@@ -81,7 +81,9 @@ reliability = [
 
 [project.urls]
 Documentation = "https://topfarm.pages.windenergy.dtu.dk/hydesign/"
+"Documentation (Read the Docs mirror)" = "https://hydesign.readthedocs.io/"
 Source = "https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign"
+"Source (GitHub mirror)" = "https://github.com/DTUWindEnergy/hydesign"
 Tracker = "https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign/-/issues"
 
 [tool.setuptools]

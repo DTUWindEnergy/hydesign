@@ -37,10 +37,14 @@ DOI = {10.5194/wes-9-759-2024}
 ## Source code repository (and issue tracker):
 [https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign](https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign)
 
+Mirror on GitHub: [https://github.com/DTUWindEnergy/hydesign](https://github.com/DTUWindEnergy/hydesign)
+
 ## License:
 [MIT](https://gitlab.windenergy.dtu.dk/TOPFARM/hydesign/blob/main/LICENSE)
 
 ## Documentation, installation, etc:
-[https://topfarm.pages.windenergy.dtu.dk/hydesign](https://topfarm.pages.windenergy.dtu.dk/hydesign).
+[https://topfarm.pages.windenergy.dtu.dk/hydesign](https://topfarm.pages.windenergy.dtu.dk/hydesign)
+
+Mirror on Read the Docs: [https://hydesign.readthedocs.io](https://hydesign.readthedocs.io)
 
 
