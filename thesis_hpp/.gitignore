@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+
+# Raw optimization outputs are large and are not part of the code package.
+/results/
+/inputs/Input_files_created/
+/pay_as_delivered_sensitivity/results/
+
+# Slurm and local run logs.
+*.out
+*.err
+*.log
+
+# Local development metadata.
+/.agents/
+/.codex/
+/.codex_stage_milp/

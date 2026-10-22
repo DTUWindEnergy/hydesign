@@ -1,0 +1,28 @@
+\begin{table}[htbp]
+\centering
+\small
+\caption{Expected annual profit, optimal contracted PPA capacity and optimal daily contracted energy for the Inverse Solar profile under hourly PPA deviation settlement. Each battery column reports expected profit [MEUR/year] / $S^{PPA,*}$ [MW] / $E^{PPA,day,*}$ [MWh/day]. Profits exclude the CVaR valuation term.}
+\label{tab:battery_sensitivity_inverse_solar}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}rrrrr@{}}
+\toprule
+$\lambda^{PPA}$ & $c^{PPA}$ & No battery & 10 MW/30 MWh & 20 MW/60 MWh \\
+\multicolumn{2}{c}{[EUR/MWh]} & \multicolumn{3}{c}{Expected profit [MEUR/year] / $S^{PPA,*}$ [MW] / $E^{PPA,day,*}$ [MWh/day]} \\
+\midrule
+40 & 120 & 2.096 / 0.136 / 2.088 & 2.397 / 1.261 / 19.338 & 2.507 / 1.193 / 18.301 \\
+40 & 160 & 2.096 / 0.000 / 0.000 & 2.381 / 0.285 / 4.369 & 2.493 / 0.231 / 3.540 \\
+40 & 200 & 2.096 / 0.000 / 0.000 & 2.379 / 0.009 / 0.135 & 2.493 / 0.000 / 0.000 \\
+\addlinespace
+60 & 120 & 2.358 / 4.959 / 76.049 & 2.734 / 5.491 / 84.204 & 2.892 / 5.929 / 90.917 \\
+60 & 160 & 2.151 / 1.895 / 29.059 & 2.542 / 2.660 / 40.787 & 2.677 / 3.376 / 51.774 \\
+60 & 200 & 2.100 / 0.425 / 6.521 & 2.469 / 1.754 / 26.896 & 2.582 / 2.090 / 32.046 \\
+\addlinespace
+80 & 120 & 3.237 / 11.201 / 171.769 & 3.689 / 12.000 / 184.015 & 3.905 / 12.662 / 194.172 \\
+80 & 160 & 2.571 / 5.686 / 87.199 & 3.034 / 6.413 / 98.347 & 3.235 / 6.875 / 105.431 \\
+80 & 200 & 2.285 / 3.134 / 48.052 & 2.763 / 3.872 / 59.374 & 2.948 / 4.477 / 68.655 \\
+\addlinespace
+100 & 120 & 5.052 / 22.628 / 346.989 & 5.592 / 23.265 / 356.753 & 5.893 / 23.958 / 367.391 \\
+100 & 160 & 3.442 / 10.056 / 154.197 & 3.997 / 10.963 / 168.116 & 4.262 / 11.618 / 178.149 \\
+100 & 200 & 2.804 / 6.143 / 94.192 & 3.364 / 6.979 / 107.022 & 3.613 / 7.498 / 114.977 \\
+\bottomrule
+\end{tabular*}
+\end{table}

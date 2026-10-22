@@ -1,0 +1,11 @@
+name: integrated-energy-grids
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pyomo>=6.7
+  - pandas>=2.0
+  - matplotlib>=3.8
+  - numpy>=1.26
+  - cycler>=0.12
+

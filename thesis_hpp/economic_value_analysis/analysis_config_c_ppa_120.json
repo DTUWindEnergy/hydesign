@@ -1,0 +1,34 @@
+{
+  "delivery_profile": "Generic Industrial Yearly",
+  "c_ppa": 120.0,
+  "p_b_max": 20.0,
+  "e_max": 60.0,
+  "e0": 30.0,
+  "settlement_period": "hourly",
+  "validation_points": [
+    {
+      "lambda_ppa_reference": 40.0,
+      "s_ppa_fixed": 1.05743232496427,
+      "contracted_energy_mwh": 7469.80063074567,
+      "reference_objective": 2427010.20499022
+    },
+    {
+      "lambda_ppa_reference": 60.0,
+      "s_ppa_fixed": 5.17259233894285,
+      "contracted_energy_mwh": 36539.675025852,
+      "reference_objective": 2849147.17807087
+    },
+    {
+      "lambda_ppa_reference": 80.0,
+      "s_ppa_fixed": 11.3039840314641,
+      "contracted_energy_mwh": 79852.3981674406,
+      "reference_objective": 3977933.81498764
+    },
+    {
+      "lambda_ppa_reference": 100.0,
+      "s_ppa_fixed": 21.6741918694076,
+      "contracted_energy_mwh": 153108.514157135,
+      "reference_objective": 6210158.37562816
+    }
+  ]
+}

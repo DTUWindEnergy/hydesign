@@ -1,0 +1,42 @@
+[
+  {
+    "reference_lambda_ppa": 40.0,
+    "s_ppa_fixed": 0.2435275802430631,
+    "contracted_energy_mwh": 1720.3015545841845,
+    "reference_objective": 2405572.332742745,
+    "merchant_objective": 2402867.8986122785,
+    "objective_surplus": 2704.434130466543,
+    "price_surplus_eur_per_mwh": 1.5720698055872153,
+    "risk_adjusted_indifference_price_eur_per_mwh": 38.42793019441279
+  },
+  {
+    "reference_lambda_ppa": 60.0,
+    "s_ppa_fixed": 2.688106258203174,
+    "contracted_energy_mwh": 18989.033481377603,
+    "reference_objective": 2609349.3666276652,
+    "merchant_objective": 2402867.8986122785,
+    "objective_surplus": 206481.46801538672,
+    "price_surplus_eur_per_mwh": 10.873721836231502,
+    "risk_adjusted_indifference_price_eur_per_mwh": 49.1262781637685
+  },
+  {
+    "reference_lambda_ppa": 80.0,
+    "s_ppa_fixed": 5.9722824942658805,
+    "contracted_energy_mwh": 42188.76091589698,
+    "reference_objective": 3212318.191129539,
+    "merchant_objective": 2402867.8986122785,
+    "objective_surplus": 809450.2925172606,
+    "price_surplus_eur_per_mwh": 19.18639644645868,
+    "risk_adjusted_indifference_price_eur_per_mwh": 60.81360355354132
+  },
+  {
+    "reference_lambda_ppa": 100.0,
+    "s_ppa_fixed": 10.260175233237332,
+    "contracted_energy_mwh": 72478.83540101454,
+    "reference_objective": 4342437.658906102,
+    "merchant_objective": 2402867.8986122785,
+    "objective_surplus": 1939569.7602938237,
+    "price_surplus_eur_per_mwh": 26.760498420848993,
+    "risk_adjusted_indifference_price_eur_per_mwh": 73.23950157915101
+  }
+]

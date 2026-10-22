@@ -1,0 +1,23 @@
+{
+  "run_type": "risk_aversion_sensitivity",
+  "beta": 0.0,
+  "alpha": 0.9,
+  "delivery_profile": "Generic Industrial Yearly",
+  "lambda_PPA": 80.0,
+  "c_ppa": 160.0,
+  "P_b_max": 20.0,
+  "E_max": 60.0,
+  "settlement_period": "hourly",
+  "S_PPA": 6.010199999999999,
+  "annual_contracted_energy_mwh": 42456.613715137435,
+  "daily_contracted_energy_mwh": 116.63904866795998,
+  "expected_shortfall_mwh": 11616.790684680433,
+  "expected_shortfall_rate_pct": 27.361557289102866,
+  "expected_profit": 3289548.4599848697,
+  "cvar_profit": 2896453.148073049,
+  "objective_value": 3289548.4599848697,
+  "objective_reconstructed": 3289548.4599848697,
+  "solver_status": "ok",
+  "termination_condition": "optimal",
+  "elapsed_seconds": 2070.087053012103
+}

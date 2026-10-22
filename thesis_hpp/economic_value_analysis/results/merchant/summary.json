@@ -1,0 +1,20 @@
+{
+  "delivery_profile": "Generic Industrial Yearly",
+  "c_ppa": 160.0,
+  "p_b_max": 20.0,
+  "e_max": 60.0,
+  "e0": 30.0,
+  "settlement_period": "hourly",
+  "lambda_ppa": 0.0,
+  "s_ppa": 0.0,
+  "contracted_energy_mwh": 0.0,
+  "objective_value": 2402867.8986122785,
+  "expected_profit": 2492765.244357831,
+  "cvar_profit": 2043278.5156300687,
+  "beta": 0.2,
+  "objective_reconstructed": 2402867.8986122785,
+  "solver_status": "ok",
+  "termination_condition": "optimal",
+  "elapsed_seconds": 1571.0722637102008,
+  "run_type": "merchant"
+}

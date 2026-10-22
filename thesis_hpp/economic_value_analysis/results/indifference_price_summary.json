@@ -1,0 +1,14 @@
+{
+  "s_ppa_fixed": 5.9722824942658805,
+  "contracted_energy_mwh": 42188.76091589698,
+  "merchant_objective": 2402867.8986122785,
+  "fixed_obligation_objective": -162782.68356377244,
+  "reference_lambda_ppa": 80.0,
+  "reference_objective": 3212318.191129539,
+  "direct_indifference_price_eur_per_mwh": 60.81360358723639,
+  "shortcut_price_surplus_eur_per_mwh": 19.18639644645868,
+  "shortcut_indifference_price_eur_per_mwh": 60.81360355354132,
+  "implied_obligation_objective_from_shortcut": -162782.68214221904,
+  "obligation_objective_difference": -0.0014215534029062837,
+  "indifference_price_difference": 3.369507339812117e-08
+}

@@ -1,0 +1,10 @@
+component,expected_value_eur_per_year
+ppa_revenue,5396119.85780796
+spot_revenue,869434.885390251
+imbalance_settlement,25822.1405374837
+imbalance_penalty,-2020.41736341148
+mfrr_up,385611.091166926
+mfrr_down,202861.772222925
+ppa_shortfall_cost,-1479972.02943649
+battery_degradation,-24934.7399708472
+expected_profit,5372922.56035479
